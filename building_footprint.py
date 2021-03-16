@@ -1,3 +1,7 @@
+'''
+Reads the images and labels from the xBD dataset and extracts the buildings.
+'''
+
 from pathlib import Path
 import json
 import os
