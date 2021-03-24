@@ -18,14 +18,14 @@ class TwoStream_Resnet50_Diff(nn.Module):
         n_classes=5,
         seperate_loss = False,
         pretrained = False,
-        output_features = False, #TODO check exactly what this does and if it can be used to extract feature maps
+        output_features = False,
         shared = False,
         diff = True
         ):
         """Initialize model
         
         Args:
-            in_channels (int, optional): Number of input channels, please keep!. Defaults to 6.
+            in_channels (int, optional): Number of input channels, please keep! Defaults to 6.
             n_classes (int, optional): Number of classes. Defaults to 5.
             seperate_loss (bool, optional): If True, two seperate heads for localization and damage predictions are used. Defaults to False.
             pretrained (bool, optional): If True uses ImageNet pretrained weights for the two ResNet50 encoders. Defaults to False.
