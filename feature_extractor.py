@@ -1,4 +1,3 @@
-import json
 import torch
 import torch.nn as nn
 from torchvision.models import resnet50
@@ -18,7 +17,7 @@ class FeatureExtractor(torch.nn.Module):
         pretrained = False,
         shared = False,
         diff = True
-        ):
+        ) -> None:
         """
         Builds the full ResNet50 Diff model then truncated down to the Bridge.
 
@@ -51,7 +50,7 @@ class FeatureExtractor(torch.nn.Module):
         if not diff:
             self.concat_blocks = nn.ModuleList([nn.Conv2d(n, int(n/2), kernel_size=1, stride = 1) for n in [4096,2048,1024,512,128,6]])
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Same Forward pass as the full ResNet50 Diff model but stops at the Bridge output.
         
@@ -59,7 +58,7 @@ class FeatureExtractor(torch.nn.Module):
             x (torch.Tensor): The 6-channel input
         
         Returns:
-            torch.Tensor: A 2048x8x8 output feature map
+            torch.Tensor: A (131072) size output feature vector
         """        
         x1, x2 = torch.split(x, 3, dim = 1)
         del x
@@ -98,10 +97,10 @@ class FeatureExtractor(torch.nn.Module):
             x = torch.add(input=x1, other=x2, alpha=-1)
         else:
             x = self.concat_blocks[0](torch.cat([x1,x2],1))
-        return self.bridge(x)
+        return self.bridge(x).flatten()
 
 
-def loadFeatureExtractor(setting_path = './resnet50_settings.json'):
+def load_feature_extractor(setting_dict: dict) -> torch.nn.Module:
     """
         Loads the ResNet50 feature extractor.
         
@@ -112,9 +111,7 @@ def loadFeatureExtractor(setting_path = './resnet50_settings.json'):
             model (torch.nn.Module): The feature extraction model
             
     """
-    with open(setting_path, 'r') as JSON:
-        setting_dict = json.load(JSON)
-    model_args = setting_dict["model"]["model_args"]
+    model_args = setting_dict["resnet50"]
     pretrained = model_args['pretrained']
     shared = model_args['shared']
     diff = model_args['diff']

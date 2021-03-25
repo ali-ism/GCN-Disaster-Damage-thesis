@@ -33,7 +33,6 @@ class DownloadProgressBar(tqdm):
         self.update(b * bsize - self.n)
 
 def download_weights(setting_name):
-    #TODO Put here the right setting -> downloadpath conversion
     dl_path, outfile = DL_LINKS[setting_name]
     filepath = "C:/thesis/weights/"+outfile
     print("Downloading from {} to {}".format(dl_path, filepath))
