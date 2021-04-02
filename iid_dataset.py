@@ -1,25 +1,40 @@
+import os
 import json
 from pathlib import Path
 import pandas as pd
 import torch
+import torchvision.transforms as tr
+from PIL import Image
 from torch_geometric.data import Data, InMemoryDataset
 from feature_extractor import load_feature_extractor
 
-with open('exp_setting.json', r) as JSON:
-    settings_dict = json.load(JSON)
+
+with open('disaster_dirs.json', 'r') as JSON:
+    disasters_dict = json.load(JSON)
+
+normalizer = tr.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+transform = tr.ToTensor()
 
 class IIDxBD(InMemoryDataset):
-    def __init__(self, xbd_path: str, root, transform=None, pre_transform=None) -> None:
+    def __init__(self,
+                 xbd_path: str,
+                 root,
+                 resnet_pretrained=False,
+                 resnet_shared=False,
+                 resnet_diff=True,
+                 transform=None,
+                 pre_transform=None) -> None:
+
         super(IIDxBD, self).__init__(root, transform, pre_transform)
+
         self.data, self.slices = torch.load(self.processed_paths[0])
 
-        self.xbd_path = xbd_path
-        self.resnet50 = load_feature_extractor(settings_dict)
-        self.subsets = ('/train_bldgs/', '/hold_bldgs/', '/test_bldgs/')
+        self.resnet50 = load_feature_extractor(resnet_pretrained, resnet_shared, resnet_diff)
+        self.disaster_folders = os.listdir(xbd_path + '/train_bldgs/')
 
     @property
-    def raw_file_names(self) -> None:
-        pass
+    def raw_file_names(self) -> dict:
+        return disasters_dict
 
     @property
     def processed_file_names(self) -> list(str):
@@ -31,20 +46,37 @@ class IIDxBD(InMemoryDataset):
     def process(self):
         data_list = []
 
-        for subset in self.subsets:
-            disaster_folders = list(Path(self.xbd_path + subset).glob('*'))
-            for disaster in disaster_folders:
-                list_pre_images = list(disaster.glob('*pre_disaster*'))
-                list_post_images = list(disaster.glob('*post_disaster*'))
-                annotation = pd.read_csv(list(disaster.glob('*.csv'))[0], index_col=0)
-                #TODO
-                #read pre img
-                #read post img
-                #preprocess images according to benson and ecker
-                #feed into resnet
-                #append to x matrix according to Data class
-                #build edge info and weight
-                #mask as train/hold according to https://stackoverflow.com/questions/65670777/loading-a-single-graph-into-a-pytorch-geometric-data-object-for-node-classificat
+        for disaster in self.disaster_folders:
+            x = []
+            list_pre_images = disasters_dict[disaster + '_pre']
+            list_post_images = disasters_dict[disaster + '_post']
+            annotation_train = pd.read_csv(disasters_dict[disaster + '_labels'][0], index_col=0)
+            annotation_hold = pd.read_csv(disasters_dict[disaster + '_labels'][1], index_col=0)
+            annotation_test = pd.read_csv(disasters_dict[disaster + '_labels'][2], index_col=0)
+            for pre_image_file, post_image_file in zip(list_pre_images, list_post_images):
+                pre_image = Image.open(pre_image_file)
+                post_image = Image.open(post_image_file)
+                pre_image = pre_image.resize((256, 256))
+                post_image = post_image.resize((256, 256))
+                pre_image = transform(pre_image)
+                post_image = transform(post_image)
+                images = torch.cat((pre_image, post_image),1)
+                with torch.no_grad():
+                    node_features = self.resnet50(images)
+                x.append(node_features)
+            x = torch.stack(x)
+            #mask as train/hold according to https://stackoverflow.com/questions/65670777/loading-a-single-graph-into-a-pytorch-geometric-data-object-for-node-classificat
+            train_mask = torch.zeros(x.shape[0])
+            hold_mask = torch.zeros(x.shape[0])
+            test_mask = torch.zeros(x.shape[0])
+            train_mask[:annotation_train.shape[0]] = 1
+            hold_mask[annotation_train.shape[0]:annotation_hold.shape[0]] = 1
+            test_mask[annotation_hold.shape[0]:annotation_test.shape[0]] = 1
+            train_mask = train_mask.type(torch.bool)
+            hold_mask = hold_mask.type(torch.bool)
+            test_mask = test_mask.type(torch.bool)
+            #build edge info and weight
+            #create Data object for the current disaster
 
 
         if self.pre_filter is not None:

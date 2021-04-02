@@ -2,14 +2,48 @@ import torch
 import torch.nn as nn
 from torchvision.models import resnet50
 import copy
-from twostream_resnet50_diff import Bridge
-from download import download_weights
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
+
+
+class ConvBlock(nn.Module):
+    """
+    Helper module that consists of a Conv -> BN -> ReLU
+    """
+
+    def __init__(self, in_channels, out_channels, padding=1, kernel_size=3, stride=1, with_nonlinearity=True):
+        super().__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, padding=padding, kernel_size=kernel_size, stride=stride)
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU()
+        self.with_nonlinearity = with_nonlinearity
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
+        if self.with_nonlinearity:
+            x = self.relu(x)
+        return x
+
+
+class Bridge(nn.Module):
+    """
+    This is the middle layer of the UNet which just consists of some
+    """
+
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.bridge = nn.Sequential(
+            ConvBlock(in_channels, out_channels),
+            ConvBlock(out_channels, out_channels)
+        )
+
+    def forward(self, x):
+        return self.bridge(x)
 
 
 class FeatureExtractor(torch.nn.Module):
@@ -100,27 +134,23 @@ class FeatureExtractor(torch.nn.Module):
         return self.bridge(x).flatten()
 
 
-def load_feature_extractor(setting_dict: dict) -> torch.nn.Module:
+def load_feature_extractor(pretrained=False, shared=False, diff=True, weight_path=None) -> torch.nn.Module:
     """
         Loads the ResNet50 feature extractor.
         
         Args:
-            setting_path (str): Path to the model setting JSON file
+            pretrained (bool, optional): If True uses ImageNet pretrained weights for the two ResNet50 encoders. Defaults to False.
+            shared (bool, optional): If True, model is siamese (shared encoder). Defaults to False.
+            diff (bool, optional): If True, difference is fed to decoder, else an intermediate 1x1 conv merges the two downstream features. Defaults to True.
         
         Returns:
             model (torch.nn.Module): The feature extraction model
             
     """
-    model_args = setting_dict["resnet50"]
-    pretrained = model_args['pretrained']
-    shared = model_args['shared']
-    diff = model_args['diff']
     model = FeatureExtractor(pretrained, shared, diff)
     for param in model.parameters():
         param.requires_grad = False
     model.eval()
     if not pretrained:
-        weight_path = download_weights('table_1_plain')
-        model.load_state_dict(torch.load(weight_path)["state_dict"], strict=False) #TODO test this
-    model.to(device)
+        model.load_state_dict(torch.load(weight_path)["state_dict"], strict=False)
     return model
