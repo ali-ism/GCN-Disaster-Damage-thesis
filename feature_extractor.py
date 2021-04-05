@@ -1,13 +1,15 @@
+# ------------------------------------------------------------------------------
+# This code is (modified) from
+# Assessing out-of-domain generalization for robust building damage detection
+# https://github.com/ecker-lab/robust-bdd.git
+# Licensed under the CC BY-NC-SA 4.0 License.
+# Written by Vitus Benson (vbenson@bgc-jena.mpg.de)
+# ------------------------------------------------------------------------------
 import torch
 import torch.nn as nn
 from torchvision.models import resnet50
 import copy
-
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-torch.manual_seed(42)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+from download import download_weights
 
 
 class ConvBlock(nn.Module):
@@ -53,7 +55,7 @@ class FeatureExtractor(torch.nn.Module):
         diff = True
         ) -> None:
         """
-        Builds the full ResNet50 Diff model then truncated down to the Bridge.
+        Builds the encoder part of the Twostream ResNet50 Diff model (Input to the Bridge module).
 
         Args:
             pretrained (bool, optional): If True uses ImageNet pretrained weights for the two ResNet50 encoders. Defaults to False.
@@ -152,5 +154,7 @@ def load_feature_extractor(pretrained=False, shared=False, diff=True, weight_pat
         param.requires_grad = False
     model.eval()
     if not pretrained:
+        if weight_path is None:
+            weight_path = download_weights('table_1_plain')
         model.load_state_dict(torch.load(weight_path)["state_dict"], strict=False)
     return model

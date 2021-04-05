@@ -1,3 +1,10 @@
+# ------------------------------------------------------------------------------
+# This code is from
+# Assessing out-of-domain generalization for robust building damage detection
+# https://github.com/ecker-lab/robust-bdd.git
+# Licensed under the CC BY-NC-SA 4.0 License.
+# Written by Vitus Benson (vbenson@bgc-jena.mpg.de)
+# ------------------------------------------------------------------------------
 import os
 import urllib.request
 from tqdm import tqdm

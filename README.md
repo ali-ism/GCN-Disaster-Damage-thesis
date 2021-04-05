@@ -6,8 +6,15 @@ with open('exp_setting.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 ```
 
+To initialize GPU and random engines
+```
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+torch.manual_seed(42)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+```
+
 # TODO
-- try downloading Benson ResNet50 weights
-- resnet weights are now provided more directly, but need to implement a script to download them if not present.
+- test benson resnet 50 weights
 - still not moving anything to(device), keep that in mind
 - continue working on iid_dataset.py
