@@ -16,5 +16,6 @@ torch.backends.cudnn.benchmark = False
 
 # TODO
 - test benson resnet 50 weights
+- generate disaster_dict if it doesn't exist
 - still not moving anything to(device), keep that in mind
 - continue working on iid_dataset.py
