@@ -3,3 +3,4 @@ __pycache__/
 runs/
 logs/
 disaster_dirs.json
+thesis.code-workspace
