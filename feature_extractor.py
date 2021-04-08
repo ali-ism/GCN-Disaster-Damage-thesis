@@ -156,5 +156,6 @@ def load_feature_extractor(pretrained=False, shared=False, diff=True, weight_pat
     if not pretrained:
         if weight_path is None:
             weight_path = download_weights('table_1_plain')
-        model.load_state_dict(torch.load(weight_path)["state_dict"], strict=False)
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        model.load_state_dict(torch.load(weight_path,map_location=device)["state_dict"], strict=False)
     return model
