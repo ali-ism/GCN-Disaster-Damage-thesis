@@ -1,5 +1,6 @@
 import os
 import json
+import numpy as np
 import pandas as pd
 import torch
 import torchvision.transforms as tr
@@ -17,6 +18,31 @@ with open('disaster_dirs.json', 'r') as JSON:
 
 normalizer = tr.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 transform = tr.ToTensor()
+
+
+def build_edge_idx(num_nodes: int) -> torch.Tensor:
+    """
+    Build a complete graph for the edge_index parameter.
+
+    Adapted from: https://github.com/rusty1s/pytorch_geometric/issues/964
+    """
+    # Initialize edge index matrix
+    E = torch.zeros((2, (num_nodes * (num_nodes - 1))//2), dtype=torch.long)
+    
+    # Populate 1st row
+    i = 0
+    for node in range(num_nodes):
+        for neighbor in range(num_nodes - node - 1):
+            E[0, i] = node
+            i+=1
+
+    # Populate 2nd row
+    neighbors = []
+    for node in range(num_nodes):
+        neighbors.extend(np.arange(node+1, num_nodes))
+    E[1, :] = torch.Tensor(neighbors)
+    
+    return E
 
 
 class IIDxBD(InMemoryDataset):
@@ -100,7 +126,7 @@ class IIDxBD(InMemoryDataset):
             test_mask = test_mask.type(torch.bool)
 
             #build edge info and weight
-
+            edge_index = build_edge_idx(x.shape[0])
             #create Data object for the current disaster
 
 
