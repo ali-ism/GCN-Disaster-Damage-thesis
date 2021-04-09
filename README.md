@@ -19,3 +19,4 @@ torch.backends.cudnn.benchmark = False
 - continue working on iid_dataset.py
 - do I need to explicitly add self-loops?
 - check https://stackoverflow.com/questions/10649673/how-to-generate-a-fully-connected-subgraph-from-node-list-using-pythons-network
+- review or redesign edge weight. maybe add an additional element which is the euclidean distance. The edge weight will then be a 2 element vector.

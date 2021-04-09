@@ -22,9 +22,16 @@ transform = tr.ToTensor()
 
 def build_edge_idx(num_nodes: int) -> torch.Tensor:
     """
-    Build a complete graph for the edge_index parameter.
+        Build a complete undirected graph for the edge_index parameter.
 
-    Adapted from: https://github.com/rusty1s/pytorch_geometric/issues/964
+        Args:
+            num_nodes (int): number of nodes in the graph.
+        
+        Returns:
+            E (LongTensor): graph connectivity with shape [2, num_edges].
+
+        Adapted from:
+            https://github.com/rusty1s/pytorch_geometric/issues/964
     """
     # Initialize edge index matrix
     E = torch.zeros((2, (num_nodes * (num_nodes - 1))//2), dtype=torch.long)
@@ -32,7 +39,7 @@ def build_edge_idx(num_nodes: int) -> torch.Tensor:
     # Populate 1st row
     i = 0
     for node in range(num_nodes):
-        for neighbor in range(num_nodes - node - 1):
+        for _ in range(num_nodes - node - 1):
             E[0, i] = node
             i+=1
 
@@ -43,6 +50,26 @@ def build_edge_idx(num_nodes: int) -> torch.Tensor:
     E[1, :] = torch.Tensor(neighbors)
     
     return E
+
+
+def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor):
+    """
+        Computes the edge weights between two given nodes.
+
+        Args:
+            node1 (Tensor): feature vector of the first node.
+            node2 (Tensor): feature vector of the second node.
+        
+        Returns:
+            edge_weight (float): weight of the edge connecting the two given nodes.
+        
+        Based on the adjacency matrix built by:
+            S. Saha, L. Mou, X. X. Zhu, F. Bovolo and L. Bruzzone, "Semisupervised Change Detection Using Graph Convolutional Network," in IEEE Geoscience and Remote Sensing Letters, vol. 18, no. 4, pp. 607-611, April 2021, doi: 10.1109/LGRS.2020.2985340.
+    """
+    D = node1.shape[0]
+    s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
+    edge_weight = 1 - torch.sum(s)/D
+    return edge_weight.item()
 
 
 class IIDxBD(InMemoryDataset):
@@ -80,21 +107,26 @@ class IIDxBD(InMemoryDataset):
             x = []
             y = []
             coords = []
+            split = []
 
             list_pre_images = disasters_dict[disaster + '_pre']
             list_post_images = disasters_dict[disaster + '_post']
 
             annotation_train = pd.read_csv(disasters_dict[disaster + '_labels'][0], index_col=0)
+            annotation_train['split'] = ['train'] * annotation_train.shape[0]
             annotation_hold = pd.read_csv(disasters_dict[disaster + '_labels'][1], index_col=0)
+            annotation_hold['split'] = ['hold'] * annotation_hold.shape[0]
             annotation_test = pd.read_csv(disasters_dict[disaster + '_labels'][2], index_col=0)
+            annotation_test['split'] = ['test'] * annotation_test.shape[0]
             annotation = pd.concat((annotation_train, annotation_hold, annotation_test))
 
             for pre_image_file, post_image_file in zip(list_pre_images, list_post_images):
-                if annotation[os.path.split(post_image_file)[1]] == 'un-classified':
+                if annotation.loc[os.path.split(post_image_file)[1],'class'] == 'un-classified':
                     continue
 
                 y.append(annotation.loc[os.path.split(post_image_file)[1],'class'])
                 coords.append(annotation.loc[os.path.split(post_image_file)[1],'coords'])
+                split.append(annotation.loc[os.path.split(post_image_file)[1],'split'])
 
                 pre_image = Image.open(pre_image_file)
                 post_image = Image.open(post_image_file)
@@ -114,20 +146,31 @@ class IIDxBD(InMemoryDataset):
             label_en = {'no-damage': 0, 'minor-damage': 1, 'major-damage': 2, 'destroyed': 3}
             y = torch.from_numpy(pd.Series(y).replace(label_en).values)
 
-            #mask as train/hold according to https://stackoverflow.com/questions/65670777/loading-a-single-graph-into-a-pytorch-geometric-data-object-for-node-classificat
+            #mask as train/val/test according to https://stackoverflow.com/questions/65670777/loading-a-single-graph-into-a-pytorch-geometric-data-object-for-node-classificat
             train_mask = torch.zeros(x.shape[0])
             hold_mask = torch.zeros(x.shape[0])
             test_mask = torch.zeros(x.shape[0])
-            train_mask[:annotation_train.shape[0]] = 1
-            hold_mask[annotation_train.shape[0]:annotation_hold.shape[0]] = 1
-            test_mask[annotation_hold.shape[0]:annotation_test.shape[0]] = 1
+
+            split = pd.Series(split)
+            train_mask[split[split=='train'].index] = 1
+            hold_mask[split[split=='hold'].index] = 1
+            test_mask[split[split=='test'].index] = 1
+
             train_mask = train_mask.type(torch.bool)
             hold_mask = hold_mask.type(torch.bool)
             test_mask = test_mask.type(torch.bool)
 
-            #build edge info and weight
+            
             edge_index = build_edge_idx(x.shape[0])
-            #create Data object for the current disaster
+
+            edge_attr = torch.empty((edge_index.shape[1],1))
+            for i in range(edge_attr.shape[0]):
+                node1 = x[edge_index[0,i]]
+                node2 = x[edge_index[1,i]]
+                edge_attr[i] = get_edge_weight(node1, node2)
+            
+            data_list.append(Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y,
+                                  train_mask=train_mask, val_mask=test_mask, test_mask=hold_mask))
 
 
         if self.pre_filter is not None:
