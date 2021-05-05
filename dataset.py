@@ -1,7 +1,10 @@
 import os
 import json
+from typing import Tuple
 import numpy as np
+from math import sqrt
 import pandas as pd
+from typing import Tuple
 import torch
 import torchvision.transforms as tr
 from PIL import Image
@@ -52,24 +55,35 @@ def build_edge_idx(num_nodes: int) -> torch.Tensor:
     return E
 
 
-def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor):
+def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[float], coords2: Tuple[float]):
     """
         Computes the edge weights between two given nodes.
 
         Args:
             node1 (Tensor): feature vector of the first node.
             node2 (Tensor): feature vector of the second node.
+            coords1 (Tuple[float]): pixel coordinates of node1.
+            coords2 (Tuple[float]): pixel coordinates of node2.
         
         Returns:
-            edge_weight (float): weight of the edge connecting the two given nodes.
+            node_sim (float): normalized node feature similarity.
+            euc_sim (float): normalized euclidean distance similarity between the node image objects.
         
-        Based on the adjacency matrix built by:
+        Node feature similarity is based on the adjacency matrix built by:
             S. Saha, L. Mou, X. X. Zhu, F. Bovolo and L. Bruzzone, "Semisupervised Change Detection Using Graph Convolutional Network," in IEEE Geoscience and Remote Sensing Letters, vol. 18, no. 4, pp. 607-611, April 2021, doi: 10.1109/LGRS.2020.2985340.
     """
     D = node1.shape[0]
     s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
-    edge_weight = 1 - torch.sum(s)/D
-    return edge_weight.item()
+    node_sim = 1 - torch.sum(s)/D
+
+    x1 = coords1[0]
+    y1 = coords1[1]
+    x2 = coords2[0]
+    y2 = coords2[1]
+    euc_dist = sqrt((x1-x2)**2 + (y1-y2)**2)
+    euc_sim = 1 / (1 + euc_dist)
+
+    return node_sim.item(), euc_sim
 
 
 class IIDxBD(InMemoryDataset):
@@ -163,11 +177,15 @@ class IIDxBD(InMemoryDataset):
             
             edge_index = build_edge_idx(x.shape[0])
 
-            edge_attr = torch.empty((edge_index.shape[1],1))
+            edge_attr = torch.empty((edge_index.shape[1],2))
             for i in range(edge_attr.shape[0]):
                 node1 = x[edge_index[0,i]]
                 node2 = x[edge_index[1,i]]
-                edge_attr[i] = get_edge_weight(node1, node2)
+                coords1 = coords[edge_index[0,i]]
+                coords2 = coords[edge_index[1,i]]
+                attr = get_edge_weight(node1, node2, coords1, coords2)
+                edge_attr[i,0] = attr[0]
+                edge_attr[i,1] = attr[1]
             
             data_list.append(Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y,
                                   train_mask=train_mask, val_mask=test_mask, test_mask=hold_mask))
