@@ -105,11 +105,11 @@ class IIDxBD(InMemoryDataset):
 
     @property
     def raw_file_names(self) -> dict:
-        return disasters_dict
+        return []
 
     @property
     def processed_file_names(self) -> list(str):
-        return ['data.pt']
+        return ['iid_data.pt']
 
     def download(self) -> None:
         pass
