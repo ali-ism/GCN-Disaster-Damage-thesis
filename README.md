@@ -20,3 +20,4 @@ torch.backends.cudnn.benchmark = False
 - implement dataset visualization
 - do I need to explicitly add self-loops?
 - check https://stackoverflow.com/questions/10649673/how-to-generate-a-fully-connected-subgraph-from-node-list-using-pythons-network
+- how can I use edge weights in SageConv?
