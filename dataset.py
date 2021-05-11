@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 from math import sqrt
 import pandas as pd
-from typing import Tuple
+from typing import Tuple, List
 import torch
 import torchvision.transforms as tr
 from PIL import Image
@@ -13,7 +13,7 @@ from feature_extractor import load_feature_extractor
 from generate_disaster_dict import generate_disaster_dict
 
 
-if not os.path.isdir('disaster_dirs.json'):
+if not os.path.isfile('disaster_dirs.json'):
     generate_disaster_dict()
 
 with open('disaster_dirs.json', 'r') as JSON:
@@ -95,20 +95,20 @@ class IIDxBD(InMemoryDataset):
                  resnet_diff=True,
                  transform=None,
                  pre_transform=None) -> None:
-
+        
+        self.resnet50 = load_feature_extractor(resnet_pretrained, resnet_shared, resnet_diff)
+        self.disaster_folders = os.listdir(xbd_path + '/train_bldgs/')
+        
         super(IIDxBD, self).__init__(root, transform, pre_transform)
 
         self.data, self.slices = torch.load(self.processed_paths[0])
 
-        self.resnet50 = load_feature_extractor(resnet_pretrained, resnet_shared, resnet_diff)
-        self.disaster_folders = os.listdir(xbd_path + '/train_bldgs/')
-
     @property
-    def raw_file_names(self) -> dict:
+    def raw_file_names(self) -> List:
         return []
 
     @property
-    def processed_file_names(self) -> list(str):
+    def processed_file_names(self) -> List[str]:
         return ['iid_data.pt']
 
     def download(self) -> None:
@@ -148,10 +148,10 @@ class IIDxBD(InMemoryDataset):
                 post_image = post_image.resize((256, 256))
                 pre_image = transform(pre_image)
                 post_image = transform(post_image)
-                images = torch.cat((pre_image, post_image),1)
+                images = torch.cat((pre_image, post_image),0)
 
                 with torch.no_grad():
-                    node_features = self.resnet50(images)
+                    node_features = self.resnet50(images.unsqueeze(0))
                 
                 x.append(node_features)
             
