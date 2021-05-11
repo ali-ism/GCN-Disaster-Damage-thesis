@@ -2,10 +2,10 @@ import os
 import json
 from pathlib import Path
 from collections import defaultdict
+from sys import argv
 
-def generate_disaster_dict() -> None:
+def generate_disaster_dict(xbd_path) -> None:
     disaster_dict = defaultdict(list)
-    xbd_path = 'C:/xBD'
     subsets = ('/train_bldgs/', '/hold_bldgs/', '/test_bldgs/', '/tier3_bldgs/')
 
     disaster_folders = os.listdir(xbd_path + subsets[0]) + os.listdir(xbd_path + subsets[-1])
@@ -22,4 +22,5 @@ def generate_disaster_dict() -> None:
     print('Successfully created "disaster_dirs.json".')
 
 if __name__== "__main__":
-    generate_disaster_dict()
+    xbd_path = argv[1]
+    generate_disaster_dict(xbd_path)

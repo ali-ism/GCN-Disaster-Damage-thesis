@@ -20,6 +20,7 @@ torch.backends.cudnn.benchmark = False
 - implement dataset visualization
 - do I need to explicitly add self-loops?
 - check https://stackoverflow.com/questions/10649673/how-to-generate-a-fully-connected-subgraph-from-node-list-using-pythons-network
+- make xbd_path a passable argument to generate disaster_dict
 
 # how can I use edge weights in SageConv?
 - Adapt the implementation in https://github.com/khuangaf/Pytorch-Geometric-YooChoose

@@ -14,7 +14,8 @@ from generate_disaster_dict import generate_disaster_dict
 
 
 if not os.path.isfile('disaster_dirs.json'):
-    generate_disaster_dict()
+    xbd_path = 'C:/xBD'
+    generate_disaster_dict(xbd_path)
 
 with open('disaster_dirs.json', 'r') as JSON:
     disasters_dict = json.load(JSON)
