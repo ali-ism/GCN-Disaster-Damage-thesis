@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Tuple
+from tqdm import tqdm
 import numpy as np
 from math import sqrt
 import pandas as pd
@@ -11,10 +11,16 @@ from PIL import Image
 from torch_geometric.data import Data, InMemoryDataset
 from feature_extractor import load_feature_extractor
 from generate_disaster_dict import generate_disaster_dict
+from sys import argv
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+torch.manual_seed(42)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 
 if not os.path.isfile('disaster_dirs.json'):
-    xbd_path = 'C:/xBD'
+    xbd_path = argv[1]
     generate_disaster_dict(xbd_path)
 
 with open('disaster_dirs.json', 'r') as JSON:
@@ -77,10 +83,12 @@ def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[flo
     s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
     node_sim = 1 - torch.sum(s)/D
 
-    x1 = coords1[0]
-    y1 = coords1[1]
-    x2 = coords2[0]
-    y2 = coords2[1]
+    coords1 = coords1.replace('(','').replace(')','').split(',')
+    coords2 = coords2.replace('(','').replace(')','').split(',')
+    x1 = float(coords1[0])
+    y1 = float(coords1[1])
+    x2 = float(coords2[0])
+    y2 = float(coords2[1])
     euc_dist = sqrt((x1-x2)**2 + (y1-y2)**2)
     euc_sim = 1 / (1 + euc_dist)
 
@@ -97,9 +105,11 @@ class IIDxBD(InMemoryDataset):
                  transform=None,
                  pre_transform=None) -> None:
         
-        self.resnet50 = load_feature_extractor(resnet_pretrained, resnet_shared, resnet_diff)
-        self.disaster_folders = os.listdir(xbd_path + '/train_bldgs/')
-        
+        self.resnet_pretrained = resnet_pretrained
+        self.resnet_shared = resnet_shared
+        self.resnet_diff = resnet_diff
+        self.xbd_path = xbd_path
+
         super(IIDxBD, self).__init__(root, transform, pre_transform)
 
         self.data, self.slices = torch.load(self.processed_paths[0])
@@ -116,9 +126,14 @@ class IIDxBD(InMemoryDataset):
         pass
 
     def process(self):
+        self.resnet50 = load_feature_extractor(self.resnet_pretrained, self.resnet_shared, self.resnet_diff)
+        self.resnet50 = self.resnet50.to(device)
+        self.disaster_folders = os.listdir(self.xbd_path + '/train_bldgs/')
+
         data_list = []
 
         for disaster in self.disaster_folders:
+            print(f'Building {disaster}...')
             x = []
             y = []
             coords = []
@@ -135,7 +150,7 @@ class IIDxBD(InMemoryDataset):
             annotation_test['split'] = ['test'] * annotation_test.shape[0]
             annotation = pd.concat((annotation_train, annotation_hold, annotation_test))
 
-            for pre_image_file, post_image_file in zip(list_pre_images, list_post_images):
+            for pre_image_file, post_image_file in tqdm(zip(list_pre_images, list_post_images)):
                 if annotation.loc[os.path.split(post_image_file)[1],'class'] == 'un-classified':
                     continue
 
@@ -150,18 +165,20 @@ class IIDxBD(InMemoryDataset):
                 pre_image = transform(pre_image)
                 post_image = transform(post_image)
                 images = torch.cat((pre_image, post_image),0)
+                images = images.to(device)
 
                 with torch.no_grad():
                     node_features = self.resnet50(images.unsqueeze(0))
                 
-                x.append(node_features)
+                x.append(node_features.detach().cpu())
             
             x = torch.stack(x)
 
             label_en = {'no-damage': 0, 'minor-damage': 1, 'major-damage': 2, 'destroyed': 3}
             y = torch.from_numpy(pd.Series(y).replace(label_en).values)
 
-            #mask as train/val/test according to https://stackoverflow.com/questions/65670777/loading-a-single-graph-into-a-pytorch-geometric-data-object-for-node-classificat
+            #mask as train/val/test according to
+            #https://stackoverflow.com/questions/65670777/loading-a-single-graph-into-a-pytorch-geometric-data-object-for-node-classificat
             train_mask = torch.zeros(x.shape[0])
             hold_mask = torch.zeros(x.shape[0])
             test_mask = torch.zeros(x.shape[0])
@@ -200,3 +217,7 @@ class IIDxBD(InMemoryDataset):
 
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
+
+
+if __name__ == "__main__":
+    IIDxBD(argv[1], argv[2])
