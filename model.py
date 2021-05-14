@@ -57,7 +57,7 @@ class SAGENet(torch.nn.Module):
         for conv in self.convs:
             conv.reset_parameters()
 
-    def forward(self, x, adjs):
+    def forward(self, x, adjs, data):
         # `train_loader` computes the k-hop neighborhood of a batch of nodes,
         # and returns, for each layer, a bipartite graph object, holding the
         # bipartite edges `edge_index`, the index `e_id` of the original edges,
@@ -66,8 +66,8 @@ class SAGENet(torch.nn.Module):
         # easily apply skip-connections or add self-loops.
         for i, (edge_index, e_id, size) in enumerate(adjs):
             x_target = x[:size[1]]  # Target nodes are always placed first.
-            #edge_attr = [e_id]
-            x = self.convs[i]((x, x_target), edge_index)
+            edge_attr = data.edge_attr[e_id]
+            #x = self.convs[i](x_target, res_size, edge_index, edge_attr)
             if i != self.num_layers - 1:
                 x = F.relu(x)
                 x = F.dropout(x, p=0.5, training=self.training)

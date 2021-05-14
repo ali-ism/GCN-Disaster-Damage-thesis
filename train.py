@@ -18,10 +18,10 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 
-def train(epoch):
+def train(epoch, data_):
     model.train()
 
-    pbar = tqdm(total=train_idx.size(0))
+    pbar = tqdm(total=data_.train_mask.size(0))
     pbar.set_description(f'Epoch {epoch:02d}')
 
     total_loss = total_correct = 0
@@ -42,7 +42,7 @@ def train(epoch):
     pbar.close()
 
     loss = total_loss / len(train_loader)
-    approx_acc = total_correct / train_idx.size(0)
+    approx_acc = total_correct / data_.train_mask.size(0)
 
     return loss, approx_acc
 
@@ -73,27 +73,15 @@ def test():
 
 
 if __name__ == "__main__":
+
     xbd_path = "C:/xBD"
     root = 'iidxbd_root'
     dataset = IIDxBD(xbd_path=xbd_path, root=root)
     split_idx = dataset.get_idx_split()
+    nbr_sizes = [15, 10, 5]
 
-    data = dataset[0]
-
-    train_idx = split_idx['train']
-    train_loader = NeighborSampler(data.edge_index, node_idx=train_idx,
-                                sizes=[15, 10, 5], batch_size=1024,
-                                shuffle=True, num_workers=12)
-
-    subgraph_loader = NeighborSampler(data.edge_index, node_idx=None, sizes=[-1],
-                                    batch_size=4096, shuffle=False,
-                                    num_workers=12)
-
-    model = SAGENet(dataset.num_features, dataset.num_edge_features, 256, dataset.num_classes, num_layers=3)
+    model = SAGENet(dataset.num_features, dataset.num_edge_features, 256, dataset.num_classes, num_layers=len(nbr_sizes))
     model = model.to(device)
-
-    x = data.x.to(device)
-    y = data.y.squeeze().to(device)
 
     test_accs = []
     for run in range(1, 11):
@@ -105,9 +93,23 @@ if __name__ == "__main__":
         optimizer = torch.optim.Adam(model.parameters(), lr=0.003)
 
         best_val_acc = final_test_acc = 0
+
         for epoch in range(1, 21):
-            loss, acc = train(epoch)
-            print(f'Epoch {epoch:02d}, Loss: {loss:.4f}, Approx. Train: {acc:.4f}')
+
+            for data in dataset:
+
+                train_loader = NeighborSampler(data.edge_index, node_idx=data.train_mask,
+                                            sizes=nbr_sizes, batch_size=1024,
+                                            shuffle=True, num_workers=12)
+
+                subgraph_loader = NeighborSampler(data.edge_index, node_idx=None, sizes=[-1],
+                                                batch_size=4096, shuffle=False,
+                                                num_workers=12)
+
+                x = data.x.to(device)
+                y = data.y.squeeze().to(device)
+                loss, acc = train(epoch, data)
+                print(f'Epoch {epoch:02d}, Loss: {loss:.4f}, Approx. Train: {acc:.4f}')
 
             if epoch > 5:
                 train_acc, val_acc, test_acc = test()

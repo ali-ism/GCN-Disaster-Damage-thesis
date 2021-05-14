@@ -12,8 +12,11 @@ with open('exp_setting.json', 'r') as JSON:
 - do I need to explicitly add self-loops?
 - check https://stackoverflow.com/questions/10649673/how-to-generate-a-fully-connected-subgraph-from-node-list-using-pythons-network
 - In model.py implement the forward function for SAGENet
-- Continue working on train.py, how to access edge_attr from NeighborSampler?, parametrize experiment setting via exp_settings.json, implement metrics logging and model saving
+- Continue working on train.py, parametrize experiment setting via exp_settings.json, implement metrics logging and model saving
 - Should I do one-hot encoding?
+
+# How to access edge_attr from NeighborSampler?
+Neighbor sampler works on a single graph. So we can create a sampler for each graph and loop over them while training.
 
 # How can I use edge weights in SageConv?
 - Adapt the implementation in https://github.com/khuangaf/Pytorch-Geometric-YooChoose
