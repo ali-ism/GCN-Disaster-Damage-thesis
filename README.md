@@ -18,6 +18,8 @@ with open('exp_setting.json', 'r') as JSON:
 # How to access edge_attr from NeighborSampler?
 Neighbor sampler works on a single graph. So we can create a sampler for each graph and loop over them while training.
 
+Or load all graphs into a single graph where nodes belonging to different graphs are not connected.
+
 # How can I use edge weights in SageConv?
 - Adapt the implementation in https://github.com/khuangaf/Pytorch-Geometric-YooChoose
 - Using StellarGraph https://stackoverflow.com/questions/57259920/is-there-a-way-to-allow-graphsage-take-into-account-weighted-edges
