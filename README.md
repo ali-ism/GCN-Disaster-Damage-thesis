@@ -23,7 +23,7 @@ with open('exp_setting.json', 'r') as JSON:
 
 # How to access edge_attr from NeighborSampler?
 Neighbor sampler works on a single graph. So we can:
-- create a sampler for each graph and loop over them while training.
+- create a sampler for each graph and loop over them while training (research forgetfulness)
 - or load all graphs into a single graph where nodes belonging to different graphs are not connected.
 
 # To keep in mind
