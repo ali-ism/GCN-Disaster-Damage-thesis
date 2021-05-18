@@ -19,6 +19,10 @@ torch.backends.cudnn.benchmark = False
 
 xbd_path = 'datasets/xbd'
 
+root = 'datasets/iidxbd_root'
+if not os.path.isdir(root):
+    os.mkdir(root)
+
 if not os.path.isfile('disaster_dirs.json'):
     generate_disaster_dict(xbd_path)
 
@@ -96,7 +100,7 @@ def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[flo
 
 class IIDxBD(InMemoryDataset):
     def __init__(self,
-                 root,
+                 root=root,
                  resnet_pretrained=False,
                  resnet_shared=False,
                  resnet_diff=True,
@@ -152,7 +156,19 @@ class IIDxBD(InMemoryDataset):
                 if annotation.loc[os.path.split(post_image_file)[1],'class'] == 'un-classified':
                     continue
 
-                y.append(annotation.loc[os.path.split(post_image_file)[1],'class'])
+                #ordinal encoding of labels
+                label = annotation.loc[os.path.split(post_image_file)[1],'class']
+                if label == 'no-damage':
+                    y.append([1,0,0,0])
+                elif label == 'minor-damage':
+                    y.append([1,1,0,0])
+                elif label == 'major-damage':
+                    y.append([1,1,1,0])
+                elif label == 'destroyed':
+                    y.append([1,1,1,1])
+                else:
+                    raise ValueError(f'Label class {label} undefined.')
+
                 coords.append(annotation.loc[os.path.split(post_image_file)[1],'coords'])
                 split.append(annotation.loc[os.path.split(post_image_file)[1],'split'])
 
@@ -171,9 +187,7 @@ class IIDxBD(InMemoryDataset):
                 x.append(node_features.detach().cpu())
             
             x = torch.stack(x)
-
-            label_en = {'no-damage': 0, 'minor-damage': 1, 'major-damage': 2, 'destroyed': 3}
-            y = torch.from_numpy(pd.Series(y).replace(label_en).values)
+            y = torch.tensor(y)
 
             #mask as train/val/test according to
             #https://stackoverflow.com/questions/65670777/loading-a-single-graph-into-a-pytorch-geometric-data-object-for-node-classificat
@@ -190,9 +204,10 @@ class IIDxBD(InMemoryDataset):
             hold_mask = hold_mask.type(torch.bool)
             test_mask = test_mask.type(torch.bool)
 
-            
+            #edge index matrix
             edge_index = build_edge_idx(x.shape[0])
 
+            #edge features
             edge_attr = torch.empty((edge_index.shape[1],2))
             for i in range(edge_attr.shape[0]):
                 node1 = x[edge_index[0,i]]
@@ -218,7 +233,4 @@ class IIDxBD(InMemoryDataset):
 
 
 if __name__ == "__main__":
-    root = 'datasets/iidxbd_root'
-    if not os.path.isdir(root):
-        os.mkdir(root)
-    IIDxBD(root)
+    IIDxBD()

@@ -71,7 +71,7 @@ class SAGENet(torch.nn.Module):
             if i != self.num_layers - 1:
                 x = F.relu(x)
                 x = F.dropout(x, p=0.5, training=self.training)
-        return x.log_softmax(dim=-1)
+        return F.sigmoid(x)
 
     def inference(self, x_all, subgraph_loader):
         pbar = tqdm(total=x_all.size(0) * self.num_layers)

@@ -31,7 +31,7 @@ def train(epoch, data_):
 
         optimizer.zero_grad()
         out = model(x[n_id], adjs)
-        loss = F.nll_loss(out, y[n_id[:batch_size]])
+        loss = F.binary_cross_entropy(out, y[n_id[:batch_size]])
         loss.backward()
         optimizer.step()
 
@@ -74,9 +74,7 @@ def test():
 
 if __name__ == "__main__":
 
-    xbd_path = "C:/xBD"
-    root = 'iidxbd_root'
-    dataset = IIDxBD(xbd_path=xbd_path, root=root)
+    dataset = IIDxBD()
     split_idx = dataset.get_idx_split()
     nbr_sizes = [15, 10, 5]
 
