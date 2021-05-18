@@ -11,16 +11,15 @@ from PIL import Image
 from torch_geometric.data import Data, InMemoryDataset
 from feature_extractor import load_feature_extractor
 from generate_disaster_dict import generate_disaster_dict
-from sys import argv
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
+xbd_path = 'datasets/xbd'
 
 if not os.path.isfile('disaster_dirs.json'):
-    xbd_path = argv[1]
     generate_disaster_dict(xbd_path)
 
 with open('disaster_dirs.json', 'r') as JSON:
@@ -97,7 +96,6 @@ def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[flo
 
 class IIDxBD(InMemoryDataset):
     def __init__(self,
-                 xbd_path: str,
                  root,
                  resnet_pretrained=False,
                  resnet_shared=False,
@@ -220,4 +218,7 @@ class IIDxBD(InMemoryDataset):
 
 
 if __name__ == "__main__":
-    IIDxBD(argv[1], argv[2])
+    root = 'datasets/iidxbd_root'
+    if not os.path.isdir(root):
+        os.mkdir(root)
+    IIDxBD(root)

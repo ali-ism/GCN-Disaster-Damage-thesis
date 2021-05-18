@@ -12,7 +12,8 @@ import pandas as pd
 import cv2
 from tqdm import tqdm
 
-subsets = ('./train/', './tier3/', './hold/', './test/')
+
+subsets = ('datasets/xbd/train/', 'datasets/xbd/tier3/', 'datasets/xbd/hold/', 'datasets/xbd/test/')
 
 for subset in subsets:
     subset_path = subset[:-1] + '_bldgs/'

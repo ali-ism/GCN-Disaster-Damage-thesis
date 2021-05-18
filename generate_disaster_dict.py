@@ -4,7 +4,8 @@ from pathlib import Path
 from collections import defaultdict
 from sys import argv
 
-def generate_disaster_dict(xbd_path) -> None:
+def generate_disaster_dict() -> None:
+    xbd_path = 'datasets/xbd'
     disaster_dict = defaultdict(list)
     subsets = ('/train_bldgs/', '/hold_bldgs/', '/test_bldgs/', '/tier3_bldgs/')
 
@@ -22,5 +23,4 @@ def generate_disaster_dict(xbd_path) -> None:
     print('Successfully created "disaster_dirs.json".')
 
 if __name__== "__main__":
-    xbd_path = argv[1]
-    generate_disaster_dict(xbd_path)
+    generate_disaster_dict()

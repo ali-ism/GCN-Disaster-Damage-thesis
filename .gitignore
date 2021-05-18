@@ -1,8 +1,6 @@
 weights/
+datasets/
 __pycache__/
-runs/
-logs/
 disaster_dirs.json
 thesis.code-workspace
-iidxbd_root/
 .ipynb_checkpoints/

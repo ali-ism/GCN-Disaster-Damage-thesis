@@ -28,4 +28,3 @@ Neighbor sampler works on a single graph. So we can:
 
 # To keep in mind
 - moving things to GPU
-- dataset.py and generate_disaster_dict.py have argv
