@@ -29,7 +29,7 @@ class SAGEConvWithEdges(torch.nn.Module):
 
         edge_attr = F.normalize(edge_attr)
 
-        x = scatter(edge_attr, col, dim=0, dim_size=res_size, reduce="mean")
+        x = scatter(edge_attr, col, dim=0, dim_size=res_size, reduce='mean')
         x = self.node_mlp_rel(x)
         x = F.normalize(x)
         return x
@@ -65,9 +65,9 @@ class SAGENet(torch.nn.Module):
         # Target nodes are also included in the source nodes so that one can
         # easily apply skip-connections or add self-loops.
         for i, (edge_index, e_id, size) in enumerate(adjs):
-            x_target = x[:size[1]]  # Target nodes are always placed first.
+            #x_target = x[:size[1]]  # Target nodes are always placed first. TODO
             edge_attr = data.edge_attr[e_id]
-            #x = self.convs[i](x_target, res_size, edge_index, edge_attr)
+            #x = self.convs[i](x_target, res_size, edge_index, edge_attr) TODO
             if i != self.num_layers - 1:
                 x = F.relu(x)
                 x = F.dropout(x, p=0.5, training=self.training)

@@ -15,6 +15,7 @@ with open('exp_setting.json', 'r') as JSON:
 # Should I do one-hot encoding?
 - https://towardsdatascience.com/simple-trick-to-train-an-ordinal-regression-with-any-classifier-6911183d2a3c
 - https://stats.stackexchange.com/questions/140061/how-to-set-up-neural-network-to-output-ordinal-data
+- https://stats.stackexchange.com/questions/222073/classification-with-ordered-classes
 
 # How can I use edge weights in SageConv?
 - Adapt the implementation in https://github.com/khuangaf/Pytorch-Geometric-YooChoose
