@@ -208,7 +208,7 @@ class IIDxBD(InMemoryDataset):
             edge_index = build_edge_idx(x.shape[0])
 
             #edge features
-            edge_attr = torch.empty((edge_index.shape[1],2))
+            edge_attr = torch.empty((edge_index.shape[1],2)) #TODO
             for i in range(edge_attr.shape[0]):
                 node1 = x[edge_index[0,i]]
                 node2 = x[edge_index[1,i]]

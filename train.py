@@ -1,9 +1,11 @@
 # ------------------------------------------------------------------------------
 # This code is (modified) from
-# https://github.com/rusty1s/pytorch_geometric/blob/master/examples/ogbn_products_sage.py
+# https://github.com/rusty1s/pytorch_geometric/blob/master/examples/reddit.py
 # Licensed under the MIT License.
 # Written by Matthias Fey (http://rusty1s.github.io)
 # ------------------------------------------------------------------------------
+import numpy as np
+import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch_geometric.data import NeighborSampler
@@ -18,10 +20,10 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 
-def train(epoch, data_):
+def train(epoch):
     model.train()
 
-    pbar = tqdm(total=data_.train_mask.size(0))
+    pbar = tqdm(total=int(data.train_mask.sum()))
     pbar.set_description(f'Epoch {epoch:02d}')
 
     total_loss = total_correct = 0
@@ -36,22 +38,22 @@ def train(epoch, data_):
         optimizer.step()
 
         total_loss += float(loss)
-        total_correct += int(out.argmax(dim=-1).eq(y[n_id[:batch_size]]).sum())
+        total_correct += int(out.argmax(dim=-1).eq(y[n_id[:batch_size]]).sum()) #TODO modify this
         pbar.update(batch_size)
 
     pbar.close()
 
     loss = total_loss / len(train_loader)
-    approx_acc = total_correct / data_.train_mask.size(0)
+    approx_acc = total_correct / int(data.train_mask.sum())
 
     return loss, approx_acc
 
 
 @torch.no_grad()
-def test():
+def test(): #TODO
     model.eval()
 
-    out = model.inference(x)
+    out = model.inference(x, subgraph_loader)
 
     y_true = y.cpu().unsqueeze(-1)
     y_pred = out.argmax(dim=-1, keepdim=True)
@@ -75,50 +77,50 @@ def test():
 if __name__ == "__main__":
 
     dataset = IIDxBD()
-    split_idx = dataset.get_idx_split()
-    nbr_sizes = [15, 10, 5]
+    #split_idx = dataset.get_idx_split()
+    nb_sizes = [15, 10, 5]
+    hidden_units = 256
+    n_epochs = 20
 
-    model = SAGENet(dataset.num_features, dataset.num_edge_features, 256, dataset.num_classes, num_layers=len(nbr_sizes))
+    model = SAGENet(dataset.num_features, dataset.num_edge_features, hidden_units,
+                    dataset.num_classes, num_layers=len(nb_sizes))
     model = model.to(device)
+    model.reset_parameters()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.003)
 
-    test_accs = []
-    for run in range(1, 11):
-        print('')
-        print(f'Run {run:02d}:')
-        print('')
+    best_val_acc = final_test_acc = best_epoch = 0
 
-        model.reset_parameters()
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.003)
+    train_losses = np.empty(n_epochs)
 
-        best_val_acc = final_test_acc = 0
+    for epoch in range(1, n_epochs+1):
 
-        for epoch in range(1, 21):
+        for data in dataset:
 
-            for data in dataset:
+            train_loader = NeighborSampler(data.edge_index, node_idx=data.train_mask,
+                                           sizes=nb_sizes, batch_size=1024,
+                                           shuffle=True, num_workers=12)
 
-                train_loader = NeighborSampler(data.edge_index, node_idx=data.train_mask,
-                                            sizes=nbr_sizes, batch_size=1024,
-                                            shuffle=True, num_workers=12)
+            subgraph_loader = NeighborSampler(data.edge_index, node_idx=None, sizes=[-1],
+                                              batch_size=4096, shuffle=False,
+                                              num_workers=12)
 
-                subgraph_loader = NeighborSampler(data.edge_index, node_idx=None, sizes=[-1],
-                                                batch_size=4096, shuffle=False,
-                                                num_workers=12)
+            x = data.x.to(device)
+            y = data.y.squeeze().to(device)
+            loss, acc = train(epoch)
+            train_losses[epoch-1] = loss
+            print(f'Epoch {epoch:02d}, Loss: {loss:.4f}, Approx. Train: {acc:.4f}')
 
-                x = data.x.to(device)
-                y = data.y.squeeze().to(device)
-                loss, acc = train(epoch, data)
-                print(f'Epoch {epoch:02d}, Loss: {loss:.4f}, Approx. Train: {acc:.4f}')
+        if epoch > 5:
+            train_acc, val_acc, test_acc = test()
+            print(f'Train: {train_acc:.4f}, Val: {val_acc:.4f}, 'f'Test: {test_acc:.4f}')
 
-            if epoch > 5:
-                train_acc, val_acc, test_acc = test()
-                print(f'Train: {train_acc:.4f}, Val: {val_acc:.4f}, '
-                    f'Test: {test_acc:.4f}')
-
-                if val_acc > best_val_acc:
-                    best_val_acc = val_acc
-                    final_test_acc = test_acc
-        test_accs.append(final_test_acc)
-
-    test_acc = torch.tensor(test_accs)
-    print('============================')
-    print(f'Final Test: {test_acc.mean():.4f} ± {test_acc.std():.4f}')
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
+                best_epoch = epoch
+                final_test_acc = test_acc
+    
+    plt.figure()
+    plt.plot(train_losses)
+    plt.xlabel('epochs')
+    plt.ylabel('loss')
+    plt.savefig('exp.eps')
