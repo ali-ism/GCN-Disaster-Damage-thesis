@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=keras-classify
+#SBATCH --job-name=building_footprint
 #SBATCH --partition=gpu
 
 #SBATCH --nodes=1
