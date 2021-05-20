@@ -78,12 +78,12 @@ if __name__ == "__main__":
 
     dataset = IIDxBD()
     #split_idx = dataset.get_idx_split()
-    nb_sizes = [15, 10, 5]
+    nbr_sizes = [15, 10, 5]
     hidden_units = 256
     n_epochs = 20
 
     model = SAGENet(dataset.num_features, dataset.num_edge_features, hidden_units,
-                    dataset.num_classes, num_layers=len(nb_sizes))
+                    dataset.num_classes, num_layers=len(nbr_sizes))
     model = model.to(device)
     model.reset_parameters()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.003)
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         for data in dataset:
 
             train_loader = NeighborSampler(data.edge_index, node_idx=data.train_mask,
-                                           sizes=nb_sizes, batch_size=1024,
+                                           sizes=nbr_sizes, batch_size=1024,
                                            shuffle=True, num_workers=12)
 
             subgraph_loader = NeighborSampler(data.edge_index, node_idx=None, sizes=[-1],

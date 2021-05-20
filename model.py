@@ -2,7 +2,6 @@ import torch
 import torch.nn.functional as F
 from torch.nn import Linear
 from torch_scatter import scatter
-from torch_geometric.nn import SAGEConv
 from tqdm import tqdm
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -21,7 +20,7 @@ class SAGEConvWithEdges(torch.nn.Module):
 
         self.node_mlp_rel = Linear(in_channels + in_edge_channels, out_channels)
 
-    def forward(self, x, res_size, edge_index, edge_attr):
+    def forward(self, x, edge_index, edge_attr):
         row, col = edge_index
         x_row = x[row]
 
@@ -65,9 +64,9 @@ class SAGENet(torch.nn.Module):
         # Target nodes are also included in the source nodes so that one can
         # easily apply skip-connections or add self-loops.
         for i, (edge_index, e_id, size) in enumerate(adjs):
-            #x_target = x[:size[1]]  # Target nodes are always placed first. TODO
+            x_target = x[:size[1]]  # Target nodes are always placed first. TODO
             edge_attr = data.edge_attr[e_id]
-            #x = self.convs[i](x_target, res_size, edge_index, edge_attr) TODO
+            x = self.convs[i](x_target, res_size, edge_index, edge_attr) #TODO
             if i != self.num_layers - 1:
                 x = F.relu(x)
                 x = F.dropout(x, p=0.5, training=self.training)

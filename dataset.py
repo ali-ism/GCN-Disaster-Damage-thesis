@@ -100,7 +100,7 @@ def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[flo
 
 class IIDxBD(InMemoryDataset):
     def __init__(self,
-                 root=root,
+                 root,
                  resnet_pretrained=False,
                  resnet_shared=False,
                  resnet_diff=True,
@@ -128,13 +128,14 @@ class IIDxBD(InMemoryDataset):
         pass
 
     def process(self):
-        self.resnet50 = load_feature_extractor(self.resnet_pretrained, self.resnet_shared, self.resnet_diff)
-        self.resnet50 = self.resnet50.to(device)
-        self.disaster_folders = os.listdir(self.xbd_path + '/train_bldgs/')
+        resnet50 = load_feature_extractor(self.resnet_pretrained, self.resnet_shared, self.resnet_diff)
+        resnet50 = self.resnet50.to(device)
+        disaster_folders = os.listdir(self.xbd_path + '/train_bldgs/')
 
         data_list = []
+        self.annot_list = []
 
-        for disaster in self.disaster_folders:
+        for disaster in disaster_folders:
             print(f'Building {disaster}...')
             x = []
             y = []
@@ -151,6 +152,7 @@ class IIDxBD(InMemoryDataset):
             annotation_test = pd.read_csv(disasters_dict[disaster + '_labels'][2], index_col=0)
             annotation_test['split'] = ['test'] * annotation_test.shape[0]
             annotation = pd.concat((annotation_train, annotation_hold, annotation_test))
+            self.annot_list.append(annotation.drop(annotation[annotation['class']=='un-classified'].index))
 
             for pre_image_file, post_image_file in tqdm(zip(list_pre_images, list_post_images)):
                 if annotation.loc[os.path.split(post_image_file)[1],'class'] == 'un-classified':
@@ -182,7 +184,7 @@ class IIDxBD(InMemoryDataset):
                 images = images.to(device)
 
                 with torch.no_grad():
-                    node_features = self.resnet50(images.unsqueeze(0))
+                    node_features = resnet50(images.unsqueeze(0))
                 
                 x.append(node_features.detach().cpu())
             
@@ -209,7 +211,7 @@ class IIDxBD(InMemoryDataset):
 
             #edge features
             edge_attr = torch.empty((edge_index.shape[1],2)) #TODO
-            for i in range(edge_attr.shape[0]):
+            for i in range(edge_index.shape[1]):
                 node1 = x[edge_index[0,i]]
                 node2 = x[edge_index[1,i]]
                 coords1 = coords[edge_index[0,i]]
@@ -233,4 +235,4 @@ class IIDxBD(InMemoryDataset):
 
 
 if __name__ == "__main__":
-    IIDxBD()
+    IIDxBD(root)
