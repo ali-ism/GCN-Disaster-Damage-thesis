@@ -239,4 +239,6 @@ if __name__ == "__main__":
     root = settings_dict['data']['root']
     if not os.path.isdir(root):
         os.mkdir(root)
-    IIDxBD(root)
+    IIDxBD(root, resnet_pretrained=settings_dict['resnet']['pretrained'],
+                 resnet_diff=settings_dict['resnet']['diff'],
+                 resnet_shared=settings_dict['resnet']['shared'])

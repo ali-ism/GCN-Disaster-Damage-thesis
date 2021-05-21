@@ -2,7 +2,6 @@ import os
 import json
 from pathlib import Path
 from collections import defaultdict
-from sys import argv
 
 def generate_disaster_dict() -> None:
     xbd_path = 'datasets/xbd'

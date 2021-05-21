@@ -58,4 +58,4 @@ for subset in subsets:
                 cv2.imwrite(disaster_path + bldg_image_name_post.replace('_post_','_pre_'), pre_im_bldg)
                 class_dict[bldg_image_name_post] = [list(bldg.centroid.coords)[0], bldg_annotation['properties']['subtype']]
         df = pd.DataFrame.from_dict(class_dict, orient='index', columns=['coords', 'class'])
-        df.to_csv(disaster_path + disaster + '_' + subset[2:-1] + '_labels.csv')
+        df.to_csv(disaster_path + disaster + '_' + subset[13:-1] + '_labels.csv')
