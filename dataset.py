@@ -12,16 +12,15 @@ from torch_geometric.data import Data, InMemoryDataset
 from feature_extractor import load_feature_extractor
 from generate_disaster_dict import generate_disaster_dict
 
+with open('exp_setting.json', 'r') as JSON:
+        settings_dict = json.load(JSON)
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-torch.manual_seed(42)
+torch.manual_seed(settings_dict['seed'])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 xbd_path = 'datasets/xbd'
-
-root = 'datasets/iidxbd_root'
-if not os.path.isdir(root):
-    os.mkdir(root)
 
 if not os.path.isfile('disaster_dirs.json'):
     generate_disaster_dict(xbd_path)
@@ -235,4 +234,9 @@ class IIDxBD(InMemoryDataset):
 
 
 if __name__ == "__main__":
+    with open('exp_setting.json', 'r') as JSON:
+        settings_dict = json.load(JSON)
+    root = settings_dict['data']['root']
+    if not os.path.isdir(root):
+        os.mkdir(root)
     IIDxBD(root)

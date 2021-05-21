@@ -1,9 +1,3 @@
-To read experiment settings:
-```
-with open('exp_setting.json', 'r') as JSON:
-    settings_dict = json.load(JSON)
-```
-
 # TODO
 - test dataset.py
 - implement dataset visualization
@@ -18,7 +12,7 @@ with open('exp_setting.json', 'r') as JSON:
 - Check GraphSAINT or NNConv or SGC
 
 # How to access edge_attr from NeighborSampler?
-- add self loop because it seems that neighbor sampler assumes self loops for sampling edges? (https://stackoverflow.com/questions/10649673/how-to-generate-a-fully-connected-subgraph-from-node-list-using-pythons-network)
+(https://stackoverflow.com/questions/10649673/how-to-generate-a-fully-connected-subgraph-from-node-list-using-pythons-network)
 
 Neighbor sampler works on a single graph. So we can:
 - create a sampler for each graph and loop over them while training (research forgetfulness)
