@@ -234,8 +234,6 @@ class IIDxBD(InMemoryDataset):
 
 
 if __name__ == "__main__":
-    with open('exp_setting.json', 'r') as JSON:
-        settings_dict = json.load(JSON)
     root = settings_dict['data']['root']
     if not os.path.isdir(root):
         os.mkdir(root)

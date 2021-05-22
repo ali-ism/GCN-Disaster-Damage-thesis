@@ -20,6 +20,6 @@ else
 module load torch/1.7.1-v100-gcc-7.2.0-cuda-10.1-openmpi-4.0.1
 fi
 
-module load python/ai-2
+module load python/pytorch-1.7.1
 
 python3 train.py
