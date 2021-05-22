@@ -21,9 +21,6 @@ torch.backends.cudnn.benchmark = False
 
 xbd_path = 'datasets/xbd'
 
-if not os.path.isfile('disaster_dirs.json'):
-    raise FileNotFoundError('disaster_dirs.json not found!')
-
 with open('disaster_dirs.json', 'r') as JSON:
     disasters_dict = json.load(JSON)
 
