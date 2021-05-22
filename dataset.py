@@ -10,7 +10,6 @@ import torchvision.transforms as tr
 from PIL import Image
 from torch_geometric.data import Data, InMemoryDataset
 from feature_extractor import load_feature_extractor
-from generate_disaster_dict import generate_disaster_dict
 
 with open('exp_setting.json', 'r') as JSON:
         settings_dict = json.load(JSON)
@@ -23,7 +22,7 @@ torch.backends.cudnn.benchmark = False
 xbd_path = 'datasets/xbd'
 
 if not os.path.isfile('disaster_dirs.json'):
-    generate_disaster_dict(xbd_path)
+    raise FileNotFoundError('disaster_dirs.json not found!')
 
 with open('disaster_dirs.json', 'r') as JSON:
     disasters_dict = json.load(JSON)
