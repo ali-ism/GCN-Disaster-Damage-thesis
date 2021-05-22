@@ -12,4 +12,4 @@
 module purge
 module load python/pytorch-1.7.1
 
-python3 building_footprint.py
+python3 generate_disaster_dict.py
