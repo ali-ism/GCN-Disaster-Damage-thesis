@@ -88,8 +88,8 @@ if __name__ == "__main__":
                                    sizes=nbr_sizes, batch_size=settings_dict['data']['batch_size'],
                                    shuffle=True, num_workers=12)
     subgraph_loader = NeighborSampler(batch.edge_index, node_idx=None, sizes=[-1],
-                                      batch_size=4096, shuffle=False,
-                                      num_workers=12) #TODO what's batch size here
+                                      batch_size=settings_dict['data']['batch_size'],
+                                      shuffle=False, num_workers=12)
     x = batch.x.to(device)
     y = batch.y.squeeze().to(device)
 
@@ -111,7 +111,8 @@ if __name__ == "__main__":
         
         loss = train(epoch)
         train_losses[epoch-1] = loss
-        print(f'Epoch {epoch:02d}, Loss: {loss:.4f}, Approx. Train: {acc:.4f}')
+        print('**********************************************')
+        print(f'Epoch {epoch:02d}, Train Loss: {loss:.4f}')
     
         if not settings_dict['save_best_only']:
             model_path = settings_dict['model']['path'] + '/' + settings_dict['model']['name'] + '.pth'
@@ -123,6 +124,7 @@ if __name__ == "__main__":
             val_f1s[epoch-6] = val_f1
             test_f1s[epoch-6] = test_f1
             val_losses[epoch-6] = val_loss
+            print(f'Val Loss: {val_loss:.4f}')
             print(f'Train F1: {train_f1:.4f}, Val F1: {val_f1:.4f}, 'f'Test F1: {test_f1:.4f}')
 
             if val_f1 > best_val_f1:

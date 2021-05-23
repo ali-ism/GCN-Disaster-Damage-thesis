@@ -86,7 +86,7 @@ class SAGENet(torch.nn.Module):
         for i in range(self.num_layers):
             xs = []
             for batch_size, n_id, adj in subgraph_loader:
-                edge_index, _, size = adj.to(device)
+                edge_index, e_id, size = adj.to(device)
                 total_edges += edge_index.size(1)
                 x = x_all[n_id].to(device)
                 x_target = x[:size[1]]
