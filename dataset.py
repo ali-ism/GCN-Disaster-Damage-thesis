@@ -124,7 +124,7 @@ class IIDxBD(InMemoryDataset):
 
     def process(self):
         resnet50 = load_feature_extractor(self.resnet_pretrained, self.resnet_shared, self.resnet_diff)
-        resnet50 = self.resnet50.to(device)
+        resnet50 = resnet50.to(device)
         disaster_folders = os.listdir(self.xbd_path + '/train_bldgs/')
 
         data_list = []
