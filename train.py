@@ -16,7 +16,7 @@ from dataset import IIDxBD
 from model import SAGENet
 from metrics import xview2_f1_score
 
-with open('exp_setting.json', 'r') as JSON:
+with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

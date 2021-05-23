@@ -11,8 +11,8 @@ from PIL import Image
 from torch_geometric.data import Data, InMemoryDataset
 from feature_extractor import load_feature_extractor
 
-with open('exp_setting.json', 'r') as JSON:
-        settings_dict = json.load(JSON)
+with open('exp_settings.json', 'r') as JSON:
+    settings_dict = json.load(JSON)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(settings_dict['seed'])
