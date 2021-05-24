@@ -178,16 +178,15 @@ class IIDxBD(InMemoryDataset):
                 pre_image = transform(pre_image)
                 post_image = transform(post_image)
                 images = torch.cat((pre_image, post_image),0)
-                images = images.to(device)
-
-                with torch.no_grad():
-                    node_features = resnet50(images.unsqueeze(0))
-                
-                x.append(node_features.detach().cpu())
+                x.append(images)
                 pbar.update()
             
             pbar.close()
             x = torch.stack(x)
+            x = x.to(device)
+            with torch.no_grad():
+                x = resnet50(x)
+            x = x.detach().cpu()
             y = torch.tensor(y)
 
             #mask as train/val/test according to
@@ -208,10 +207,10 @@ class IIDxBD(InMemoryDataset):
             #edge index matrix
             edge_index = build_edge_idx(x.shape[0])
 
+            #edge features
             pbar = tqdm(total=edge_index.shape[1])
             pbar.set_description(f'Building {disaster}, edge features')
-
-            #edge features
+            
             edge_attr = torch.empty((edge_index.shape[1],2))
             for i in range(edge_index.shape[1]):
                 node1 = x[edge_index[0,i]]

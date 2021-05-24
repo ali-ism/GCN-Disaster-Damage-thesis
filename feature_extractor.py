@@ -134,7 +134,7 @@ class FeatureExtractor(torch.nn.Module):
             x = torch.add(input=x1, other=x2, alpha=-1)
         else:
             x = self.concat_blocks[0](torch.cat([x1,x2],1))
-        return self.bridge(x).flatten()
+        return torch.flatten(self.bridge(x), start_dim=1)
 
 
 def load_feature_extractor(pretrained=False, shared=False, diff=True, weight_path=None) -> torch.nn.Module:
