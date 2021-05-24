@@ -131,7 +131,6 @@ class IIDxBD(InMemoryDataset):
         self.annot_list = []
 
         for disaster in disaster_folders:
-            print(f'Building {disaster}...')
             x = []
             y = []
             coords = []
@@ -149,7 +148,10 @@ class IIDxBD(InMemoryDataset):
             annotation = pd.concat((annotation_train, annotation_hold, annotation_test))
             self.annot_list.append(annotation.drop(annotation[annotation['class']=='un-classified'].index))
 
-            for pre_image_file, post_image_file in tqdm(zip(list_pre_images, list_post_images)):
+            pbar = tqdm(total=len(list_post_images))
+            pbar.set_description(f'Building {disaster}, node features')
+
+            for pre_image_file, post_image_file in zip(list_pre_images, list_post_images):
                 if annotation.loc[os.path.split(post_image_file)[1],'class'] == 'un-classified':
                     continue
 
@@ -182,7 +184,9 @@ class IIDxBD(InMemoryDataset):
                     node_features = resnet50(images.unsqueeze(0))
                 
                 x.append(node_features.detach().cpu())
+                pbar.update()
             
+            pbar.close()
             x = torch.stack(x)
             y = torch.tensor(y)
 
@@ -204,8 +208,11 @@ class IIDxBD(InMemoryDataset):
             #edge index matrix
             edge_index = build_edge_idx(x.shape[0])
 
+            pbar = tqdm(total=edge_index.shape[1])
+            pbar.set_description(f'Building {disaster}, edge features')
+
             #edge features
-            edge_attr = torch.empty((edge_index.shape[1],2)) #TODO
+            edge_attr = torch.empty((edge_index.shape[1],2))
             for i in range(edge_index.shape[1]):
                 node1 = x[edge_index[0,i]]
                 node2 = x[edge_index[1,i]]
@@ -214,7 +221,9 @@ class IIDxBD(InMemoryDataset):
                 attr = get_edge_weight(node1, node2, coords1, coords2)
                 edge_attr[i,0] = attr[0]
                 edge_attr[i,1] = attr[1]
+                pbar.update()
             
+            pbar.close()
             data_list.append(Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y,
                                   train_mask=train_mask, val_mask=test_mask, test_mask=hold_mask))
 

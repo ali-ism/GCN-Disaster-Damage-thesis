@@ -159,6 +159,6 @@ def load_feature_extractor(pretrained=False, shared=False, diff=True, weight_pat
             weight_path = download_weights('table_1_plain')
         elif weight_path is None and os.path.isfile('./weights/twostream-resnet50_all_plain.pt'):
             weight_path = './weights/twostream-resnet50_all_plain.pt'
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        model.load_state_dict(torch.load(weight_path,map_location=device)["state_dict"], strict=False)
+        #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        model.load_state_dict(torch.load(weight_path,map_location='cpu')["state_dict"], strict=False)
     return model

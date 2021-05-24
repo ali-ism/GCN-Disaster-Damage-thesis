@@ -31,7 +31,8 @@ def train(epoch):
     pbar = tqdm(total=int(batch.train_mask.sum()))
     pbar.set_description(f'Epoch {epoch:02d}')
 
-    total_loss = total_correct = 0
+    total_loss = 0
+    #totalo_correct = 0
     for batch_size, n_id, adjs in train_loader:
         # `adjs` holds a list of `(edge_index, e_id, size)` tuples.
         adjs = [adj.to(device) for adj in adjs]

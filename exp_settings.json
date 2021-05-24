@@ -1,7 +1,7 @@
 {
     "resnet":{
         "in_channels": 6,
-        "pretrained": true,
+        "pretrained": false,
         "shared": false,
         "diff": true
         },
