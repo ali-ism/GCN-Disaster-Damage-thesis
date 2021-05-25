@@ -3,7 +3,8 @@
         "in_channels": 6,
         "pretrained": false,
         "shared": false,
-        "diff": true
+        "diff": true,
+        "path": "weights"
         },
     "data": {
         "root": "datasets/iidxbd_root",

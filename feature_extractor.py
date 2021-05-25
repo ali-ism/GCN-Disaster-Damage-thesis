@@ -5,7 +5,6 @@
 # Licensed under the CC BY-NC-SA 4.0 License.
 # Written by Vitus Benson (vbenson@bgc-jena.mpg.de)
 # ------------------------------------------------------------------------------
-import os
 import torch
 import torch.nn as nn
 from torchvision.models import resnet50
@@ -137,7 +136,7 @@ class FeatureExtractor(torch.nn.Module):
         return torch.flatten(self.bridge(x), start_dim=1)
 
 
-def load_feature_extractor(pretrained=False, shared=False, diff=True, weight_path=None) -> torch.nn.Module:
+def load_feature_extractor(pretrained=False, shared=False, diff=True) -> torch.nn.Module:
     """
         Loads the ResNet50 feature extractor.
         
@@ -155,10 +154,7 @@ def load_feature_extractor(pretrained=False, shared=False, diff=True, weight_pat
         param.requires_grad = False
     model.eval()
     if not pretrained:
-        if weight_path is None and not os.path.isfile('./weights/twostream-resnet50_all_plain.pt'):
-            weight_path = download_weights('table_1_plain')
-        elif weight_path is None and os.path.isfile('./weights/twostream-resnet50_all_plain.pt'):
-            weight_path = './weights/twostream-resnet50_all_plain.pt'
+        weight_path = download_weights('table_1_plain')
         #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         model.load_state_dict(torch.load(weight_path,map_location='cpu')["state_dict"], strict=False)
     return model

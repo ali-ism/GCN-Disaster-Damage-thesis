@@ -1,11 +1,12 @@
 # ------------------------------------------------------------------------------
-# This code is from
+# This code is (modified) from
 # Assessing out-of-domain generalization for robust building damage detection
 # https://github.com/ecker-lab/robust-bdd.git
 # Licensed under the CC BY-NC-SA 4.0 License.
 # Written by Vitus Benson (vbenson@bgc-jena.mpg.de)
 # ------------------------------------------------------------------------------
 import os
+import json
 import urllib.request
 from tqdm import tqdm
 
@@ -41,12 +42,14 @@ class DownloadProgressBar(tqdm):
 
 def download_weights(setting_name):
     dl_path, outfile = DL_LINKS[setting_name]
-    filepath = "C:/thesis/weights/"+outfile
-    print("Downloading from {} to {}".format(dl_path, filepath))
+    with open('exp_settings.json', 'r') as JSON:
+        settings_dict = json.load(JSON)
+    filepath = settings_dict['resnet']['path'] + '/' + outfile
     if not os.path.isfile(filepath):
+        print("Downloading from {} to {}".format(dl_path, filepath))
         with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, desc=dl_path.split('/')[-1]) as t:
             urllib.request.urlretrieve(dl_path, filename = filepath, reporthook=t.update_to)
         print("Downloaded!")
     else:
-        print("File existed allready!")
+        print("File exists already!")
     return filepath
