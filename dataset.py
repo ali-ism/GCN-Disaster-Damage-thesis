@@ -129,6 +129,8 @@ class IIDxBD(Dataset):
         self.annot_list = []
 
         for disaster in disaster_folders:
+            if os.path.isfile(os.path.join(self.processed_dir, 'iid_data_{}.pt'.format(disaster))):
+                continue
             x = []
             y = []
             coords = []
