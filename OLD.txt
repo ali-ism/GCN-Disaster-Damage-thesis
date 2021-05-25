@@ -1,0 +1,33 @@
+class SAGEConvWithEdges(torch.nn.Module):
+    """
+    This is an implementation of the GraphSage convolution that also takes into account edge features.
+    Source:
+        https://github.com/kkonevets/geo_detection/blob/9421a591123c380a1f232b6bff598cae8ff29a23/sage_conv.py
+    """
+    def __init__(self, in_channels, in_edge_channels, out_channels):
+        super(SAGEConvWithEdges, self).__init__()
+
+        self.node_mlp_rel = Linear(in_channels + in_edge_channels, out_channels)
+
+    def forward(self, x, edge_index, edge_attr):
+        row, col = edge_index
+        x_row = x[row]
+
+        edge_attr = torch.cat([x_row, edge_attr], 1)
+
+        edge_attr = F.normalize(edge_attr)
+
+        x = scatter(edge_attr, col, dim=0, dim_size=res_size, reduce='mean')
+        x = self.node_mlp_rel(x)
+        x = F.normalize(x)
+        return x
+    
+    def reset_parameters(self):
+        for l in self.modules():
+            if type(l) == torch.nn.Linear:
+                l.reset_parameters()
+
+    def __repr__(self):
+        return ' '.join(
+            str([l.in_features, l.out_features]) for l in self.modules()
+            if type(l) == torch.nn.Linear)

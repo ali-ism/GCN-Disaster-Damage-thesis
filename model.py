@@ -2,7 +2,7 @@ import json
 import torch
 import torch.nn.functional as F
 from torch.nn import Linear
-from torch_scatter import scatter
+from torch_geometric.nn import SAGEConv
 from tqdm import tqdm
 
 with open('exp_setting.json', 'r') as JSON:
@@ -13,39 +13,20 @@ torch.manual_seed(settings_dict['seed'])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
-class SAGEConvWithEdges(torch.nn.Module):
-    """
-    This is an implementation of the GraphSage convolution that also takes into account edge features.
-    Source:
-        https://github.com/kkonevets/geo_detection/blob/9421a591123c380a1f232b6bff598cae8ff29a23/sage_conv.py
-    """
-    def __init__(self, in_channels, in_edge_channels, out_channels):
-        super(SAGEConvWithEdges, self).__init__()
 
-        self.node_mlp_rel = Linear(in_channels + in_edge_channels, out_channels)
-
+class EdgeSAGEConv(SAGEConv):
+    def _init__(self, *args, edge_dim=0, feature_aggregation='cat', **kwargs):
+        super().__init__(*args, **kwargs)
+        self.edge_lin = Linear(edge_dim, self.out_channels)
+        
     def forward(self, x, edge_index, edge_attr):
-        row, col = edge_index
-        x_row = x[row]
+        self._edge_attr = edge_attr
+        out = super().forward(x, edge_index)
+        self._edge_attr = None
+        return out
 
-        edge_attr = torch.cat([x_row, edge_attr], 1)
-
-        edge_attr = F.normalize(edge_attr)
-
-        x = scatter(edge_attr, col, dim=0, dim_size=res_size, reduce='mean')
-        x = self.node_mlp_rel(x)
-        x = F.normalize(x)
-        return x
-    
-    def reset_parameters(self):
-        for l in self.modules():
-            if type(l) == torch.nn.Linear:
-                l.reset_parameters()
-
-    def __repr__(self):
-        return ' '.join(
-            str([l.in_features, l.out_features]) for l in self.modules()
-            if type(l) == torch.nn.Linear)
+    def message(self, x_j, edge_weight):
+        return (x_j + self.edge_lin(self._edge_attr)) * edge_weight.view(-1, 1)
 
 
 class SAGENet(torch.nn.Module):
@@ -53,8 +34,8 @@ class SAGENet(torch.nn.Module):
         super(SAGENet, self).__init__()
         self.num_layers = 2
         self.convs = torch.nn.ModuleList()
-        self.convs.append(SAGEConvWithEdges(in_channels, in_edge_channels, hidden_channels))
-        self.convs.append(SAGEConvWithEdges(hidden_channels, in_edge_channels, out_channels))
+        self.convs.append(EdgeSAGEConv(in_channels, in_edge_channels, hidden_channels))
+        self.convs.append(EdgeSAGEConv(hidden_channels, in_edge_channels, out_channels))
 
     def reset_parameters(self):
         for conv in self.convs:
@@ -90,7 +71,7 @@ class SAGENet(torch.nn.Module):
                 total_edges += edge_index.size(1)
                 x = x_all[n_id].to(device)
                 x_target = x[:size[1]]
-                x = self.convs[i]((x, x_target), edge_index)
+                x = self.convs[i]((x, x_target), edge_index) #TODO
                 if i != self.num_layers - 1:
                     x = F.relu(x)
                 xs.append(x.cpu())
