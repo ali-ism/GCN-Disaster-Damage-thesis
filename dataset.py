@@ -8,7 +8,7 @@ from typing import Tuple, List
 import torch
 import torchvision.transforms as tr
 from PIL import Image
-from torch_geometric.data import Data, InMemoryDataset
+from torch_geometric.data import Data, Dataset
 from feature_extractor import load_feature_extractor
 
 with open('exp_settings.json', 'r') as JSON:
@@ -60,7 +60,7 @@ def build_edge_idx(num_nodes: int) -> torch.Tensor:
     return E
 
 
-def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[float], coords2: Tuple[float]):
+def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[float], coords2: Tuple[float]) -> Tuple[float]:
     """
         Computes the edge weights between two given nodes.
 
@@ -93,7 +93,7 @@ def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[flo
     return node_sim.item(), euc_sim
 
 
-class IIDxBD(InMemoryDataset):
+class IIDxBD(Dataset):
     def __init__(self,
                  root,
                  resnet_pretrained=False,
@@ -109,25 +109,23 @@ class IIDxBD(InMemoryDataset):
 
         super(IIDxBD, self).__init__(root, transform, pre_transform)
 
-        self.data, self.slices = torch.load(self.processed_paths[0])
-
     @property
     def raw_file_names(self) -> List:
         return []
 
     @property
     def processed_file_names(self) -> List[str]:
-        return ['iid_data.pt']
-
-    def download(self) -> None:
-        pass
+        return ['iid_data_guatemala-volcano.pt', 'iid_data_hurricane-florence.pt',
+                'iid_data_hurricane-harvey.pt', 'iid_data_hurricane-matthew.pt',
+                'iid_data_hurricane-michael.pt', 'iid_data_mexico-earthquake.pt',
+                'iid_data_midwest-flooding.pt', 'iid_data_palu-tsunami.pt',
+                'iid_data_santa-rosa-wildfire.pt', 'iid_data_socal-fire.pt']
 
     def process(self):
         resnet50 = load_feature_extractor(self.resnet_pretrained, self.resnet_shared, self.resnet_diff)
         resnet50 = resnet50.to(device)
         disaster_folders = os.listdir(self.xbd_path + '/train_bldgs/')
 
-        data_list = []
         self.annot_list = []
 
         for disaster in disaster_folders:
@@ -223,18 +221,22 @@ class IIDxBD(InMemoryDataset):
                 pbar.update()
             
             pbar.close()
-            data_list.append(Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y,
-                                  train_mask=train_mask, val_mask=test_mask, test_mask=hold_mask))
+            data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y,
+                        train_mask=train_mask, val_mask=test_mask, test_mask=hold_mask)
 
+            if self.pre_filter is not None and not self.pre_filter(data):
+                continue
+            if self.pre_transform is not None:
+                data = self.pre_transform(data)
+            
+            torch.save(data, os.path.join(self.processed_dir, 'iid_data_{}.pt'.format(disaster)))
+    
+    def len(self):
+        return len(self.processed_file_names)
 
-        if self.pre_filter is not None:
-            data_list = [data for data in data_list if self.pre_filter(data)]
-
-        if self.pre_transform is not None:
-            data_list = [self.pre_transform(data) for data in data_list]
-
-        data, slices = self.collate(data_list)
-        torch.save((data, slices), self.processed_paths[0])
+    def get(self, idx):
+        data = torch.load(os.path.join(self.processed_dir, self.processed_file_names[idx]))
+        return data
 
 
 if __name__ == "__main__":
