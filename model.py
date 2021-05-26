@@ -15,7 +15,7 @@ torch.backends.cudnn.benchmark = False
 
 
 class EdgeSAGEConv(SAGEConv):
-    def _init__(self, *args, edge_dim=0, feature_aggregation='cat', **kwargs):
+    def _init__(self, *args, edge_dim=0, **kwargs):
         super().__init__(*args, **kwargs)
         self.edge_lin = Linear(edge_dim, self.out_channels)
         
@@ -30,18 +30,20 @@ class EdgeSAGEConv(SAGEConv):
 
 
 class SAGENet(torch.nn.Module):
-    def __init__(self, in_channels, in_edge_channels, hidden_channels, out_channels):
+    def __init__(self, in_channels, edge_dim, hidden_channels, out_channels, num_layers=2):
         super(SAGENet, self).__init__()
-        self.num_layers = 2
+        self.num_layers = num_layers
         self.convs = torch.nn.ModuleList()
-        self.convs.append(EdgeSAGEConv(in_channels, in_edge_channels, hidden_channels))
-        self.convs.append(EdgeSAGEConv(hidden_channels, in_edge_channels, out_channels))
+        self.convs.append(EdgeSAGEConv(in_channels=in_channels, edge_dim=edge_dim, out_channels=hidden_channels))
+        for _ in range(num_layers-2):
+            self.convs.append(EdgeSAGEConv(in_channels=hidden_channels, edge_dim=edge_dim, out_channels=hidden_channels))
+        self.convs.append(EdgeSAGEConv(in_channels=hidden_channels, edge_dim=edge_dim, out_channels=out_channels))
 
     def reset_parameters(self):
         for conv in self.convs:
             conv.reset_parameters()
 
-    def forward(self, x, adjs, data):
+    def forward(self, x, adjs, batch):
         # `train_loader` computes the k-hop neighborhood of a batch of nodes,
         # and returns, for each layer, a bipartite graph object, holding the
         # bipartite edges `edge_index`, the index `e_id` of the original edges,
@@ -49,15 +51,15 @@ class SAGENet(torch.nn.Module):
         # Target nodes are also included in the source nodes so that one can
         # easily apply skip-connections or add self-loops.
         for i, (edge_index, e_id, size) in enumerate(adjs):
-            x_target = x[:size[1]]  # Target nodes are always placed first. TODO
-            edge_attr = data.edge_attr[e_id]
-            x = self.convs[i](x_target, res_size, edge_index, edge_attr) #TODO
+            x_target = x[:size[1]]  # Target nodes are always placed first.
+            edge_attr = batch.edge_attr[e_id].to(device)
+            x = self.convs[i]((x, x_target), edge_index, edge_attr)
             if i != self.num_layers - 1:
                 x = F.relu(x)
                 x = F.dropout(x, p=0.5, training=self.training)
         return F.sigmoid(x)
 
-    def inference(self, x_all, subgraph_loader):
+    def inference(self, x_all, subgraph_loader, batch):
         pbar = tqdm(total=x_all.size(0) * self.num_layers)
         pbar.set_description('Evaluating')
         # Compute representations of nodes layer by layer, using *all*
@@ -71,7 +73,8 @@ class SAGENet(torch.nn.Module):
                 total_edges += edge_index.size(1)
                 x = x_all[n_id].to(device)
                 x_target = x[:size[1]]
-                x = self.convs[i]((x, x_target), edge_index) #TODO
+                edge_attr = batch.edge_attr[e_id].to(device)
+                x = self.convs[i]((x, x_target), edge_index, edge_attr)
                 if i != self.num_layers - 1:
                     x = F.relu(x)
                 xs.append(x.cpu())

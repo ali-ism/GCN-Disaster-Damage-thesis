@@ -38,7 +38,7 @@ def train(epoch):
         adjs = [adj.to(device) for adj in adjs]
 
         optimizer.zero_grad()
-        out = model(x[n_id], adjs)
+        out = model(x[n_id], adjs, batch)
         loss = F.binary_cross_entropy(out, y[n_id[:batch_size]])
         loss.backward()
         optimizer.step()
@@ -59,8 +59,8 @@ def train(epoch):
 def test():
     model.eval()
 
-    out = model.inference(x, subgraph_loader).cpu()
-    y_true = y.cpu().unsqueeze(-1)
+    out = model.inference(x, subgraph_loader, batch).cpu()
+    y_true = y.cpu()
     
     train_f1 = xview2_f1_score(y_true[batch.train_mask], out[batch.train_mask])
     val_f1 = xview2_f1_score(y_true[batch.val_mask], out[batch.val_mask])
@@ -92,7 +92,7 @@ if __name__ == "__main__":
                                       batch_size=settings_dict['data']['batch_size'],
                                       shuffle=False, num_workers=12)
     x = batch.x.to(device)
-    y = batch.y.squeeze().to(device)
+    y = batch.y.to(device)
 
     hidden_units = settings_dict['model']['hidden_units']
     n_epochs = settings_dict['epochs']
