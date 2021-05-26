@@ -10,6 +10,6 @@
 #SBATCH --time=0-01:00:00
 
 module purge
-module load python/pytorch-1.7.1
+module load python/3.8.2
 
 python3 generate_disaster_dict.py
