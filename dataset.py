@@ -1,15 +1,14 @@
 import os
 import json
 from tqdm import tqdm
-import numpy as np
-from math import sqrt
 import pandas as pd
-from typing import Tuple, List
+from typing import List
 import torch
 import torchvision.transforms as tr
 from PIL import Image
 from torch_geometric.data import Data, Dataset
 from feature_extractor import load_feature_extractor
+from utils import build_edge_idx, get_edge_weight
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
@@ -23,71 +22,6 @@ with open('disaster_dirs.json', 'r') as JSON:
     disasters_dict = json.load(JSON)
 
 #normalizer = tr.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
-
-def build_edge_idx(num_nodes: int) -> torch.Tensor:
-    """
-        Build a complete undirected graph for the edge_index parameter.
-
-        Args:
-            num_nodes (int): number of nodes in the graph.
-        
-        Returns:
-            E (LongTensor): graph connectivity with shape [2, num_edges].
-
-        Adapted from:
-            https://github.com/rusty1s/pytorch_geometric/issues/964
-    """
-    # Initialize edge index matrix
-    E = torch.zeros((2, (num_nodes * (num_nodes - 1))//2), dtype=torch.long)
-    
-    # Populate 1st row
-    i = 0
-    for node in range(num_nodes):
-        for _ in range(num_nodes - node - 1):
-            E[0, i] = node
-            i+=1
-
-    # Populate 2nd row
-    neighbors = []
-    for node in range(num_nodes):
-        neighbors.extend(np.arange(node+1, num_nodes))
-    E[1, :] = torch.Tensor(neighbors)
-    
-    return E
-
-
-def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: str, coords2: str) -> Tuple[float]:
-    """
-        Computes the edge weights between two given nodes.
-
-        Args:
-            node1 (Tensor): feature vector of the first node.
-            node2 (Tensor): feature vector of the second node.
-            coords1 (str): pixel coordinates of node1.
-            coords2 (str): pixel coordinates of node2.
-        
-        Returns:
-            node_sim (float): normalized node feature similarity.
-            euc_sim (float): normalized euclidean distance similarity between the node image objects.
-        
-        Node feature similarity is based on the adjacency matrix built by:
-            S. Saha, L. Mou, X. X. Zhu, F. Bovolo and L. Bruzzone, "Semisupervised Change Detection Using Graph Convolutional Network," in IEEE Geoscience and Remote Sensing Letters, vol. 18, no. 4, pp. 607-611, April 2021, doi: 10.1109/LGRS.2020.2985340.
-    """
-    D = node1.shape[0]
-    s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
-    node_sim = 1 - torch.sum(s)/D
-
-    coords1 = coords1.replace('(','').replace(')','').split(',')
-    coords2 = coords2.replace('(','').replace(')','').split(',')
-    x1 = float(coords1[0])
-    y1 = float(coords1[1])
-    x2 = float(coords2[0])
-    y2 = float(coords2[1])
-    euc_dist = sqrt((x1-x2)**2 + (y1-y2)**2)
-    euc_sim = 1 / (1 + euc_dist)
-
-    return node_sim.item(), euc_sim
 
 
 class IIDxBD(Dataset):
@@ -165,7 +99,8 @@ class IIDxBD(Dataset):
                 else:
                     raise ValueError(f'Label class {label} undefined.')
 
-                coords.append(annotation.loc[os.path.split(post_image_file)[1],'coords'])
+                coords.append((annotation.loc[os.path.split(post_image_file)[1],'coords1'],
+                               annotation.loc[os.path.split(post_image_file)[1],'coords2']))
                 split.append(annotation.loc[os.path.split(post_image_file)[1],'split'])
 
                 pre_image = Image.open(pre_image_file)
