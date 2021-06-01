@@ -19,13 +19,10 @@ torch.manual_seed(settings_dict['seed'])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
-xbd_path = 'datasets/xbd'
-
 with open('disaster_dirs.json', 'r') as JSON:
     disasters_dict = json.load(JSON)
 
-normalizer = tr.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-transform = tr.ToTensor()
+#normalizer = tr.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
 
 def build_edge_idx(num_nodes: int) -> torch.Tensor:
@@ -60,15 +57,15 @@ def build_edge_idx(num_nodes: int) -> torch.Tensor:
     return E
 
 
-def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[float], coords2: Tuple[float]) -> Tuple[float]:
+def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: str, coords2: str) -> Tuple[float]:
     """
         Computes the edge weights between two given nodes.
 
         Args:
             node1 (Tensor): feature vector of the first node.
             node2 (Tensor): feature vector of the second node.
-            coords1 (Tuple[float]): pixel coordinates of node1.
-            coords2 (Tuple[float]): pixel coordinates of node2.
+            coords1 (str): pixel coordinates of node1.
+            coords2 (str): pixel coordinates of node2.
         
         Returns:
             node_sim (float): normalized node feature similarity.
@@ -105,7 +102,7 @@ class IIDxBD(Dataset):
         self.resnet_pretrained = resnet_pretrained
         self.resnet_shared = resnet_shared
         self.resnet_diff = resnet_diff
-        self.xbd_path = xbd_path
+        self.xbd_path = 'datasets/xbd'
 
         super(IIDxBD, self).__init__(root, transform, pre_transform)
 
@@ -175,8 +172,8 @@ class IIDxBD(Dataset):
                 post_image = Image.open(post_image_file)
                 pre_image = pre_image.resize((256, 256))
                 post_image = post_image.resize((256, 256))
-                pre_image = transform(pre_image)
-                post_image = transform(post_image)
+                pre_image = tr.ToTensor(pre_image)
+                post_image = tr.ToTensor(post_image)
                 images = torch.cat((pre_image, post_image),0)
                 images = images.to(device)
                 with torch.no_grad():
