@@ -24,7 +24,7 @@ with open('disaster_dirs.json', 'r') as JSON:
 #normalizer = tr.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
 
-class IIDxBD(Dataset):
+class IIDxBDTrain(Dataset):
     def __init__(self,
                  root,
                  resnet_pretrained=False,
@@ -38,7 +38,7 @@ class IIDxBD(Dataset):
         self.resnet_diff = resnet_diff
         self.xbd_path = 'datasets/xbd'
 
-        super(IIDxBD, self).__init__(root, transform, pre_transform)
+        super(IIDxBDTrain, self).__init__(root, transform, pre_transform)
 
     @property
     def raw_file_names(self) -> List:
@@ -46,11 +46,7 @@ class IIDxBD(Dataset):
 
     @property
     def processed_file_names(self) -> List[str]:
-        return ['iid_data_guatemala-volcano.pt', 'iid_data_hurricane-florence.pt',
-                'iid_data_hurricane-harvey.pt', 'iid_data_hurricane-matthew.pt',
-                'iid_data_hurricane-michael.pt', 'iid_data_mexico-earthquake.pt',
-                'iid_data_midwest-flooding.pt', 'iid_data_palu-tsunami.pt',
-                'iid_data_santa-rosa-wildfire.pt', 'iid_data_socal-fire.pt']
+        return
 
     def process(self):
         resnet50 = load_feature_extractor(self.resnet_pretrained, self.resnet_shared, self.resnet_diff)
@@ -176,6 +172,6 @@ if __name__ == "__main__":
     root = settings_dict['data']['root']
     if not os.path.isdir(root):
         os.mkdir(root)
-    IIDxBD(root, resnet_pretrained=settings_dict['resnet']['pretrained'],
+    IIDxBDTrain(root, resnet_pretrained=settings_dict['resnet']['pretrained'],
                  resnet_diff=settings_dict['resnet']['diff'],
                  resnet_shared=settings_dict['resnet']['shared'])

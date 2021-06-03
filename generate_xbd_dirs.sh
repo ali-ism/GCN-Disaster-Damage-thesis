@@ -12,4 +12,4 @@
 module purge
 module load python/3.8.2
 
-python3 generate_disaster_dict.py
+python3 generate_xbd_dirs.py

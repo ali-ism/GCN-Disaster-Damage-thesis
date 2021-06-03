@@ -9,7 +9,10 @@ import torch
 import torch.nn as nn
 from torchvision.models import resnet50
 import copy
-from download import download_weights
+import urllib.request
+from tqdm import tqdm
+import os
+import json
 
 
 class ConvBlock(nn.Module):
@@ -136,6 +139,27 @@ class FeatureExtractor(torch.nn.Module):
         return torch.flatten(self.bridge(x), start_dim=1)
 
 
+class DownloadProgressBar(tqdm):
+    def update_to(self, b=1, bsize=1, tsize=None):
+        if tsize is not None:
+            self.total = tsize
+        self.update(b * bsize - self.n)
+
+
+def download_weights() -> str:
+    dl_path = "https://data.goettingen-research-online.de/api/access/datafile/20240?gbrecs=true"
+    outfile = "twostream-resnet50_all_plain.pt"
+    with open('exp_settings.json', 'r') as JSON:
+        settings_dict = json.load(JSON)
+    filepath = settings_dict['resnet']['path'] + '/' + outfile
+    if not os.path.isfile(filepath):
+        print("Downloading from {} to {}".format(dl_path, filepath))
+        with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, desc=dl_path.split('/')[-1]) as t:
+            urllib.request.urlretrieve(dl_path, filename = filepath, reporthook=t.update_to)
+        print("Downloaded!")
+    return filepath
+
+
 def load_feature_extractor(pretrained=False, shared=False, diff=True) -> torch.nn.Module:
     """
         Loads the ResNet50 feature extractor.
@@ -155,6 +179,5 @@ def load_feature_extractor(pretrained=False, shared=False, diff=True) -> torch.n
     model.eval()
     if not pretrained:
         weight_path = download_weights()
-        #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         model.load_state_dict(torch.load(weight_path,map_location='cpu')["state_dict"], strict=False)
     return model

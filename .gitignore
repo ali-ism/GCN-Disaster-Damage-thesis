@@ -1,6 +1,7 @@
 weights/
 datasets/
 results/
+OLD/
 __pycache__/
 disaster_dirs.json
 thesis.code-workspace

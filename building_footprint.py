@@ -42,21 +42,22 @@ for subset in subsets:
             image_name = label.name.split('.')[0] + '.png'
             post_image = cv2.imread(subset + 'images/' + image_name)
             pre_image = cv2.imread(subset + 'images/' + image_name.replace('_post_', '_pre_'))
-            for index, bldg_annotation in enumerate(annotation['features']['xy']):
+            for index,(bldg_annotationxy,bldg_annotationlnglat) in enumerate(zip(annotation['features']['xy'],annotation['features']['lng_lat'])):
                 bldg_image_name_post = label.name.split('.')[0] + f'_{index}.png'
-                if os.path.isfile(disaster_path + bldg_image_name_post):
-                    continue
-                bldg = wkt.loads(bldg_annotation['wkt'])
-                minx, miny, maxx, maxy = bldg.bounds
-                minx = ceil(minx)
-                miny = ceil(miny)
-                maxx = ceil(maxx)
-                maxy = ceil(maxy)
-                pre_im_bldg = pre_image[miny:maxy,minx:maxx]
-                post_im_bldg = post_image[miny:maxy,minx:maxx]
-                cv2.imwrite(disaster_path + bldg_image_name_post, post_im_bldg)
-                cv2.imwrite(disaster_path + bldg_image_name_post.replace('_post_','_pre_'), pre_im_bldg)
+                bldg = wkt.loads(bldg_annotationxy['wkt'])
+                if not os.path.isfile(disaster_path + bldg_image_name_post):
+                    minx, miny, maxx, maxy = bldg.bounds
+                    minx = ceil(minx)
+                    miny = ceil(miny)
+                    maxx = ceil(maxx)
+                    maxy = ceil(maxy)
+                    pre_im_bldg = pre_image[miny:maxy,minx:maxx]
+                    post_im_bldg = post_image[miny:maxy,minx:maxx]
+                    cv2.imwrite(disaster_path + bldg_image_name_post, post_im_bldg)
+                    cv2.imwrite(disaster_path + bldg_image_name_post.replace('_post_','_pre_'), pre_im_bldg)
                 coords = list(bldg.centroid.coords)[0]
-                class_dict[bldg_image_name_post] = [coords[0], coords[1], bldg_annotation['properties']['subtype']]
-        df = pd.DataFrame.from_dict(class_dict, orient='index', columns=['xcoord', 'ycoord', 'class'])
+                bldg_lnglat = wkt.loads(bldg_annotationlnglat['wkt'])
+                lng_lat = list(bldg_lnglat.centroid.coords)[0]
+                class_dict[bldg_image_name_post] = [coords[0], coords[1], lng_lat[0], lng_lat[1], bldg_annotationxy['properties']['subtype']]
+        df = pd.DataFrame.from_dict(class_dict, orient='index', columns=['xcoord', 'ycoord', 'long', 'lat', 'class'])
         df.to_csv(disaster_path + disaster + '_' + subset[13:-1] + '_labels.csv')

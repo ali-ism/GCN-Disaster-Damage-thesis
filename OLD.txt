@@ -201,3 +201,34 @@ def generate_disaster_dict() -> None:
         json.dump(disaster_dict, outfile)
 
     print('Successfully created "disaster_dirs.json".')
+
+****************************************************************************************
+****************************************************************************************
+
+def define_neigborhood(labels: pd.DataFrame):
+    pairwise_euc = pairwise_distances(labels.values, metric=euclidean_similarity, njobs=-1)
+    results = {}
+    for idx, row in labels.iterrows():
+        similar_indices = pairwise_euc[idx].argsort()
+        similar_indices = similar_indices[:-len(similar_indices)-1:-1]
+        similar_items = [(pairwise_euc[idx][i], labels['name'][i]) for i in similar_indices]
+        results[row['id']] = similar_items[1:]
+
+    norm = lambda row: sqrt(row[1]**2 + row[2]**2)
+    labels['norm'] = labels.apply(norm, axis=1)
+    labels.sort_values(by='norm', inplace=True)
+    i = 0
+    neighbors = defaultdict(list)
+    while i < labels.shape[0]:
+        neighbors[labels['name'][0]] = results[0][:7600]
+    return
+
+single_zones = labels['zone'].value_counts()[labels['zone'].value_counts()==1].index.tolist()
+if len(single_zones) == 1:
+    dict_[disaster+subset_marker+'_pre_'+zones[-1]].extend(map(str, Path(xbd_path + subset + disaster).glob(f'{single_zones[0]}*pre_disaster*')))
+    dict_[disaster+subset_marker+'_post_'+zones[-1]].extend(map(str, Path(xbd_path + subset + disaster).glob(f'{single_zones[0]}*post_disaster*')))
+else:
+    new_zone = '&'.join(single_zone for single_zone in single_zones)
+    for single_zone in single_zones:
+        dict_[disaster+subset_marker+'_pre_'+new_zone].extend(map(str, Path(xbd_path + subset + disaster).glob(f'{single_zone}*pre_disaster*')))
+        dict_[disaster+subset_marker+'_post_'+new_zone].extend(map(str, Path(xbd_path + subset + disaster).glob(f'{single_zone}*post_disaster*')))

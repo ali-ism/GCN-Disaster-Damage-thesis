@@ -20,3 +20,8 @@ Neighbor sampler works on a single graph. So we can:
 - or load all graphs into a single graph where nodes belonging to different graphs are not connected (endorsed by developers).
 
 # Discrepancy in f1 score calculation?
+
+# Pixel coordinate centroids are only valid within each tile (not cross-tile)
+- Discard distance in edge features and still have large graphs spanning multiple tiles. Still we have no basis on which to group tiles. Long lat coordinates don't show any structure in the tiles.
+- Have one graph per tile but end up with smaller individual graphs (some with only one node). For tiles that have very few polygons, perhaps they can be appended to other tiles but the euclidean similarity is set to zero.
+- So far, one graph per tile discarding tiles with single polygon.
