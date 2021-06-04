@@ -22,6 +22,6 @@ Neighbor sampler works on a single graph. So we can:
 # Discrepancy in f1 score calculation?
 
 # Pixel coordinate centroids are only valid within each tile (not cross-tile)
-- Discard distance in edge features and still have large graphs spanning multiple tiles. Still we have no basis on which to group tiles. Long lat coordinates don't show any structure in the tiles.
+- Discard distance in edge features and still have large graphs spanning multiple tiles. Still we have no basis on which to group tiles.
 - Have one graph per tile but end up with smaller individual graphs (some with only one node). For tiles that have very few polygons, perhaps they can be appended to other tiles but the euclidean similarity is set to zero.
 - So far, one graph per tile discarding tiles with single polygon. "disaster_dirs.json" may not be really needed.
