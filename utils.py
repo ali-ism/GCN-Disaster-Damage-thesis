@@ -38,6 +38,10 @@ def build_edge_idx(num_nodes: int) -> torch.Tensor:
 def euclidean_similarity(coords1: Tuple[float], coords2: Tuple[float]) -> float:
     """
     Normalized euclidean distance similarity.
+
+    Args:
+        coords1 (Tuple[float]): xy coordinates of the first node.
+        coords2 (Tuple[float]): xy coordinates of the second node.
     """
     x1 = coords1[0]
     y1 = coords1[1]
@@ -47,15 +51,15 @@ def euclidean_similarity(coords1: Tuple[float], coords2: Tuple[float]) -> float:
     euc_sim = 1 / (1 + euc_dist)
     return euc_sim
 
-def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: str, coords2: str) -> Tuple[float]:
+def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[float], coords2: Tuple[float]) -> Tuple[float]:
     """
         Computes the edge weights between two given nodes.
 
         Args:
             node1 (Tensor): feature vector of the first node.
             node2 (Tensor): feature vector of the second node.
-            coords1 (str): pixel coordinates of node1.
-            coords2 (str): pixel coordinates of node2.
+            coords1 (Tuple[float]): xy pixel coordinates of node1.
+            coords2 (Tuple[float]): xy pixel coordinates of node2.
         
         Returns:
             node_sim (float): normalized node feature similarity.
@@ -68,8 +72,6 @@ def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: str, coor
     s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
     node_sim = 1 - torch.sum(s)/D
 
-    #coords1 = coords1.replace('(','').replace(')','').split(',')
-    #coords2 = coords2.replace('(','').replace(')','').split(',')
     euc_sim = euclidean_similarity(coords1, coords2)
 
     return node_sim.item(), euc_sim
