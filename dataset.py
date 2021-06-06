@@ -14,16 +14,13 @@ from utils import build_edge_idx, get_edge_weight
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device('cpu')#torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(settings_dict['seed'])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
-with open('disaster_dirs.json', 'r') as JSON:
-    disasters_dict = json.load(JSON)
-
 #normalizer = tr.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
+transform = tr.ToTensor()
 
 class IIDxBD(Dataset):
     def __init__(self,
@@ -52,9 +49,9 @@ class IIDxBD(Dataset):
 
         self.list_labels = []
         for disaster in self.disaster_folders:
-            labels = pd.read_csv(list(Path(self.path + disaster).glob('*.csv*'))[0])
+            labels = pd.read_csv(list(Path(self.path + disaster).glob('*.csv*'))[0], index_col=0)
             labels.drop(columns=['long','lat'], inplace=True)
-            zone = lambda row: '_'.join(row[0].split('_', 2)[:2])
+            zone = lambda row: '_'.join(row.name.split('_', 2)[:2])
             labels['zone'] = labels.apply(zone, axis=1)
             self.list_labels.append(labels)
 
@@ -67,10 +64,10 @@ class IIDxBD(Dataset):
     @property
     def processed_file_names(self) -> List[str]:
         processed_files = []
-        for disaster, labels in zip(self.disaster_folders, self.list_labels):
+        for labels in self.list_labels:
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
-                processed_files.append(os.path.join(self.processed_dir, f'{disaster}_{zone}.pt'))
+                processed_files.append(os.path.join(self.processed_dir, f'{zone}.pt'))
         return processed_files
 
     def process(self):
@@ -80,7 +77,8 @@ class IIDxBD(Dataset):
         for disaster, labels in zip(self.disaster_folders, self.list_labels):
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
-                if os.path.isfile(os.path.join(self.processed_dir, f'{disaster}_{zone}.pt')):
+                if os.path.isfile(os.path.join(self.processed_dir, f'{zone}.pt')):
+                    print('File exists already!')
                     continue
                 list_pre_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_pre_disaster*')))
                 list_post_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_post_disaster*')))
@@ -89,7 +87,7 @@ class IIDxBD(Dataset):
                 coords = []
 
                 pbar = tqdm(total=len(list_post_images))
-                pbar.set_description(f'Building {disaster} zone {zone}, node features')
+                pbar.set_description(f'Building {zone} node features')
 
                 for pre_image_file, post_image_file in zip(list_pre_images, list_post_images):
                     
@@ -108,15 +106,15 @@ class IIDxBD(Dataset):
                     else:
                         raise ValueError(f'Label class {label} undefined.')
 
-                    coords.append((labels.loc[os.path.split(post_image_file)[1],'xcoords'],
-                                   labels.loc[os.path.split(post_image_file)[1],'ycoords']))
+                    coords.append((labels.loc[os.path.split(post_image_file)[1],'xcoord'],
+                                   labels.loc[os.path.split(post_image_file)[1],'ycoord']))
 
                     pre_image = Image.open(pre_image_file)
                     post_image = Image.open(post_image_file)
                     pre_image = pre_image.resize((256, 256))
                     post_image = post_image.resize((256, 256))
-                    pre_image = tr.ToTensor(pre_image)
-                    post_image = tr.ToTensor(post_image)
+                    pre_image = transform(pre_image)
+                    post_image = transform(post_image)
                     images = torch.cat((pre_image, post_image),0)
                     x.append(images)
                     pbar.update()
@@ -132,7 +130,7 @@ class IIDxBD(Dataset):
 
                 #edge features
                 pbar = tqdm(total=edge_index.shape[1])
-                pbar.set_description(f'Building {disaster}, zone {zone} edge features')
+                pbar.set_description(f'Building {zone} edge features')
                 
                 edge_attr = torch.empty((edge_index.shape[1],2))
                 for i in range(edge_index.shape[1]):
@@ -153,7 +151,7 @@ class IIDxBD(Dataset):
                 if self.pre_transform is not None:
                     data = self.pre_transform(data)
                 
-                torch.save(data, os.path.join(self.processed_dir, f'{disaster}_{zone}.pt'))
+                torch.save(data, os.path.join(self.processed_dir, f'{zone}.pt'))
     
     def len(self):
         return len(self.processed_file_names)
@@ -169,6 +167,7 @@ if __name__ == "__main__":
              settings_dict['data']['iid_xbd_hold_root']]
     subsets = ['train', 'test', 'hold']
     for subset, root in zip(subsets, roots):
+        print(f'Building dataset for subset {subset}.')
         if not os.path.isdir(root):
             os.mkdir(root)
         IIDxBD(root, subset,
