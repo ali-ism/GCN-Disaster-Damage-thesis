@@ -7,9 +7,7 @@
         "path": "weights"
         },
     "data": {
-        "iid_xbd_train_root": "datasets/iidxbd_train",
-        "iid_xbd_test_root": "datasets/iidxbd_test",
-        "iid_xbd_hold_root": "datasets/iidxbd_hold",
+        "iid_xbd_root": "datasets/iidxbd",
         "batch_size": 1024,
         "adabn": false,
         "adabn_train": false

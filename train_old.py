@@ -72,27 +72,37 @@ def test():
 
 
 if __name__ == "__main__":
-    
-    root = settings_dict['data']['root']
-    if not os.path.isdir(root):
-        os.mkdir(root)
 
-    dataset = IIDxBD(root, resnet_pretrained=settings_dict['resnet']['pretrained'],
-                           resnet_diff=settings_dict['resnet']['diff'],
-                           resnet_shared=settings_dict['resnet']['shared'])
+    roots = [settings_dict['data']['iid_xbd_train_root'],
+             settings_dict['data']['iid_xbd_test_root'],
+             settings_dict['data']['iid_xbd_hold_root']]
+    subsets = ['train', 'test', 'hold']
+    datasets = []
+    for subset, root in zip(subsets, roots):
+        if not os.path.isdir(root):
+            os.mkdir(root)
+        datasets.append(IIDxBD(roots, subset, resnet_pretrained=settings_dict['resnet']['pretrained'],
+                        resnet_diff=settings_dict['resnet']['diff'],
+                        resnet_shared=settings_dict['resnet']['shared']))
 
-    loader = DataLoader(dataset, batch_size=len(dataset))
-    batch = list(loader)[0]
+    train_loader = DataLoader(datasets[0], batch_size=len(datasets[0]))
+    test_loader = DataLoader(datasets[1], batch_size=len(datasets[1]))
+    hold_loader = DataLoader(datasets[2], batch_size=len(datasets[2]))
+
+    train_batch = list(train_loader)[0]
+    test_batch = list(test_loader)[0]
+    hold_batch = list(hold_loader)[0]
+
+    x_train, x_test, x_hold = train_batch.x.to(device), test_batch.x.to(device), hold_batch.x.to(device)
+    y_train, y_test, y_hold = train_batch.y.to(device), test_batch.y.to(device), hold_batch.y.to(device)
 
     nbr_sizes = settings_dict['model']['neighbor_sizes']
-    train_sampler = NeighborSampler(batch.edge_index, node_idx=batch.train_mask,
+    train_sampler = NeighborSampler(train_batch.edge_index,
                                    sizes=nbr_sizes, batch_size=settings_dict['data']['batch_size'],
                                    shuffle=True, num_workers=12)
     subgraph_sampler = NeighborSampler(batch.edge_index, node_idx=None, sizes=[-1],
                                       batch_size=settings_dict['data']['batch_size'],
                                       shuffle=False, num_workers=12)
-    x = batch.x.to(device)
-    y = batch.y.to(device)
 
     hidden_units = settings_dict['model']['hidden_units']
     n_epochs = settings_dict['epochs']
