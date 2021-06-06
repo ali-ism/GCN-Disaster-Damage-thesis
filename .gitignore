@@ -1,8 +1,7 @@
 weights/
 datasets/
 results/
-OLD/
+OLD/disaster_dirs.json
 __pycache__/
-disaster_dirs.json
 thesis.code-workspace
 .ipynb_checkpoints/
