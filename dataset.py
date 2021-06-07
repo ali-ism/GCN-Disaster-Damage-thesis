@@ -14,7 +14,7 @@ from utils import build_edge_idx, get_edge_weight
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
-device = torch.device('cpu')#torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(settings_dict['seed'])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False

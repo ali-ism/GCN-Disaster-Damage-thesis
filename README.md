@@ -16,8 +16,8 @@
 (https://stackoverflow.com/questions/10649673/how-to-generate-a-fully-connected-subgraph-from-node-list-using-pythons-network)
 
 Neighbor sampler works on a single graph. So we can:
-- create a sampler for each graph and loop over them while training (research forgetfulness)
-- or load all graphs into a single graph where nodes belonging to different graphs are not connected (endorsed by developers).
+- create a sampler for each graph and loop over them while training (forgetfulness)
+- or load all graphs into a single giant graph where nodes belonging to different graphs are not connected (endorsed by developers).
 
 # Discrepancy in f1 score calculation?
 
@@ -26,4 +26,4 @@ Neighbor sampler works on a single graph. So we can:
 - Have one graph per tile but end up with smaller individual graphs (some with only one node). For tiles that have very few polygons, perhaps they can be appended to other tiles but the euclidean similarity is set to zero.
 - So far, one graph per tile discarding tiles with single polygon. "disaster_dirs.json" not really needed.
 
-#How to train!!!!!!
+#How to train?
