@@ -78,7 +78,7 @@ class IIDxBD(Dataset):
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
                 if os.path.isfile(os.path.join(self.processed_dir, f'{zone}.pt')):
-                    print('File exists already!')
+                    print(f'File {zone} exists already!')
                     continue
                 list_pre_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_pre_disaster*')))
                 list_post_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_post_disaster*')))
@@ -120,6 +120,9 @@ class IIDxBD(Dataset):
                     pbar.update()
                 
                 pbar.close()
+
+                if not x:
+                    continue
                 x = torch.stack(x).to(device)
                 with torch.no_grad():
                     x = resnet50(x).cpu()
