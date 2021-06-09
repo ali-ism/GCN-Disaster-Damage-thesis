@@ -116,16 +116,20 @@ class IIDxBD(Dataset):
                     pre_image = transform(pre_image)
                     post_image = transform(post_image)
                     images = torch.cat((pre_image, post_image),0)
-                    x.append(images)
+                    #x.append(images)
+                    images = images.to(device)
+                    with torch.no_grad():
+                        x.append(resnet50(images.unsqueeze(0)).flatten().cpu())
                     pbar.update()
                 
                 pbar.close()
 
                 if not x:
                     continue
-                x = torch.stack(x).to(device)
-                with torch.no_grad():
-                    x = resnet50(x).cpu()
+                #x = torch.stack(x).to(device)
+                #with torch.no_grad():
+                #    x = resnet50(x).cpu()
+                x = torch.stack(x)
                 y = torch.tensor(y)
 
                 #edge index matrix
