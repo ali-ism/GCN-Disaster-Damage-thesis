@@ -78,7 +78,6 @@ class IIDxBD(Dataset):
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
                 if os.path.isfile(os.path.join(self.processed_dir, f'{zone}.pt')):
-                    print(f'File {zone} exists already!')
                     continue
                 list_pre_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_pre_disaster*')))
                 list_post_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_post_disaster*')))
@@ -181,3 +180,4 @@ if __name__ == "__main__":
                resnet_pretrained=settings_dict['resnet']['pretrained'],
                resnet_diff=settings_dict['resnet']['diff'],
                resnet_shared=settings_dict['resnet']['shared'])
+        print(f'********************************{subset} done********************************')
