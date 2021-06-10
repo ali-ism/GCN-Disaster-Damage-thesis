@@ -1,9 +1,9 @@
 import json
 import torch
 import torch.nn.functional as F
-from torch.nn import Linear
-from torch_geometric.nn import SAGEConv
-from tqdm import tqdm
+from torch.nn import ModuleList, Embedding
+from torch.nn import Sequential, ReLU, Linear
+from torch_geometric.nn import PNAConv, BatchNorm, global_add_pool
 
 with open('exp_setting.json', 'r') as JSON:
     settings_dict = json.load(JSON)
@@ -13,76 +13,36 @@ torch.manual_seed(settings_dict['seed'])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
+class PNANet(torch.nn.Module):
+    def __init__(self, node_dim, edge_dim, hidden_channels, out_dim, deg):
+        super(PNANet, self).__init__()
 
-class EdgeSAGEConv(SAGEConv):
-    def _init__(self, *args, edge_dim=0, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.edge_lin = Linear(edge_dim, self.out_channels)
-        
-    def forward(self, x, edge_index, edge_attr):
-        self._edge_attr = edge_attr
-        out = super().forward(x, edge_index)
-        self._edge_attr = None
-        return out
+        self.node_emb = Embedding(21, 75)
+        self.edge_emb = Embedding(4, 50)
 
-    def message(self, x_j, edge_weight):
-        return (x_j + self.edge_lin(self._edge_attr)) * edge_weight.view(-1, 1)
+        aggregators = ['mean', 'min', 'max', 'std']
+        scalers = ['identity', 'amplification', 'attenuation']
 
+        self.convs = ModuleList()
+        self.batch_norms = ModuleList()
+        for _ in range(4):
+            conv = PNAConv(in_channels=node_dim, out_channels=hidden_channels,
+                           aggregators=aggregators, scalers=scalers, deg=deg,
+                           edge_dim=edge_dim, towers=5, pre_layers=1, post_layers=1,
+                           divide_input=False)
+            self.convs.append(conv)
+            self.batch_norms.append(BatchNorm(hidden_channels))
 
-class SAGENet(torch.nn.Module):
-    def __init__(self, in_channels, edge_dim, hidden_channels, out_channels, num_layers=2):
-        super(SAGENet, self).__init__()
-        self.num_layers = num_layers
-        self.convs = torch.nn.ModuleList()
-        self.convs.append(EdgeSAGEConv(in_channels=in_channels, edge_dim=edge_dim, out_channels=hidden_channels))
-        for _ in range(num_layers-2):
-            self.convs.append(EdgeSAGEConv(in_channels=hidden_channels, edge_dim=edge_dim, out_channels=hidden_channels))
-        self.convs.append(EdgeSAGEConv(in_channels=hidden_channels, edge_dim=edge_dim, out_channels=out_channels))
+        self.mlp = Sequential(Linear(hidden_channels, hidden_channels//2), ReLU(),
+                              Linear(hidden_channels//2, hidden_channels//4), ReLU(),
+                              Linear(hidden_channels//4, out_dim))
 
-    def reset_parameters(self):
-        for conv in self.convs:
-            conv.reset_parameters()
+    def forward(self, x, edge_index, edge_attr, batch):
+        x = self.node_emb(x.squeeze())
+        edge_attr = self.edge_emb(edge_attr)
 
-    def forward(self, x, adjs, batch):
-        # `train_loader` computes the k-hop neighborhood of a batch of nodes,
-        # and returns, for each layer, a bipartite graph object, holding the
-        # bipartite edges `edge_index`, the index `e_id` of the original edges,
-        # and the size/shape `size` of the bipartite graph.
-        # Target nodes are also included in the source nodes so that one can
-        # easily apply skip-connections or add self-loops.
-        for i, (edge_index, e_id, size) in enumerate(adjs):
-            x_target = x[:size[1]]  # Target nodes are always placed first.
-            edge_attr = batch.edge_attr[e_id].to(device)
-            x = self.convs[i]((x, x_target), edge_index, edge_attr)
-            if i != self.num_layers - 1:
-                x = F.relu(x)
-                x = F.dropout(x, p=0.5, training=self.training)
-        return F.sigmoid(x)
+        for conv, batch_norm in zip(self.convs, self.batch_norms):
+            x = F.relu(batch_norm(conv(x, edge_index, edge_attr)))
 
-    def inference(self, x_all, subgraph_loader, batch):
-        pbar = tqdm(total=x_all.size(0) * self.num_layers)
-        pbar.set_description('Evaluating')
-        # Compute representations of nodes layer by layer, using *all*
-        # available edges. This leads to faster computation in contrast to
-        # immediately computing the final representations of each batch.
-        total_edges = 0
-        for i in range(self.num_layers):
-            xs = []
-            for batch_size, n_id, adj in subgraph_loader:
-                edge_index, e_id, size = adj.to(device)
-                total_edges += edge_index.size(1)
-                x = x_all[n_id].to(device)
-                x_target = x[:size[1]]
-                edge_attr = batch.edge_attr[e_id].to(device)
-                x = self.convs[i]((x, x_target), edge_index, edge_attr)
-                if i != self.num_layers - 1:
-                    x = F.relu(x)
-                xs.append(x.cpu())
-
-                pbar.update(batch_size)
-
-            x_all = torch.cat(xs, dim=0)
-
-        pbar.close()
-
-        return x_all
+        x = global_add_pool(x, batch)
+        return F.sigmoid(self.mlp(x))

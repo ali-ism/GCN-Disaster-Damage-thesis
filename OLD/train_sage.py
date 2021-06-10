@@ -10,12 +10,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch_geometric.data import DataLoader
-from torch_geometric.utils import degree
+from torch_geometric.data import DataLoader, NeighborSampler
 from tqdm import tqdm
 from dataset import IIDxBD
-from model import PNANet
+from model import SAGENet
 from metrics import xview2_f1_score
 
 with open('exp_settings.json', 'r') as JSON:
@@ -34,43 +32,43 @@ def train(epoch):
     pbar.set_description(f'Epoch {epoch:02d}')
 
     total_loss = 0
-    for data in train_loader:
-        data = data.to(device)
+    #totalo_correct = 0
+    for batch_size, n_id, adjs in train_sampler:
+        # `adjs` holds a list of `(edge_index, e_id, size)` tuples.
+        adjs = [adj.to(device) for adj in adjs]
+
         optimizer.zero_grad()
-        out = model(data.x, data.edge_index, data.edge_attr, data.batch)
-        loss = F.binary_cross_entropy(out, data.y)
+        out = model(x[n_id], adjs, batch)
+        loss = F.binary_cross_entropy(out, y[n_id[:batch_size]])
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item() * data.num_graphs
+        total_loss += float(loss)
+        #total_correct += int(out.argmax(dim=-1).eq(y[n_id[:batch_size]]).sum())
         pbar.update(batch_size)
 
     pbar.close()
 
-    return total_loss
+    loss = total_loss / len(train_sampler)
+    #approx_acc = total_correct / int(batch.train_mask.sum())
+
+    return loss
 
 
 @torch.no_grad()
-def test(loader):
+def test():
     model.eval()
 
-    ys = []
-    outs = []
-
-    for data in loader:
-        data = data.to(device)
-        out = model(data.x, data.edge_index, data.edge_attr, data.batch)
-        outs.append(out.cpu())
-        ys.append(data.y.cpu())
+    out = model.inference(x, subgraph_sampler, batch).cpu()
+    y_true = y.cpu()
     
-    outs = torch.stack(outs)
-    ys = torch.stack(ys)
-    
-    f1 = xview2_f1_score(ys, outs)
+    train_f1 = xview2_f1_score(y_true[batch.train_mask], out[batch.train_mask])
+    val_f1 = xview2_f1_score(y_true[batch.val_mask], out[batch.val_mask])
+    test_f1 = xview2_f1_score(y_true[batch.test_mask], out[batch.test_mask])
 
-    loss = F.binary_cross_entropy(outs, ys)
+    val_loss = F.binary_cross_entropy(out[batch.val_mask], y_true[batch.val_mask])
 
-    return f1, loss
+    return train_f1, val_f1, test_f1, val_loss
 
 
 if __name__ == "__main__":
@@ -79,43 +77,36 @@ if __name__ == "__main__":
     if not os.path.isdir(root):
         os.mkdir(root)
 
-    train_dataset = IIDxBD(root, 'train',
-                           resnet_pretrained=settings_dict['resnet']['pretrained'],
+    dataset = IIDxBD(root, resnet_pretrained=settings_dict['resnet']['pretrained'],
                            resnet_diff=settings_dict['resnet']['diff'],
                            resnet_shared=settings_dict['resnet']['shared'])
-    
-    test_dataset = IIDxBD(root, 'test',
-                          resnet_pretrained=settings_dict['resnet']['pretrained'],
-                          resnet_diff=settings_dict['resnet']['diff'],
-                          resnet_shared=settings_dict['resnet']['shared'])
-    
-    hold_dataset = IIDxBD(root, 'hold',
-                          resnet_pretrained=settings_dict['resnet']['pretrained'],
-                          resnet_diff=settings_dict['resnet']['diff'],
-                          resnet_shared=settings_dict['resnet']['shared'])
 
-    train_loader = DataLoader(train_dataset, batch_size=settings_dict['data']['batch_size'], shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=settings_dict['data']['batch_size'])
-    hold_loader = DataLoader(hold_dataset, batch_size=settings_dict['data']['batch_size'])
+    loader = DataLoader(dataset, batch_size=len(dataset))
+    batch = list(loader)[0]
 
+    nbr_sizes = settings_dict['model']['neighbor_sizes']
+    train_sampler = NeighborSampler(batch.edge_index, node_idx=batch.train_mask,
+                                   sizes=nbr_sizes, batch_size=settings_dict['data']['batch_size'],
+                                   shuffle=True, num_workers=12)
+    subgraph_sampler = NeighborSampler(batch.edge_index, node_idx=None, sizes=[-1],
+                                      batch_size=settings_dict['data']['batch_size'],
+                                      shuffle=False, num_workers=12)
+    x = batch.x.to(device)
+    y = batch.y.to(device)
+
+    hidden_units = settings_dict['model']['hidden_units']
     n_epochs = settings_dict['epochs']
 
-    # Compute in-degree histogram over training data.
-    deg = torch.zeros(5, dtype=torch.long)
-    for data in train_dataset:
-        d = degree(data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long)
-        deg += torch.bincount(d, minlength=deg.numel())
-
-    model = PNANet(train_dataset.num_node_features, train_dataset.num_edge_features,
-                   settings_dict['model']['hidden_units'], train_dataset.num_classes, deg) #TODO num_classes
+    model = SAGENet(dataset.num_features, dataset.num_edge_features, hidden_units,
+                    dataset.num_classes, num_layers=len(nbr_sizes))
     model = model.to(device)
+    model.reset_parameters()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=20, min_lr=0.00001)
 
     best_val_f1 = final_test_f1 = best_epoch = 0
     train_losses = np.empty(n_epochs)
-    train_f1s = val_f1s = test_f1s = val_losses = test_losses = np.empty(n_epochs-5)
+    train_f1s = val_f1s = test_f1s = val_losses = np.empty(n_epochs-5)
 
     for epoch in range(1, n_epochs+1):
         
@@ -129,16 +120,12 @@ if __name__ == "__main__":
             torch.save(model.state_dict(), model_path)
 
         if epoch > 5:
-            train_f1, _ = test(train_loader)
-            val_f1, val_loss = test(test_loader)
-            test_f1, test_loss = test(hold_loader)
-            scheduler.step(val_loss)
+            train_f1, val_f1, test_f1, val_loss = test()
             train_f1s[epoch-6] = train_f1
             val_f1s[epoch-6] = val_f1
             test_f1s[epoch-6] = test_f1
             val_losses[epoch-6] = val_loss
-            test_losses[epoch-6] = test_loss
-            print(f'Val Loss: {val_loss:.4f}, Test Loss: {test_loss:.4f}')
+            print(f'Val Loss: {val_loss:.4f}')
             print(f'Train F1: {train_f1:.4f}, Val F1: {val_f1:.4f}, 'f'Test F1: {test_f1:.4f}')
 
             if val_f1 > best_val_f1:
@@ -152,8 +139,7 @@ if __name__ == "__main__":
     plt.figure()
     plt.plot(train_losses)
     plt.plot(val_losses)
-    plt.plot(test_losses)
-    plt.legend(['train', 'val', 'test'])
+    plt.legend(['train', 'val'])
     plt.xlabel('epochs')
     plt.ylabel('loss')
     plt.savefig('results/'+settings_dict['model']['name']+'_loss.eps')
@@ -168,7 +154,6 @@ if __name__ == "__main__":
 
     np.save('results/'+settings_dict['model']['name']+'_loss_train.npy', train_losses)
     np.save('results/'+settings_dict['model']['name']+'_loss_val.npy', val_losses)
-    np.save('results/'+settings_dict['model']['name']+'_loss_test.npy', test_losses)
     np.save('results/'+settings_dict['model']['name']+'_f1_train.npy', train_f1s)
     np.save('results/'+settings_dict['model']['name']+'_f1_val.npy', val_f1s)
     np.save('results/'+settings_dict['model']['name']+'_f1_test.npy', test_f1s)
