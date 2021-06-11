@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch_geometric.data import DataLoader
+from torch_geometric.data import DataLoader, NeighborSampler
 from torch_geometric.utils import degree
 from tqdm import tqdm
 from dataset import IIDxBD
-from model import PNANet
+from model import SAGENet
 from metrics import xview2_f1_score
 
 with open('exp_settings.json', 'r') as JSON:
@@ -30,22 +30,28 @@ torch.backends.cudnn.benchmark = False
 def train(epoch):
     model.train()
 
-    pbar = tqdm(total=int(batch.train_mask.sum()))
-    pbar.set_description(f'Epoch {epoch:02d}')
+    #pbar = tqdm(total=int(batch.train_mask.sum()))
+    #pbar.set_description(f'Epoch {epoch:02d}')
 
     total_loss = 0
     for data in train_loader:
-        data = data.to(device)
-        optimizer.zero_grad()
-        out = model(data.x, data.edge_index, data.edge_attr, data.batch)
-        loss = F.binary_cross_entropy(out, data.y)
-        loss.backward()
-        optimizer.step()
+        x = data.x.to(device)
+        y = data.y.squeeze().to(device)
+        sampler = NeighborSampler(data.edge_index, sizes=nbr_sizes, batch_size=settings_dict['data']['batch_size'], num_workers=12)
+        batch_loss = 0
+        for batch_size, n_id, adjs in sampler:
+            adjs = [adj.to(device) for adj in adjs]
+            optimizer.zero_grad()
+            out = model(x[n_id], adjs)
+            loss = F.binary_cross_entropy(out, y[n_id[:batch_size]])
+            loss.backward()
+            optimizer.step()
 
-        total_loss += loss.item() * data.num_graphs
-        pbar.update(batch_size)
-
-    pbar.close()
+            batch_loss += loss.item()
+            #pbar.update(batch_size)
+        
+        #pbar.close()
+        total_loss += batch_loss / len(sampler)
 
     return total_loss
 
@@ -53,15 +59,17 @@ def train(epoch):
 @torch.no_grad()
 def test(loader):
     model.eval()
-
     ys = []
     outs = []
 
     for data in loader:
-        data = data.to(device)
-        out = model(data.x, data.edge_index, data.edge_attr, data.batch)
-        outs.append(out.cpu())
-        ys.append(data.y.cpu())
+        x = data.x.to(device)
+        y = data.y.squeeze().to(device)
+        sampler = NeighborSampler(data.edge_index, sizes=nbr_sizes, batch_size=settings_dict['data']['batch_size'], num_workers=12)
+        for batch_size, n_id, adjs in sampler:
+            out = model(x[n_id], adjs)
+            outs.append(out.cpu())
+            ys.append(y[n_id[:batch_size]].cpu())
     
     outs = torch.stack(outs)
     ys = torch.stack(ys)
@@ -74,31 +82,28 @@ def test(loader):
 
 
 if __name__ == "__main__":
-    
-    root = settings_dict['data']['root']
-    if not os.path.isdir(root):
-        os.mkdir(root)
 
-    train_dataset = IIDxBD(root, 'train',
+    train_dataset = IIDxBD(settings_dict['data']['iid_xbd_train_root'], 'train',
                            resnet_pretrained=settings_dict['resnet']['pretrained'],
                            resnet_diff=settings_dict['resnet']['diff'],
                            resnet_shared=settings_dict['resnet']['shared'])
     
-    test_dataset = IIDxBD(root, 'test',
+    test_dataset = IIDxBD(settings_dict['data']['iid_xbd_test_root'], 'test',
                           resnet_pretrained=settings_dict['resnet']['pretrained'],
                           resnet_diff=settings_dict['resnet']['diff'],
                           resnet_shared=settings_dict['resnet']['shared'])
     
-    hold_dataset = IIDxBD(root, 'hold',
+    hold_dataset = IIDxBD(settings_dict['data']['iid_xbd_hold_root'], 'hold',
                           resnet_pretrained=settings_dict['resnet']['pretrained'],
                           resnet_diff=settings_dict['resnet']['diff'],
                           resnet_shared=settings_dict['resnet']['shared'])
 
-    train_loader = DataLoader(train_dataset, batch_size=settings_dict['data']['batch_size'], shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=settings_dict['data']['batch_size'])
-    hold_loader = DataLoader(hold_dataset, batch_size=settings_dict['data']['batch_size'])
+    train_loader = DataLoader(train_dataset, shuffle=True)
+    test_loader = DataLoader(test_dataset)
+    hold_loader = DataLoader(hold_dataset)
 
     n_epochs = settings_dict['epochs']
+    nbr_sizes = settings_dict['model']['neighbor_sizes']
 
     # Compute in-degree histogram over training data.
     deg = torch.zeros(5, dtype=torch.long)
@@ -106,8 +111,8 @@ if __name__ == "__main__":
         d = degree(data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long)
         deg += torch.bincount(d, minlength=deg.numel())
 
-    model = PNANet(train_dataset.num_node_features, train_dataset.num_edge_features,
-                   settings_dict['model']['hidden_units'], train_dataset.num_classes, deg) #TODO num_classes
+    model = SAGENet(train_dataset.num_node_features, train_dataset.num_edge_features,
+                    settings_dict['model']['hidden_units'], train_dataset.num_classes, len(nbr_sizes)) #TODO num_classes
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])

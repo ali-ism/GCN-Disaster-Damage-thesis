@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import json
-from tqdm import tqdm
+#from tqdm import tqdm
 import pandas as pd
 from typing import List
 import torch
@@ -35,11 +35,11 @@ class IIDxBD(Dataset):
                  pre_transform=None) -> None:
 
         if subset == 'train':
-            self.path = 'datasets/xbd/train_bldgs/'
+            self.path = settings_dict['data']['train_bldgs']
         elif subset == 'test':
-            self.path = 'datasets/xbd/test_bldgs/'
+            self.path = settings_dict['data']['test_bldgs']
         elif subset == 'hold':
-            self.path = 'datasets/xbd/hold_bldgs/'
+            self.path = settings_dict['data']['hold_bldgs']
         else:
             raise ValueError("Subset can be either 'train', 'test' or 'hold'.")
         

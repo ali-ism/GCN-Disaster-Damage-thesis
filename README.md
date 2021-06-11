@@ -1,5 +1,4 @@
 # TODO
-- make dataset creation faster (vectorization, and disk-based)
 - test dataset.py
 - implement dataset visualization
 - In model.py implement EdgeSAGEConv
