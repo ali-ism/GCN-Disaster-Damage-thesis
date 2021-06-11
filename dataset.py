@@ -22,19 +22,17 @@ torch.backends.cudnn.benchmark = False
 #normalizer = tr.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 transform = tr.ToTensor()
 
+resnet50 = load_feature_extractor(settings_dict['resnet']['pretrained'],
+                                  settings_dict['resnet']['shared'],
+                                  settings_dict['resnet']['diff'])
+resnet50 = resnet50.to(device)
+
 class IIDxBD(Dataset):
     def __init__(self,
                  root: str,
                  subset: str,
-                 resnet_pretrained=False,
-                 resnet_shared=False,
-                 resnet_diff=True,
                  transform=None,
                  pre_transform=None) -> None:
-        
-        self.resnet_pretrained = resnet_pretrained
-        self.resnet_shared = resnet_shared
-        self.resnet_diff = resnet_diff
 
         if subset == 'train':
             self.path = 'datasets/xbd/train_bldgs/'
@@ -71,22 +69,20 @@ class IIDxBD(Dataset):
         return processed_files
 
     def process(self):
-        resnet50 = load_feature_extractor(self.resnet_pretrained, self.resnet_shared, self.resnet_diff)
-        resnet50 = resnet50.to(device)
-
         for disaster, labels in zip(self.disaster_folders, self.list_labels):
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
                 if os.path.isfile(os.path.join(self.processed_dir, f'{zone}.pt')):
                     continue
+                print(f'Building {zone}...') ##to replace pbar
                 list_pre_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_pre_disaster*')))
                 list_post_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_post_disaster*')))
                 x = []
                 y = []
                 coords = []
 
-                pbar = tqdm(total=len(list_post_images))
-                pbar.set_description(f'Building {zone} node features')
+                #pbar = tqdm(total=len(list_post_images))
+                #pbar.set_description(f'Building {zone} node features')
 
                 for pre_image_file, post_image_file in zip(list_pre_images, list_post_images):
                     
@@ -119,9 +115,9 @@ class IIDxBD(Dataset):
                     images = images.to(device)
                     with torch.no_grad():
                         x.append(resnet50(images.unsqueeze(0)).flatten().cpu())
-                    pbar.update()
+                    #pbar.update()
                 
-                pbar.close()
+                #pbar.close()
 
                 if not x:
                     continue
@@ -135,8 +131,8 @@ class IIDxBD(Dataset):
                 edge_index = build_edge_idx(x.shape[0])
 
                 #edge features
-                pbar = tqdm(total=edge_index.shape[1])
-                pbar.set_description(f'Building {zone} edge features')
+                #pbar = tqdm(total=edge_index.shape[1])
+                #pbar.set_description(f'Building {zone} edge features')
                 
                 edge_attr = torch.empty((edge_index.shape[1],2))
                 for i in range(edge_index.shape[1]):
@@ -147,9 +143,9 @@ class IIDxBD(Dataset):
                     attr = get_edge_weight(node1, node2, coords1, coords2)
                     edge_attr[i,0] = attr[0]
                     edge_attr[i,1] = attr[1]
-                    pbar.update()
+                    #pbar.update()
                 
-                pbar.close()
+                #pbar.close()
                 data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
 
                 if self.pre_filter is not None and not self.pre_filter(data):
@@ -173,11 +169,8 @@ if __name__ == "__main__":
              settings_dict['data']['iid_xbd_hold_root']]
     subsets = ['train', 'test', 'hold']
     for subset, root in zip(subsets, roots):
-        print(f'Building dataset for subset {subset}.')
+        print(f'Building dataset for subset {subset}...')
         if not os.path.isdir(root):
             os.mkdir(root)
-        IIDxBD(root, subset,
-               resnet_pretrained=settings_dict['resnet']['pretrained'],
-               resnet_diff=settings_dict['resnet']['diff'],
-               resnet_shared=settings_dict['resnet']['shared'])
+        IIDxBD(root, subset)
         print(f'********************************{subset} done********************************')
