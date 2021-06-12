@@ -10,9 +10,9 @@
         "iid_xbd_train_root": "/scratch/datasets/iidxbd_train",
         "iid_xbd_test_root": "/scratch/datasets/iidxbd_test",
         "iid_xbd_hold_root": "/scratch/datasets/iidxbd_hold",
-        "train_bldgs": "scratch/datasets/xbd/train_bldgs/",
-        "test_bldgs": "scratch/datasets/xbd/test_bldgs/",
-        "hold_bldgs": "scratch/datasets/xbd/hold_bldgs/",
+        "train_bldgs": "/scratch/datasets/xbd/train_bldgs/",
+        "test_bldgs": "/scratch/datasets/xbd/test_bldgs/",
+        "hold_bldgs": "/scratch/datasets/xbd/hold_bldgs/",
         "batch_size": 1024,
         "adabn": false,
         "adabn_train": false
