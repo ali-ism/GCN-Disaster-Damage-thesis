@@ -19,7 +19,7 @@
     },
     "model": {
         "name": "iidxbd_01",
-        "neighbor_sizes": [15, 10, 5],
+        "neighbor_sizes": [15, 10],
         "hidden_units": 256,
         "path": "weights",
         "lr": 0.003

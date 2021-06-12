@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from typing import Tuple
 
+
 def build_edge_idx(num_nodes: int) -> torch.Tensor:
     """
         Build a complete undirected graph for the edge_index parameter.
@@ -50,6 +51,7 @@ def euclidean_similarity(coords1: Tuple[float], coords2: Tuple[float]) -> float:
     euc_dist = sqrt((x1-x2)**2 + (y1-y2)**2)
     euc_sim = 1 / (1 + euc_dist)
     return euc_sim
+
 
 def get_edge_weight(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[float], coords2: Tuple[float]) -> Tuple[float]:
     """

@@ -1,11 +1,13 @@
 import torch
 from sklearn.metrics import f1_score
 
+
 def parse_ordinal_output(out: torch.Tensor) -> torch.Tensor:
     idx = torch.where(out < 0.5, 1, 0)
     idx = torch.argmax(idx, dim=1)
     idx = torch.where(idx == 0, 4, idx)
     return idx
+
 
 def xview2_f1_score(y_true: torch.Tensor, out: torch.Tensor) -> float:
     """

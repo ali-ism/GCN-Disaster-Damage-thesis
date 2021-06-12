@@ -4,7 +4,6 @@
 # Licensed under the MIT License.
 # Written by Matthias Fey (http://rusty1s.github.io)
 # ------------------------------------------------------------------------------
-import os
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,7 +11,6 @@ import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.data import DataLoader, NeighborSampler
-from torch_geometric.utils import degree
 from tqdm import tqdm
 from dataset import IIDxBD
 from model import SAGENet
@@ -30,8 +28,8 @@ torch.backends.cudnn.benchmark = False
 def train(epoch):
     model.train()
 
-    #pbar = tqdm(total=int(batch.train_mask.sum()))
-    #pbar.set_description(f'Epoch {epoch:02d}')
+    pbar = tqdm(total=len(train_loader))
+    pbar.set_description(f'Epoch {epoch:02d}')
 
     total_loss = 0
     for data in train_loader:
@@ -42,42 +40,40 @@ def train(epoch):
         for batch_size, n_id, adjs in sampler:
             adjs = [adj.to(device) for adj in adjs]
             optimizer.zero_grad()
-            out = model(x[n_id], adjs)
+            out = model(x[n_id], adjs, data)
             loss = F.binary_cross_entropy(out, y[n_id[:batch_size]])
             loss.backward()
             optimizer.step()
 
             batch_loss += loss.item()
-            #pbar.update(batch_size)
+            pbar.update()
         
-        #pbar.close()
+        pbar.close()
         total_loss += batch_loss / len(sampler)
-
     return total_loss
 
 
 @torch.no_grad()
 def test(loader):
     model.eval()
+
     ys = []
     outs = []
 
     for data in loader:
         x = data.x.to(device)
-        y = data.y.squeeze().to(device)
-        sampler = NeighborSampler(data.edge_index, sizes=nbr_sizes, batch_size=settings_dict['data']['batch_size'], num_workers=12)
-        for batch_size, n_id, adjs in sampler:
-            out = model(x[n_id], adjs)
-            outs.append(out.cpu())
-            ys.append(y[n_id[:batch_size]].cpu())
-    
+        ys.append(data.y)
+        sampler = NeighborSampler(data.edge_index, sizes=[-1], batch_size=settings_dict['data']['batch_size'], num_workers=12)
+        outs.append(model.inference(x, sampler, data).cpu())
+
     outs = torch.stack(outs)
     ys = torch.stack(ys)
     
     f1 = xview2_f1_score(ys, outs)
-
-    loss = F.binary_cross_entropy(outs, ys)
-
+    if loader is not train_loader:
+        loss = F.binary_cross_entropy(outs, ys)
+    else:
+        loss = None
     return f1, loss
 
 
@@ -105,14 +101,9 @@ if __name__ == "__main__":
     n_epochs = settings_dict['epochs']
     nbr_sizes = settings_dict['model']['neighbor_sizes']
 
-    # Compute in-degree histogram over training data.
-    deg = torch.zeros(5, dtype=torch.long)
-    for data in train_dataset:
-        d = degree(data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long)
-        deg += torch.bincount(d, minlength=deg.numel())
-
     model = SAGENet(train_dataset.num_node_features, train_dataset.num_edge_features,
-                    settings_dict['model']['hidden_units'], train_dataset.num_classes, len(nbr_sizes)) #TODO num_classes
+                    settings_dict['model']['hidden_units'], train_dataset.num_classes, len(nbr_sizes))
+    model.reset_parameters()
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
@@ -123,6 +114,9 @@ if __name__ == "__main__":
     train_f1s = val_f1s = test_f1s = val_losses = test_losses = np.empty(n_epochs-5)
 
     for epoch in range(1, n_epochs+1):
+
+        with open('results/'+settings_dict['model']['name']+'_exp_progress.txt', 'w') as file:
+            file.write(f'Last epoch: {epoch}\n')
         
         loss = train(epoch)
         train_losses[epoch-1] = loss
@@ -180,3 +174,6 @@ if __name__ == "__main__":
 
     with open('results/'+settings_dict['model']['name']+'_exp_settings.json', 'w') as JSON:
         json.dump(settings_dict, JSON)
+    
+    with open('results/'+settings_dict['model']['name']+'_exp_progress.txt', 'a') as file:
+        file.write(f'Best epoch: {best_epoch}')

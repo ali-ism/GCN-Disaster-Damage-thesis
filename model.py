@@ -13,6 +13,7 @@ torch.manual_seed(settings_dict['seed'])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
+
 class EdgeSAGEConv(SAGEConv):
     def _init__(self, *args, edge_dim=0, **kwargs):
         super().__init__(*args, **kwargs)
@@ -42,7 +43,7 @@ class SAGENet(torch.nn.Module):
         for conv in self.convs:
             conv.reset_parameters()
 
-    def forward(self, x, adjs, batch):
+    def forward(self, x, adjs, data):
         # `train_loader` computes the k-hop neighborhood of a batch of nodes,
         # and returns, for each layer, a bipartite graph object, holding the
         # bipartite edges `edge_index`, the index `e_id` of the original edges,
@@ -51,28 +52,26 @@ class SAGENet(torch.nn.Module):
         # easily apply skip-connections or add self-loops.
         for i, (edge_index, e_id, size) in enumerate(adjs):
             x_target = x[:size[1]]  # Target nodes are always placed first.
-            edge_attr = batch.edge_attr[e_id].to(device)
+            edge_attr = data.edge_attr[e_id].to(device)
             x = self.convs[i]((x, x_target), edge_index, edge_attr)
             if i != self.num_layers - 1:
                 x = F.relu(x)
                 x = F.dropout(x, p=0.5, training=self.training)
         return F.sigmoid(x)
 
-    def inference(self, x_all, subgraph_loader, batch):
+    def inference(self, x_all, subgraph_sampler, data):
         pbar = tqdm(total=x_all.size(0) * self.num_layers)
         pbar.set_description('Evaluating')
         # Compute representations of nodes layer by layer, using *all*
         # available edges. This leads to faster computation in contrast to
         # immediately computing the final representations of each batch.
-        total_edges = 0
         for i in range(self.num_layers):
             xs = []
-            for batch_size, n_id, adj in subgraph_loader:
+            for batch_size, n_id, adj in subgraph_sampler:
                 edge_index, e_id, size = adj.to(device)
-                total_edges += edge_index.size(1)
                 x = x_all[n_id].to(device)
                 x_target = x[:size[1]]
-                edge_attr = batch.edge_attr[e_id].to(device)
+                edge_attr = data.edge_attr[e_id].to(device)
                 x = self.convs[i]((x, x_target), edge_index, edge_attr)
                 if i != self.num_layers - 1:
                     x = F.relu(x)
@@ -83,5 +82,4 @@ class SAGENet(torch.nn.Module):
             x_all = torch.cat(xs, dim=0)
 
         pbar.close()
-
         return x_all
