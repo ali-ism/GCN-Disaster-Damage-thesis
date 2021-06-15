@@ -130,14 +130,15 @@ class IIDxBD(Dataset):
                 #pbar = tqdm(total=edge_index.shape[1])
                 #pbar.set_description(f'Building {zone} edge features')
                 
-                edge_attr = torch.empty((edge_index.shape[1],1))
+                edge_attr = torch.empty((edge_index.shape[1],2))
                 for i in range(edge_index.shape[1]):
                     node1 = x[edge_index[0,i]]
                     node2 = x[edge_index[1,i]]
                     coords1 = coords[edge_index[0,i]]
                     coords2 = coords[edge_index[1,i]]
                     attr1, attr2 = get_edge_weight(node1, node2, coords1, coords2)
-                    edge_attr[i] = (attr1 + attr2) / 2
+                    edge_attr[i,0] = attr1
+                    edge_attr[i,1] = attr2
                     #pbar.update()
                 
                 #pbar.close()

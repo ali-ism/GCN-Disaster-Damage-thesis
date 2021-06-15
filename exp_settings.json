@@ -7,9 +7,9 @@
         "path": "weights"
         },
     "data": {
-        "iid_xbd_train_root": "/home/ami31/scratch/datasets/iidxbd_train",
-        "iid_xbd_test_root": "/home/ami31/scratch/datasets/iidxbd_test",
-        "iid_xbd_hold_root": "/home/ami31/scratch/datasets/iidxbd_hold",
+        "iid_xbd_train_root": "/home/ami31/scratch/datasets/iidxbd_train1",
+        "iid_xbd_test_root": "/home/ami31/scratch/datasets/iidxbd_test1",
+        "iid_xbd_hold_root": "/home/ami31/scratch/datasets/iidxbd_hold1",
         "train_bldgs": "/home/ami31/scratch/datasets/xbd/train_bldgs/",
         "test_bldgs": "/home/ami31/scratch/datasets/xbd/test_bldgs/",
         "hold_bldgs": "/home/ami31/scratch/datasets/xbd/hold_bldgs/",
