@@ -1,6 +1,8 @@
 # ------------------------------------------------------------------------------
 # This code is (modified) from
-# https://github.com/rusty1s/pytorch_geometric/blob/master/examples/reddit.py
+# https://github.com/rusty1s/pytorch_geometric/blob/master/examples/ogbn_proteins_deepgcn.py
+# and
+# https://github.com/rusty1s/pytorch_geometric/blob/master/examples/graph_saint.py
 # Licensed under the MIT License.
 # Written by Matthias Fey (http://rusty1s.github.io)
 # ------------------------------------------------------------------------------
@@ -10,10 +12,10 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch_geometric.data import DataLoader, NeighborSampler
+from torch_geometric.data import DataLoader, GraphSAINTRandomWalkSampler
 from tqdm import tqdm
 from dataset import IIDxBD
-from model import SAGENet
+from model import DeeperGCN
 from metrics import xview2_f1_score
 
 with open('exp_settings.json', 'r') as JSON:
@@ -33,15 +35,14 @@ def train(epoch):
 
     total_loss = 0
     for data in train_loader:
-        x = data.x.to(device)
-        y = data.y.squeeze().to(device)
-        sampler = NeighborSampler(data.edge_index, sizes=nbr_sizes, batch_size=settings_dict['data']['batch_size'], num_workers=12)
+        sampler = GraphSAINTRandomWalkSampler(data, batch_size=settings_dict['data']['batch_size'],
+                                              walk_length=2, sample_coverage=100, num_workers=12)
         batch_loss = 0
-        for batch_size, n_id, adjs in sampler:
-            adjs = [adj.to(device) for adj in adjs]
+        for subdata in sampler:
+            subdata = subdata.to(device)
             optimizer.zero_grad()
-            out = model(x[n_id], adjs, data)
-            loss = F.binary_cross_entropy(out, y[n_id[:batch_size]])
+            out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
+            loss = F.binary_cross_entropy(out, subdata.y)
             loss.backward()
             optimizer.step()
 
@@ -61,10 +62,12 @@ def test(loader):
     outs = []
 
     for data in loader:
-        x = data.x.to(device)
-        ys.append(data.y)
-        sampler = NeighborSampler(data.edge_index, sizes=[-1], batch_size=settings_dict['data']['batch_size'], num_workers=12)
-        outs.append(model.inference(x, sampler, data).cpu())
+        sampler = GraphSAINTRandomWalkSampler(data, batch_size=settings_dict['data']['batch_size'],
+                                              walk_length=2, sample_coverage=100, num_workers=12)
+        for subdata in sampler:
+            subdata = subdata.to(device)
+            outs.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
+            ys.append(subdata.y.cpu())
 
     outs = torch.stack(outs)
     ys = torch.stack(ys)
@@ -94,16 +97,17 @@ if __name__ == "__main__":
                           resnet_diff=settings_dict['resnet']['diff'],
                           resnet_shared=settings_dict['resnet']['shared'])
 
-    train_loader = DataLoader(train_dataset, shuffle=True)
-    test_loader = DataLoader(test_dataset)
-    hold_loader = DataLoader(hold_dataset)
+    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=1)
+    hold_loader = DataLoader(hold_dataset, batch_size=1)
 
     n_epochs = settings_dict['epochs']
-    nbr_sizes = settings_dict['model']['neighbor_sizes']
 
-    model = SAGENet(train_dataset.num_node_features, train_dataset.num_edge_features,
-                    settings_dict['model']['hidden_units'], train_dataset.num_classes, len(nbr_sizes))
-    model.reset_parameters()
+    model = DeeperGCN(train_dataset.num_node_features,
+                      train_dataset.num_edge_features,
+                      settings_dict['model']['hidden_units'],
+                      train_dataset.num_classes,
+                      settings_dict['model']['num_layers'])
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
