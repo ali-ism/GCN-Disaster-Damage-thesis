@@ -52,6 +52,8 @@ class IIDxBD(Dataset):
             zone = lambda row: '_'.join(row.name.split('_', 2)[:2])
             labels['zone'] = labels.apply(zone, axis=1)
             self.list_labels.append(labels)
+        
+        self.num_classes = 4
 
         super(IIDxBD, self).__init__(root, transform, pre_transform)
 
