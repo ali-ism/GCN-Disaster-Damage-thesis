@@ -84,20 +84,9 @@ def test(loader):
 
 if __name__ == "__main__":
 
-    train_dataset = IIDxBD(settings_dict['data']['iid_xbd_train_root'], 'train',
-                           resnet_pretrained=settings_dict['resnet']['pretrained'],
-                           resnet_diff=settings_dict['resnet']['diff'],
-                           resnet_shared=settings_dict['resnet']['shared'])
-    
-    test_dataset = IIDxBD(settings_dict['data']['iid_xbd_test_root'], 'test',
-                          resnet_pretrained=settings_dict['resnet']['pretrained'],
-                          resnet_diff=settings_dict['resnet']['diff'],
-                          resnet_shared=settings_dict['resnet']['shared'])
-    
-    hold_dataset = IIDxBD(settings_dict['data']['iid_xbd_hold_root'], 'hold',
-                          resnet_pretrained=settings_dict['resnet']['pretrained'],
-                          resnet_diff=settings_dict['resnet']['diff'],
-                          resnet_shared=settings_dict['resnet']['shared'])
+    train_dataset = IIDxBD(settings_dict['data']['iid_xbd_train_root'], 'train')
+    test_dataset = IIDxBD(settings_dict['data']['iid_xbd_test_root'], 'test')
+    hold_dataset = IIDxBD(settings_dict['data']['iid_xbd_hold_root'], 'hold')
 
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=1)
