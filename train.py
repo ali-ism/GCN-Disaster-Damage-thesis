@@ -38,6 +38,7 @@ def train(epoch):
         sampler = GraphSAINTRandomWalkSampler(data, batch_size=settings_dict['data']['batch_size'],
                                               walk_length=2, sample_coverage=100, num_workers=12)
         batch_loss = 0
+        total_examples = 0
         for subdata in sampler:
             subdata = subdata.to(device)
             optimizer.zero_grad()
@@ -46,12 +47,13 @@ def train(epoch):
             loss.backward()
             optimizer.step()
 
-            batch_loss += loss.item()
+            batch_loss += loss.item() * subdata.num_nodes
+            total_examples += subdata.num_nodes
             pbar.update()
         
         pbar.close()
-        total_loss += batch_loss / len(sampler)
-    return total_loss
+        total_loss += batch_loss / total_examples
+    return total_loss / len(train_loader)
 
 
 @torch.no_grad()
@@ -101,23 +103,24 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=1)
     hold_loader = DataLoader(hold_dataset, batch_size=1)
 
-    n_epochs = settings_dict['epochs']
-
     model = DeeperGCN(train_dataset.num_node_features,
                       train_dataset.num_edge_features,
                       settings_dict['model']['hidden_units'],
                       train_dataset.num_classes,
-                      settings_dict['model']['num_layers'])
+                      settings_dict['model']['num_layers'],
+                      settings_dict['model']['dropout_rate'])
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=20, min_lr=0.00001)
 
-    best_val_f1 = final_test_f1 = best_epoch = 0
+    n_epochs = settings_dict['epochs']
+
+    best_val_f1 = best_epoch = 0
     train_losses = np.empty(n_epochs)
     train_f1s = val_f1s = test_f1s = val_losses = test_losses = np.empty(n_epochs-5)
 
-    for epoch in range(1, n_epochs+1):
+    for epoch in range(settings_dict['staring_epoch'], n_epochs+1):
 
         with open('results/'+settings_dict['model']['name']+'_exp_progress.txt', 'w') as file:
             file.write(f'Last epoch: {epoch}\n')
@@ -147,7 +150,6 @@ if __name__ == "__main__":
             if val_f1 > best_val_f1:
                 best_val_f1 = val_f1
                 best_epoch = epoch
-                final_test_f1 = test_f1
                 model_path = settings_dict['model']['path'] + '/' + settings_dict['model']['name'] + '_best.pth'
                 print(f'New best model saved to: {model_path}')
                 torch.save(model.state_dict(), model_path)

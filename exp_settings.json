@@ -1,30 +1,28 @@
 {
     "resnet":{
-        "in_channels": 6,
         "pretrained": false,
         "shared": false,
         "diff": true,
         "path": "weights"
         },
     "data": {
-        "iid_xbd_train_root": "/home/ami31/scratch/datasets/iidxbd_train1",
-        "iid_xbd_test_root": "/home/ami31/scratch/datasets/iidxbd_test1",
-        "iid_xbd_hold_root": "/home/ami31/scratch/datasets/iidxbd_hold1",
+        "iid_xbd_train_root": "/home/ami31/scratch/datasets/iidxbd_train",
+        "iid_xbd_test_root": "/home/ami31/scratch/datasets/iidxbd_test",
+        "iid_xbd_hold_root": "/home/ami31/scratch/datasets/iidxbd_hold",
         "train_bldgs": "/home/ami31/scratch/datasets/xbd/train_bldgs/",
         "test_bldgs": "/home/ami31/scratch/datasets/xbd/test_bldgs/",
         "hold_bldgs": "/home/ami31/scratch/datasets/xbd/hold_bldgs/",
-        "batch_size": 1024,
-        "adabn": false,
-        "adabn_train": false
+        "batch_size": 1024
     },
     "model": {
         "name": "iidxbd_01",
-        "neighbor_sizes": [15, 10],
+        "path": "weights",
         "hidden_units": 256,
         "num_layers": 7,
-        "path": "weights",
-        "lr": 0.003
-    }, 
+        "lr": 0.003,
+        "dropout_rate": 0.1
+    },
+    "starting_epoch": 1,
     "epochs": 100,
     "seed": 42,
     "save_best_only": true
