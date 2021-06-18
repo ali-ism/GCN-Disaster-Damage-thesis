@@ -12,13 +12,13 @@
         "train_bldgs": "/home/ami31/scratch/datasets/xbd/train_bldgs/",
         "test_bldgs": "/home/ami31/scratch/datasets/xbd/test_bldgs/",
         "hold_bldgs": "/home/ami31/scratch/datasets/xbd/hold_bldgs/",
-        "batch_size": 256
+        "batch_size": 32
     },
     "model": {
         "name": "iidxbd_01",
         "path": "weights",
         "hidden_units": 256,
-        "num_layers": 7,
+        "num_layers": 2,
         "lr": 0.003,
         "dropout_rate": 0.1
     },
