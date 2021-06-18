@@ -22,11 +22,6 @@ torch.backends.cudnn.benchmark = False
 #normalizer = tr.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 transform = tr.ToTensor()
 
-resnet50 = load_feature_extractor(settings_dict['resnet']['pretrained'],
-                                  settings_dict['resnet']['shared'],
-                                  settings_dict['resnet']['diff'])
-resnet50 = resnet50.to(device)
-
 class IIDxBD(Dataset):
     def __init__(self,
                  root: str,
@@ -67,14 +62,21 @@ class IIDxBD(Dataset):
         for labels in self.list_labels:
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
-                processed_files.append(os.path.join(self.processed_dir, f'{zone}.pt'))
+                if not (labels[labels['zone'] == zone]['class'] == 'un-classified').all():
+                    processed_files.append(os.path.join(self.processed_dir, f'{zone}.pt'))
         return processed_files
 
     def process(self):
+        resnet50 = load_feature_extractor(settings_dict['resnet']['pretrained'],
+                                          settings_dict['resnet']['shared'],
+                                          settings_dict['resnet']['diff'])
+        resnet50 = resnet50.to(device)
+        
         for disaster, labels in zip(self.disaster_folders, self.list_labels):
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
-                if os.path.isfile(os.path.join(self.processed_dir, f'{zone}.pt')):
+                if os.path.isfile(os.path.join(self.processed_dir, f'{zone}.pt')) or \
+                (labels[labels['zone'] == zone]['class'] == 'un-classified').all():
                     continue
                 print(f'Building {zone}...') ##to replace pbar
                 list_pre_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_pre_disaster*')))
@@ -120,8 +122,6 @@ class IIDxBD(Dataset):
                 
                 #pbar.close()
 
-                if not x:
-                    continue
                 x = torch.stack(x)
                 y = torch.tensor(y)
 

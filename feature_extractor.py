@@ -5,14 +5,14 @@
 # Licensed under the CC BY-NC-SA 4.0 License.
 # Written by Vitus Benson (vbenson@bgc-jena.mpg.de)
 # ------------------------------------------------------------------------------
+import os
+import copy
+import json
+from tqdm import tqdm
+import urllib.request
 import torch
 import torch.nn as nn
 from torchvision.models import resnet50
-import copy
-import urllib.request
-from tqdm import tqdm
-import os
-import json
 
 
 class ConvBlock(nn.Module):
