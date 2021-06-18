@@ -36,7 +36,7 @@ def train(epoch):
     total_loss = 0
     for data in train_loader:
         sampler = GraphSAINTRandomWalkSampler(data, batch_size=settings_dict['data']['batch_size'],
-                                              walk_length=2, sample_coverage=100, num_workers=12)
+                                              walk_length=2, sample_coverage=100, num_workers=2)
         batch_loss = 0
         total_examples = 0
         for subdata in sampler:
@@ -65,7 +65,7 @@ def test(loader):
 
     for data in loader:
         sampler = GraphSAINTRandomWalkSampler(data, batch_size=settings_dict['data']['batch_size'],
-                                              walk_length=2, sample_coverage=100, num_workers=12)
+                                              walk_length=2, sample_coverage=100, num_workers=2)
         for subdata in sampler:
             subdata = subdata.to(device)
             outs.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
