@@ -109,7 +109,7 @@ if __name__ == "__main__":
     train_losses = np.empty(n_epochs)
     train_f1s = val_f1s = test_f1s = val_losses = test_losses = np.empty(n_epochs-5)
 
-    for epoch in range(settings_dict['staring_epoch'], n_epochs+1):
+    for epoch in range(settings_dict['starting_epoch'], n_epochs+1):
 
         with open('results/'+settings_dict['model']['name']+'_exp_progress.txt', 'w') as file:
             file.write(f'Last epoch: {epoch}\n')
