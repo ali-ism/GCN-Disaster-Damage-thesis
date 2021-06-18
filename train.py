@@ -17,6 +17,9 @@ from tqdm import tqdm
 from dataset import IIDxBD
 from model import DeeperGCN
 from metrics import xview2_f1_score
+import faulthandler
+
+faulthandler.enable()
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
