@@ -69,3 +69,5 @@ def test_graph_saint():
         assert sample.edge_id.numel() == sample.num_edges
         assert sample.node_norm.numel() == sample.num_nodes
         assert sample.edge_norm.numel() == sample.num_edges
+
+print('Done!')
