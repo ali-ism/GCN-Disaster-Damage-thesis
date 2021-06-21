@@ -9,7 +9,7 @@ import torchvision.transforms as tr
 from PIL import Image
 from torch_geometric.data import Data, Dataset
 from feature_extractor import load_feature_extractor
-from utils import build_edge_idx, get_edge_weight
+from utils import build_edge_idx, get_edge_features
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
@@ -138,7 +138,7 @@ class IIDxBD(Dataset):
                     node2 = x[edge_index[1,i]]
                     coords1 = coords[edge_index[0,i]]
                     coords2 = coords[edge_index[1,i]]
-                    attr1, attr2 = get_edge_weight(node1, node2, coords1, coords2)
+                    attr1, attr2 = get_edge_features(node1, node2, coords1, coords2)
                     edge_attr[i,0] = attr1
                     edge_attr[i,1] = attr2
                     #pbar.update()
