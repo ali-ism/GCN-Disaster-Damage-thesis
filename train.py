@@ -82,6 +82,37 @@ def test(loader):
     return f1, loss
 
 
+def save_results() -> None:
+    plt.figure()
+    plt.plot(train_losses)
+    plt.plot(val_losses)
+    plt.plot(test_losses)
+    plt.legend(['train', 'val', 'test'])
+    plt.xlabel('epochs')
+    plt.ylabel('loss')
+    plt.savefig('results/'+settings_dict['model']['name']+'_loss.eps')
+    plt.savefig('results/'+settings_dict['model']['name']+'_loss.png')
+    plt.figure()
+    plt.plot(train_f1s)
+    plt.plot(val_f1s)
+    plt.plot(test_f1s)
+    plt.legend(['train', 'val', 'test'])
+    plt.xlabel('epochs')
+    plt.ylabel('xview2 f1')
+    plt.savefig('results/'+settings_dict['model']['name']+'_f1.eps')
+    plt.savefig('results/'+settings_dict['model']['name']+'_loss.png')
+
+    np.save('results/'+settings_dict['model']['name']+'_loss_train.npy', train_losses)
+    np.save('results/'+settings_dict['model']['name']+'_loss_val.npy', val_losses)
+    np.save('results/'+settings_dict['model']['name']+'_loss_test.npy', test_losses)
+    np.save('results/'+settings_dict['model']['name']+'_f1_train.npy', train_f1s)
+    np.save('results/'+settings_dict['model']['name']+'_f1_val.npy', val_f1s)
+    np.save('results/'+settings_dict['model']['name']+'_f1_test.npy', test_f1s)
+
+    with open('results/'+settings_dict['model']['name']+'_exp_progress.txt', 'a') as file:
+        file.write(f'Best epoch: {best_epoch}')
+
+
 if __name__ == "__main__":
 
     train_dataset = IIDxBD(settings_dict['data']['iid_xbd_train_root'], 'train')
@@ -142,33 +173,11 @@ if __name__ == "__main__":
                 model_path = settings_dict['model']['path'] + '/' + settings_dict['model']['name'] + '_best.pth'
                 print(f'New best model saved to: {model_path}')
                 torch.save(model.state_dict(), model_path)
+        
+        if not (epoch % 10):
+            save_results()
     
-    plt.figure()
-    plt.plot(train_losses)
-    plt.plot(val_losses)
-    plt.plot(test_losses)
-    plt.legend(['train', 'val', 'test'])
-    plt.xlabel('epochs')
-    plt.ylabel('loss')
-    plt.savefig('results/'+settings_dict['model']['name']+'_loss.eps')
-    plt.figure()
-    plt.plot(train_f1s)
-    plt.plot(val_f1s)
-    plt.plot(test_f1s)
-    plt.legend(['train', 'val', 'test'])
-    plt.xlabel('epochs')
-    plt.ylabel('xview2 f1')
-    plt.savefig('results/'+settings_dict['model']['name']+'_f1.eps')
-
-    np.save('results/'+settings_dict['model']['name']+'_loss_train.npy', train_losses)
-    np.save('results/'+settings_dict['model']['name']+'_loss_val.npy', val_losses)
-    np.save('results/'+settings_dict['model']['name']+'_loss_test.npy', test_losses)
-    np.save('results/'+settings_dict['model']['name']+'_f1_train.npy', train_f1s)
-    np.save('results/'+settings_dict['model']['name']+'_f1_val.npy', val_f1s)
-    np.save('results/'+settings_dict['model']['name']+'_f1_test.npy', test_f1s)
-
     with open('results/'+settings_dict['model']['name']+'_exp_settings.json', 'w') as JSON:
         json.dump(settings_dict, JSON)
     
-    with open('results/'+settings_dict['model']['name']+'_exp_progress.txt', 'a') as file:
-        file.write(f'Best epoch: {best_epoch}')
+    save_results()

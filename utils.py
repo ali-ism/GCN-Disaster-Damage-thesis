@@ -70,7 +70,7 @@ def get_edge_features(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[f
         Node feature similarity is based on the adjacency matrix built by:
             S. Saha, L. Mou, X. X. Zhu, F. Bovolo and L. Bruzzone, "Semisupervised Change Detection Using Graph Convolutional Network," in IEEE Geoscience and Remote Sensing Letters, vol. 18, no. 4, pp. 607-611, April 2021, doi: 10.1109/LGRS.2020.2985340.
     """
-    D = node1.shape[1]
+    D = node1.shape[0]
     s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
     s[s.isnan()] = 0
     node_sim = 1 - torch.sum(s)/D
