@@ -109,6 +109,10 @@ def save_results() -> None:
     np.save('results/'+settings_dict['model']['name']+'_f1_val.npy', val_f1s)
     np.save('results/'+settings_dict['model']['name']+'_f1_test.npy', test_f1s)
 
+    best_val_epoch = {'best_val_f1': best_val_f1, 'best_epoch': best_epoch}
+    with open('results/'+settings_dict['model']['name']+'_best_val_epoch.json', 'w') as JSON:
+        json.dump(best_val_epoch, JSON)
+
     with open('results/'+settings_dict['model']['name']+'_exp_progress.txt', 'a') as file:
         file.write(f'Best epoch: {best_epoch}')
 
@@ -136,9 +140,21 @@ if __name__ == "__main__":
 
     n_epochs = settings_dict['epochs']
 
-    best_val_f1 = best_epoch = 0
-    train_losses = np.empty(n_epochs)
-    train_f1s = val_f1s = test_f1s = val_losses = test_losses = np.empty(n_epochs-5)
+    if settings_dict['starting_epoch'] == 1:
+        best_val_f1 = best_epoch = 0
+        train_losses = np.empty(n_epochs)
+        train_f1s = val_f1s = test_f1s = val_losses = test_losses = np.empty(n_epochs-5)
+    else:
+        with open('results/'+settings_dict['model']['name']+'_best_val_epoch.json', 'r') as JSON:
+            best_val_epoch = json.load(JSON)
+        best_val_f1 = best_val_epoch['best_val_f1']
+        best_epoch = best_val_epoch['best_epoch']
+        train_losses = np.load('results/'+settings_dict['model']['name']+'_loss_train.npy')
+        val_losses = np.load('results/'+settings_dict['model']['name']+'_loss_val.npy')
+        test_losses = np.load('results/'+settings_dict['model']['name']+'_loss_test.npy')
+        train_f1s = np.load('results/'+settings_dict['model']['name']+'_f1_train.npy')
+        val_f1s = np.load('results/'+settings_dict['model']['name']+'_f1_val.npy')
+        test_f1s = np.load('results/'+settings_dict['model']['name']+'_f1_test.npy')
 
     for epoch in range(settings_dict['starting_epoch'], n_epochs+1):
 
