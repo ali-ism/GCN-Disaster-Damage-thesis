@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch_geometric.data import DataLoader, GraphSAINTRandomWalkSampler
+from torch_geometric.data import DataLoader, GraphSAINTNodeSampler
 from tqdm import tqdm
 from dataset import IIDxBD
 from model import DeeperGCN
@@ -35,8 +35,8 @@ def train(epoch):
 
     total_loss = 0
     for data in train_loader:
-        sampler = GraphSAINTRandomWalkSampler(data, batch_size=settings_dict['data']['batch_size'],
-                                              walk_length=2, sample_coverage=0, num_workers=0)
+        sampler = GraphSAINTNodeSampler(data, batch_size=settings_dict['data']['batch_size'],
+                                        sample_coverage=0, num_steps=5, num_workers=2)
         batch_loss = 0
         total_examples = 0
         for subdata in sampler:
@@ -64,8 +64,8 @@ def test(loader):
     outs = []
 
     for data in loader:
-        sampler = GraphSAINTRandomWalkSampler(data, batch_size=settings_dict['data']['batch_size'],
-                                              walk_length=2, sample_coverage=0, num_workers=0)
+        sampler = GraphSAINTNodeSampler(data, batch_size=settings_dict['data']['batch_size'],
+                                        sample_coverage=0, num_steps=5, num_workers=2)
         for subdata in sampler:
             subdata = subdata.to(device)
             outs.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
