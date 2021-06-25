@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch_geometric.data import DataLoader, GraphSAINTNodeSampler
+from torch_geometric.data import GraphSAINTNodeSampler
 from tqdm import tqdm
 from dataset import IIDxBD
 from model import DeeperGCN
@@ -30,11 +30,11 @@ torch.backends.cudnn.benchmark = False
 def train(epoch):
     model.train()
 
-    pbar = tqdm(total=len(train_loader))
+    pbar = tqdm(total=len(train_dataset))
     pbar.set_description(f'Epoch {epoch:02d}')
 
     total_loss = 0
-    for data in train_loader:
+    for data in train_dataset:
         sampler = GraphSAINTNodeSampler(data, batch_size=settings_dict['data']['batch_size'],
                                         sample_coverage=0, num_steps=5, num_workers=2)
         batch_loss = 0
@@ -53,7 +53,7 @@ def train(epoch):
         
         pbar.close()
         total_loss += batch_loss / total_examples
-    return total_loss / len(train_loader)
+    return total_loss / len(train_dataset)
 
 
 @torch.no_grad()
@@ -75,7 +75,7 @@ def test(loader):
     ys = torch.stack(ys)
     
     f1 = xview2_f1_score(ys, outs)
-    if loader is not train_loader:
+    if loader is not train_dataset:
         loss = F.binary_cross_entropy(outs, ys)
     else:
         loss = None
@@ -123,9 +123,9 @@ if __name__ == "__main__":
     test_dataset = IIDxBD(settings_dict['data']['iid_xbd_test_root'], 'test')
     hold_dataset = IIDxBD(settings_dict['data']['iid_xbd_hold_root'], 'hold')
 
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=1)
-    hold_loader = DataLoader(hold_dataset, batch_size=1)
+    #train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+    #test_loader = DataLoader(test_dataset, batch_size=1)
+    #hold_loader = DataLoader(hold_dataset, batch_size=1)
 
     model = DeeperGCN(train_dataset.num_node_features,
                       train_dataset.num_edge_features,
@@ -171,9 +171,9 @@ if __name__ == "__main__":
             torch.save(model.state_dict(), model_path)
 
         if epoch > 5:
-            train_f1, _ = test(train_loader)
-            val_f1, val_loss = test(test_loader)
-            test_f1, test_loss = test(hold_loader)
+            train_f1, _ = test(train_dataset)
+            val_f1, val_loss = test(test_dataset)
+            test_f1, test_loss = test(hold_dataset)
             scheduler.step(val_loss)
             train_f1s[epoch-6] = train_f1
             val_f1s[epoch-6] = val_f1
