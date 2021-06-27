@@ -21,8 +21,24 @@ from metrics import xview2_f1_score
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
+seed = settings_dict['seed']
+batch_size = settings_dict['data']['batch_size']
+num_steps = settings_dict['data']['saint_num_steps']
+name = settings_dict['model']['name']
+train_root = settings_dict['data']['iid_xbd_train_root']
+test_root = settings_dict['data']['iid_xbd_test_root']
+hold_root = settings_dict['data']['iid_xbd_hold_root']
+hidden_units = settings_dict['model']['hidden_units']
+num_layers = settings_dict['model']['num_layers']
+dropout_rate = settings_dict['model']['dropout_rate']
+lr = settings_dict['model']['lr']
+n_epochs = settings_dict['epochs']
+starting_epoch = settings_dict['starting_epoch']
+path = settings_dict['model']['path']
+save_best_only = settings_dict['save_best_only']
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-torch.manual_seed(settings_dict['seed'])
+torch.manual_seed(seed)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
@@ -35,8 +51,7 @@ def train(epoch):
 
     total_loss = 0
     for data in train_dataset:
-        sampler = GraphSAINTNodeSampler(data, batch_size=settings_dict['data']['batch_size'],
-                                        sample_coverage=0, num_steps=5, num_workers=2)
+        sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
         batch_loss = 0
         total_examples = 0
         for subdata in sampler:
@@ -64,8 +79,7 @@ def test(loader):
     outs = []
 
     for data in loader:
-        sampler = GraphSAINTNodeSampler(data, batch_size=settings_dict['data']['batch_size'],
-                                        sample_coverage=0, num_steps=5, num_workers=2)
+        sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
         for subdata in sampler:
             subdata = subdata.to(device)
             outs.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
@@ -90,8 +104,8 @@ def save_results() -> None:
     plt.legend(['train', 'val', 'test'])
     plt.xlabel('epochs')
     plt.ylabel('loss')
-    plt.savefig('results/'+settings_dict['model']['name']+'_loss.eps')
-    plt.savefig('results/'+settings_dict['model']['name']+'_loss.png')
+    plt.savefig('results/'+name+'_loss.eps')
+    plt.savefig('results/'+name+'_loss.png')
     plt.figure()
     plt.plot(train_f1s)
     plt.plot(val_f1s)
@@ -99,66 +113,60 @@ def save_results() -> None:
     plt.legend(['train', 'val', 'test'])
     plt.xlabel('epochs')
     plt.ylabel('xview2 f1')
-    plt.savefig('results/'+settings_dict['model']['name']+'_f1.eps')
-    plt.savefig('results/'+settings_dict['model']['name']+'_loss.png')
+    plt.savefig('results/'+name+'_f1.eps')
+    plt.savefig('results/'+name+'_loss.png')
 
-    np.save('results/'+settings_dict['model']['name']+'_loss_train.npy', train_losses)
-    np.save('results/'+settings_dict['model']['name']+'_loss_val.npy', val_losses)
-    np.save('results/'+settings_dict['model']['name']+'_loss_test.npy', test_losses)
-    np.save('results/'+settings_dict['model']['name']+'_f1_train.npy', train_f1s)
-    np.save('results/'+settings_dict['model']['name']+'_f1_val.npy', val_f1s)
-    np.save('results/'+settings_dict['model']['name']+'_f1_test.npy', test_f1s)
+    np.save('results/'+name+'_loss_train.npy', train_losses)
+    np.save('results/'+name+'_loss_val.npy', val_losses)
+    np.save('results/'+name+'_loss_test.npy', test_losses)
+    np.save('results/'+name+'_f1_train.npy', train_f1s)
+    np.save('results/'+name+'_f1_val.npy', val_f1s)
+    np.save('results/'+name+'_f1_test.npy', test_f1s)
 
     best_val_epoch = {'best_val_f1': best_val_f1, 'best_epoch': best_epoch}
-    with open('results/'+settings_dict['model']['name']+'_best_val_epoch.json', 'w') as JSON:
+    with open('results/'+name+'_best_val_epoch.json', 'w') as JSON:
         json.dump(best_val_epoch, JSON)
 
-    with open('results/'+settings_dict['model']['name']+'_exp_progress.txt', 'a') as file:
+    with open('results/'+name+'_exp_progress.txt', 'a') as file:
         file.write(f'Best epoch: {best_epoch}')
 
 
 if __name__ == "__main__":
 
-    train_dataset = IIDxBD(settings_dict['data']['iid_xbd_train_root'], 'train')
-    test_dataset = IIDxBD(settings_dict['data']['iid_xbd_test_root'], 'test')
-    hold_dataset = IIDxBD(settings_dict['data']['iid_xbd_hold_root'], 'hold')
-
-    #train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
-    #test_loader = DataLoader(test_dataset, batch_size=1)
-    #hold_loader = DataLoader(hold_dataset, batch_size=1)
+    train_dataset = IIDxBD(train_root, 'train')
+    test_dataset = IIDxBD(test_root, 'test')
+    hold_dataset = IIDxBD(hold_root, 'hold')
 
     model = DeeperGCN(train_dataset.num_node_features,
                       train_dataset.num_edge_features,
-                      settings_dict['model']['hidden_units'],
+                      hidden_units,
                       train_dataset.num_classes,
-                      settings_dict['model']['num_layers'],
-                      settings_dict['model']['dropout_rate'])
+                      num_layers,
+                      dropout_rate)
     model = model.to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=20, min_lr=0.00001)
 
-    n_epochs = settings_dict['epochs']
-
-    if settings_dict['starting_epoch'] == 1:
+    if starting_epoch == 1:
         best_val_f1 = best_epoch = 0
         train_losses = np.empty(n_epochs)
         train_f1s = val_f1s = test_f1s = val_losses = test_losses = np.empty(n_epochs-5)
     else:
-        with open('results/'+settings_dict['model']['name']+'_best_val_epoch.json', 'r') as JSON:
+        with open('results/'+name+'_best_val_epoch.json', 'r') as JSON:
             best_val_epoch = json.load(JSON)
         best_val_f1 = best_val_epoch['best_val_f1']
         best_epoch = best_val_epoch['best_epoch']
-        train_losses = np.load('results/'+settings_dict['model']['name']+'_loss_train.npy')
-        val_losses = np.load('results/'+settings_dict['model']['name']+'_loss_val.npy')
-        test_losses = np.load('results/'+settings_dict['model']['name']+'_loss_test.npy')
-        train_f1s = np.load('results/'+settings_dict['model']['name']+'_f1_train.npy')
-        val_f1s = np.load('results/'+settings_dict['model']['name']+'_f1_val.npy')
-        test_f1s = np.load('results/'+settings_dict['model']['name']+'_f1_test.npy')
+        train_losses = np.load('results/'+name+'_loss_train.npy')
+        val_losses = np.load('results/'+name+'_loss_val.npy')
+        test_losses = np.load('results/'+name+'_loss_test.npy')
+        train_f1s = np.load('results/'+name+'_f1_train.npy')
+        val_f1s = np.load('results/'+name+'_f1_val.npy')
+        test_f1s = np.load('results/'+name+'_f1_test.npy')
 
-    for epoch in range(settings_dict['starting_epoch'], n_epochs+1):
+    for epoch in range(starting_epoch, n_epochs+1):
 
-        with open('results/'+settings_dict['model']['name']+'_exp_progress.txt', 'w') as file:
+        with open('results/'+name+'_exp_progress.txt', 'w') as file:
             file.write(f'Last epoch: {epoch}\n')
         
         loss = train(epoch)
@@ -166,8 +174,8 @@ if __name__ == "__main__":
         print('**********************************************')
         print(f'Epoch {epoch:02d}, Train Loss: {loss:.4f}')
     
-        if not settings_dict['save_best_only']:
-            model_path = settings_dict['model']['path'] + '/' + settings_dict['model']['name'] + '.pth'
+        if not save_best_only:
+            model_path = path + '/' + name + '.pth'
             torch.save(model.state_dict(), model_path)
 
         if epoch > 5:
@@ -186,14 +194,14 @@ if __name__ == "__main__":
             if val_f1 > best_val_f1:
                 best_val_f1 = val_f1
                 best_epoch = epoch
-                model_path = settings_dict['model']['path'] + '/' + settings_dict['model']['name'] + '_best.pth'
+                model_path = path + '/' + name + '_best.pth'
                 print(f'New best model saved to: {model_path}')
                 torch.save(model.state_dict(), model_path)
         
         if not (epoch % 10):
             save_results()
     
-    with open('results/'+settings_dict['model']['name']+'_exp_settings.json', 'w') as JSON:
+    with open('results/'+name+'_exp_settings.json', 'w') as JSON:
         json.dump(settings_dict, JSON)
     
     save_results()

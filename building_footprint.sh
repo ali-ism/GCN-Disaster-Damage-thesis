@@ -12,4 +12,4 @@
 module purge
 module load python/3.8.2
 
-python3 building_footprint.py
+python3 -u building_footprint.py

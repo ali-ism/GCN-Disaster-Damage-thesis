@@ -12,4 +12,4 @@
 module purge
 module load python/3.8.2
 
-python3 dataset.py
+python3 -u dataset.py
