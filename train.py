@@ -46,7 +46,7 @@ torch.backends.cudnn.benchmark = False
 def train(epoch):
     model.train()
 
-    pbar = tqdm(total=len(train_dataset))
+    pbar = tqdm(total=len(train_dataset.num_nodes))
     pbar.set_description(f'Epoch {epoch:02d}')
 
     total_loss = 0
@@ -64,7 +64,7 @@ def train(epoch):
 
             batch_loss += loss.item() * subdata.num_nodes
             total_examples += subdata.num_nodes
-            pbar.update()
+            pbar.update(len(sampler))
         
         pbar.close()
         total_loss += batch_loss / total_examples
