@@ -14,8 +14,21 @@ from utils import build_edge_idx, get_edge_features
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
+seed = settings_dict['seed']
+train_path = settings_dict['data']['train_bldgs']
+test_path = settings_dict['data']['test_bldgs']
+hold_path = settings_dict['data']['hold_bldgs']
+resnet_pretrained = settings_dict['resnet']['pretrained']
+resnet_shared = settings_dict['resnet']['shared']
+resnet_diff = settings_dict['resnet']['diff']
+train_root = settings_dict['data']['iid_xbd_train_root']
+test_root = settings_dict['data']['iid_xbd_test_root']
+hold_root = settings_dict['data']['iid_xbd_hold_root']
+
+del settings_dict
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-torch.manual_seed(settings_dict['seed'])
+torch.manual_seed(seed)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
@@ -30,11 +43,11 @@ class IIDxBD(Dataset):
                  pre_transform=None) -> None:
 
         if subset == 'train':
-            self.path = settings_dict['data']['train_bldgs']
+            self.path = train_path
         elif subset == 'test':
-            self.path = settings_dict['data']['test_bldgs']
+            self.path = test_path
         elif subset == 'hold':
-            self.path = settings_dict['data']['hold_bldgs']
+            self.path = hold_path
         else:
             raise ValueError("Subset can be either 'train', 'test' or 'hold'.")
         
@@ -67,9 +80,7 @@ class IIDxBD(Dataset):
         return processed_files
 
     def process(self):
-        resnet50 = load_feature_extractor(settings_dict['resnet']['pretrained'],
-                                          settings_dict['resnet']['shared'],
-                                          settings_dict['resnet']['diff'])
+        resnet50 = load_feature_extractor(resnet_pretrained, resnet_shared, resnet_diff)
         resnet50 = resnet50.to(device)
         
         for disaster, labels in zip(self.disaster_folders, self.list_labels):
@@ -162,9 +173,7 @@ class IIDxBD(Dataset):
 
 
 if __name__ == "__main__":
-    roots = [settings_dict['data']['iid_xbd_train_root'],
-             settings_dict['data']['iid_xbd_test_root'],
-             settings_dict['data']['iid_xbd_hold_root']]
+    roots = [train_root, test_root, hold_root]
     subsets = ['train', 'test', 'hold']
     for subset, root in zip(subsets, roots):
         print(f'Building dataset for subset {subset}...')

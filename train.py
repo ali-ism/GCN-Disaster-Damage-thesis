@@ -64,7 +64,7 @@ def train(epoch):
 
             batch_loss += loss.item() * subdata.num_nodes
             total_examples += subdata.num_nodes
-            pbar.update(len(sampler))
+            pbar.update(subdata.num_nodes)
         
         pbar.close()
         total_loss += batch_loss / total_examples
