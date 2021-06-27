@@ -1,3 +1,4 @@
+import torch
 import torch.nn.functional as F
 from torch.nn import Module, ModuleList, Linear, LayerNorm, ReLU
 from torch_geometric.nn import GENConv, DeepGCNLayer
@@ -40,4 +41,4 @@ class DeeperGCN(Module):
         x = self.layers[0].act(self.layers[0].norm(x))
         x = F.dropout(x, p=self.dropout_rate, training=self.training)
 
-        return F.sigmoid(self.lin(x))
+        return torch.sigmoid(self.lin(x))

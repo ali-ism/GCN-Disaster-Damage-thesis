@@ -58,7 +58,7 @@ def train(epoch):
             subdata = subdata.to(device)
             optimizer.zero_grad()
             out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
-            loss = F.binary_cross_entropy(out, subdata.y)
+            loss = F.binary_cross_entropy(out, subdata.y.float())
             loss.backward()
             optimizer.step()
 
@@ -90,7 +90,7 @@ def test(loader):
     
     f1 = xview2_f1_score(ys, outs)
     if loader is not train_dataset:
-        loss = F.binary_cross_entropy(outs, ys)
+        loss = F.binary_cross_entropy(outs, ys.float())
     else:
         loss = None
     return f1, loss
