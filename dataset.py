@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 import json
-#from tqdm import tqdm
 import pandas as pd
 from typing import List
 import torch
@@ -75,7 +74,8 @@ class IIDxBD(Dataset):
         for labels in self.list_labels:
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
-                if not (labels[labels['zone'] == zone]['class'] == 'un-classified').all():
+                if not (labels[labels['zone'] == zone]['class'] == 'un-classified').all() or \
+                (labels[labels['zone'] == zone]['class'] != 'un-classified').sum() == 1:
                     processed_files.append(os.path.join(self.processed_dir, f'{zone}.pt'))
         return processed_files
 
@@ -87,17 +87,15 @@ class IIDxBD(Dataset):
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
                 if os.path.isfile(os.path.join(self.processed_dir, f'{zone}.pt')) or \
-                (labels[labels['zone'] == zone]['class'] == 'un-classified').all():
+                (labels[labels['zone'] == zone]['class'] == 'un-classified').all() or \
+                (labels[labels['zone'] == zone]['class'] != 'un-classified').sum() == 1:
                     continue
-                print(f'Building {zone}...') ##to replace pbar
+                print(f'Building {zone}...')
                 list_pre_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_pre_disaster*')))
                 list_post_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_post_disaster*')))
                 x = []
                 y = []
                 coords = []
-
-                #pbar = tqdm(total=len(list_post_images))
-                #pbar.set_description(f'Building {zone} node features')
 
                 for pre_image_file, post_image_file in zip(list_pre_images, list_post_images):
                     
@@ -129,9 +127,6 @@ class IIDxBD(Dataset):
                     images = images.to(device)
                     with torch.no_grad():
                         x.append(resnet50(images.unsqueeze(0)).flatten().cpu())
-                    #pbar.update()
-                
-                #pbar.close()
 
                 x = torch.stack(x)
                 y = torch.tensor(y)
@@ -140,9 +135,6 @@ class IIDxBD(Dataset):
                 edge_index = build_edge_idx(x.shape[0])
 
                 #edge features
-                #pbar = tqdm(total=edge_index.shape[1])
-                #pbar.set_description(f'Building {zone} edge features')
-                
                 edge_attr = torch.empty((edge_index.shape[1],2))
                 for i in range(edge_index.shape[1]):
                     node1 = x[edge_index[0,i]]
@@ -152,9 +144,7 @@ class IIDxBD(Dataset):
                     attr1, attr2 = get_edge_features(node1, node2, coords1, coords2)
                     edge_attr[i,0] = attr1
                     edge_attr[i,1] = attr2
-                    #pbar.update()
                 
-                #pbar.close()
                 data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
 
                 if self.pre_filter is not None and not self.pre_filter(data):
