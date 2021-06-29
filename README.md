@@ -1,6 +1,5 @@
 # TODO
-- implement dataset visualization
-- Implement model and train
+- implement model embedding visualization
 
 # Should I do one-hot encoding?
 - https://stats.stackexchange.com/questions/140061/how-to-set-up-neural-network-to-output-ordinal-data
@@ -24,5 +23,3 @@ Neighbor sampler works on a single graph. So we can:
 - ClusterGCN: uses a graph clustering algorithm to sample dense subgraphs to use as mini-batches.
 - GraphSAINT: samples subgraphs based on a node sampling probability to use as mini-batches. The parameters of the sampling probability are also used to normalize the loss function to reduce bias due to sampling.
 - SIGN: does not rely on graph sampling but precomputes fixed neighborhood aggregations inspired by Inception. A regular MLP can subsequently be trained to make predictions.
-
-- They probably don't support multidimensional edge features. Maybe we can take the average?
