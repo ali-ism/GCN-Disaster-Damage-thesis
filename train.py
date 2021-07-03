@@ -14,7 +14,7 @@ import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.data import GraphSAINTNodeSampler
 from tqdm import tqdm
-from dataset import IIDxBD
+from dataset import xBD
 from model import DeeperGCN
 from metrics import xview2_f1_score
 
@@ -25,9 +25,26 @@ seed = settings_dict['seed']
 batch_size = settings_dict['data']['batch_size']
 num_steps = settings_dict['data']['saint_num_steps']
 name = settings_dict['model']['name']
-train_root = settings_dict['data']['iid_xbd_train_root']
-test_root = settings_dict['data']['iid_xbd_test_root']
-hold_root = settings_dict['data']['iid_xbd_hold_root']
+
+train_set = settings_dict['train_set']
+train_roots = []
+test_roots = []
+for set in train_set:
+    if set == 'mexico-earthquake':
+        train_roots.append(settings_dict['data']['mexico_train_root'])
+        test_roots.append(settings_dict['data']['mexico_test_root'])
+    elif set == 'palu-tsunami':
+        train_roots.append(settings_dict['data']['palu_train_root'])
+        test_roots.append(settings_dict['data']['palu_test_root'])
+    elif set == 'hurricane-matthew':
+        train_roots.append(settings_dict['data']['matthew_train_root'])
+        test_roots.append(settings_dict['data']['matthew_test_root'])
+    elif set == 'santa-rosa-wildfire':
+        train_roots.append(settings_dict['data']['rosa_train_root'])
+        test_roots.append(settings_dict['data']['rosa_test_root'])
+
+mexico_hold = settings_dict['data']['mexico_hold_root']
+
 hidden_units = settings_dict['model']['hidden_units']
 num_layers = settings_dict['model']['num_layers']
 dropout_rate = settings_dict['model']['dropout_rate']
@@ -46,11 +63,11 @@ torch.backends.cudnn.benchmark = False
 def train(epoch):
     model.train()
 
-    pbar = tqdm(total=len(train_dataset))
+    pbar = tqdm(total=sum([data.num_nodes for data in train_data_list]))
     pbar.set_description(f'Epoch {epoch:02d}')
 
     total_loss = 0
-    for data in train_dataset:
+    for data in train_data_list:
         sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
         batch_loss = 0
         total_examples = 0
@@ -64,13 +81,11 @@ def train(epoch):
 
             batch_loss += loss.item() * subdata.num_nodes
             total_examples += subdata.num_nodes
-        
-        pbar.update()
+            pbar.update(subdata.num_nodes)
         total_loss += batch_loss / total_examples
     
     pbar.close()
-
-    return total_loss / len(train_dataset)
+    return total_loss / len(train_data_list)
 
 
 @torch.no_grad()
@@ -91,7 +106,7 @@ def test(loader):
     ys = torch.stack(ys)
     
     f1 = xview2_f1_score(ys, outs)
-    if loader is not train_dataset:
+    if loader is not train_data_list:
         loss = F.binary_cross_entropy(outs, ys.float())
     else:
         loss = None
@@ -135,14 +150,20 @@ def save_results() -> None:
 
 if __name__ == "__main__":
 
-    train_dataset = IIDxBD(train_root, 'train')
-    test_dataset = IIDxBD(test_root, 'test')
-    hold_dataset = IIDxBD(hold_root, 'hold')
+    train_data_list = []
+    test_data_list = []
+    for disaster, train_root, test_root in zip(train_set, train_roots, test_roots):
+        dataset = xBD(train_root, disaster, 'train')
+        train_data_list.append(dataset[0])
+        dataset = xBD(test_root, disaster, 'test')
+        test_data_list.append(dataset[0])
 
-    model = DeeperGCN(train_dataset.num_node_features,
-                      train_dataset.num_edge_features,
+    hold_dataset = xBD(mexico_hold, 'mexico-earthquake', 'hold')
+
+    model = DeeperGCN(dataset.num_node_features,
+                      dataset.num_edge_features,
                       hidden_units,
-                      train_dataset.num_classes,
+                      dataset.num_classes,
                       num_layers,
                       dropout_rate)
     model = model.to(device)
@@ -181,8 +202,8 @@ if __name__ == "__main__":
             torch.save(model.state_dict(), model_path)
 
         if epoch > 5:
-            train_f1, _ = test(train_dataset)
-            val_f1, val_loss = test(test_dataset)
+            train_f1, _ = test(train_data_list)
+            val_f1, val_loss = test(test_data_list)
             test_f1, test_loss = test(hold_dataset)
             scheduler.step(val_loss)
             train_f1s[epoch-6] = train_f1

@@ -31,10 +31,11 @@
         "name": "iidxbd_01",
         "path": "weights",
         "hidden_units": 256,
-        "num_layers": 2,
+        "num_layers": 7,
         "lr": 0.003,
         "dropout_rate": 0.1
     },
+    "train_set": ["mexico-earthquake"],
     "starting_epoch": 1,
     "epochs": 100,
     "seed": 42,
