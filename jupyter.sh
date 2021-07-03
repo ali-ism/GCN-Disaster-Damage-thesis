@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=jupyter
-#SBATCH --partition=arza
+#SBATCH --partition=gpu
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
