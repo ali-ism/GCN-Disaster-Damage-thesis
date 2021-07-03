@@ -6,3 +6,4 @@ data/
 __pycache__/
 thesis.code-workspace
 .ipynb_checkpoints/
+*slurm*

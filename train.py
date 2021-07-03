@@ -16,7 +16,8 @@ from torch_geometric.data import GraphSAINTNodeSampler
 from tqdm import tqdm
 from dataset import xBD
 from model import DeeperGCN
-from metrics import xview2_f1_score
+from metrics import xview2_f1_score, parse_ordinal_output
+from sklearn.utils.class_weight import compute_class_weight
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
@@ -75,7 +76,7 @@ def train(epoch):
             subdata = subdata.to(device)
             optimizer.zero_grad()
             out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
-            loss = F.binary_cross_entropy(out, subdata.y.float())
+            loss = F.binary_cross_entropy(out, subdata.y.float(), weight=class_weight)
             loss.backward()
             optimizer.step()
 
@@ -107,7 +108,7 @@ def test(loader):
     
     f1 = xview2_f1_score(ys, outs)
     if loader is not train_data_list:
-        loss = F.binary_cross_entropy(outs, ys.float())
+        loss = F.binary_cross_entropy(outs, ys.float(), weight=class_weight)
     else:
         loss = None
     return f1, loss
@@ -160,12 +161,19 @@ if __name__ == "__main__":
 
     hold_dataset = xBD(mexico_hold, 'mexico-earthquake', 'hold')
 
+    y_org = torch.cat([data.y for data in train_data_list])
+    y_org = parse_ordinal_output(y_org)
+    class_weight = compute_class_weight('balanced', np.unique(y_org), y_org)
+
     model = DeeperGCN(dataset.num_node_features,
                       dataset.num_edge_features,
                       hidden_units,
                       dataset.num_classes,
                       num_layers,
                       dropout_rate)
+    if starting_epoch != 1:
+        model_path = path + '/' + name + '_best.pth'
+        model.load_state_dict(torch.load(model_path))
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
