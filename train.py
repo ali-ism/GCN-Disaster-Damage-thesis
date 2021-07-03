@@ -102,8 +102,8 @@ def test(loader):
             outs.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
             ys.append(subdata.y.cpu())
 
-    outs = torch.stack(outs)
-    ys = torch.stack(ys)
+    outs = torch.cat(outs)
+    ys = torch.cat(ys)
     
     f1 = xview2_f1_score(ys, outs)
     if loader is not train_data_list:
