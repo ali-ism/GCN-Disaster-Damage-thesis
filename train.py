@@ -63,51 +63,45 @@ torch.backends.cudnn.benchmark = False
 
 def train(epoch):
     model.train()
-
-    pbar = tqdm(total=sum([data.num_nodes for data in train_data_list]))
+    pbar = tqdm(total=sum([len(dataset) for dataset in train_data_list]))
     pbar.set_description(f'Epoch {epoch:02d}')
-
     total_loss = 0
-    for data in train_data_list:
-        sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
-        batch_loss = 0
-        total_examples = 0
-        for subdata in sampler:
-            subdata = subdata.to(device)
-            optimizer.zero_grad()
-            out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
-            loss = F.binary_cross_entropy(out, subdata.y.float(), weight=class_weight)
-            loss.backward()
-            optimizer.step()
-
-            batch_loss += loss.item() * subdata.num_nodes
-            total_examples += subdata.num_nodes
-            pbar.update(subdata.num_nodes)
-        total_loss += batch_loss / total_examples
-    
+    for dataset in train_data_list:
+        for data in dataset:
+            sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
+            batch_loss = 0
+            total_examples = 0
+            for subdata in sampler:
+                subdata = subdata.to(device)
+                optimizer.zero_grad()
+                out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
+                loss = F.binary_cross_entropy(out, subdata.y.float(), weight=class_weight)
+                loss.backward()
+                optimizer.step()
+                batch_loss += loss.item() * subdata.num_nodes
+                total_examples += subdata.num_nodes
+            pbar.update()
+            total_loss += batch_loss / total_examples
     pbar.close()
     return total_loss / len(train_data_list)
 
 
 @torch.no_grad()
-def test(loader):
+def test(dataset_list):
     model.eval()
-
     ys = []
     outs = []
-
-    for data in loader:
-        sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
-        for subdata in sampler:
-            subdata = subdata.to(device)
-            outs.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
-            ys.append(subdata.y.cpu())
-
+    for dataset in dataset_list:
+        for data in dataset:
+            sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
+            for subdata in sampler:
+                subdata = subdata.to(device)
+                outs.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
+                ys.append(subdata.y.cpu())
     outs = torch.cat(outs)
     ys = torch.cat(ys)
-    
     f1 = xview2_f1_score(ys, outs)
-    if loader is not train_data_list:
+    if dataset_list is not train_data_list:
         loss = F.binary_cross_entropy(outs, ys.float(), weight=class_weight)
     else:
         loss = None
@@ -133,18 +127,15 @@ def save_results() -> None:
     plt.ylabel('xview2 f1')
     plt.savefig('results/'+name+'_f1.eps')
     plt.savefig('results/'+name+'_loss.png')
-
     np.save('results/'+name+'_loss_train.npy', train_losses)
     np.save('results/'+name+'_loss_val.npy', val_losses)
     np.save('results/'+name+'_loss_test.npy', test_losses)
     np.save('results/'+name+'_f1_train.npy', train_f1s)
     np.save('results/'+name+'_f1_val.npy', val_f1s)
     np.save('results/'+name+'_f1_test.npy', test_f1s)
-
     best_val_epoch = {'best_val_f1': best_val_f1, 'best_epoch': best_epoch}
     with open('results/'+name+'_best_val_epoch.json', 'w') as JSON:
         json.dump(best_val_epoch, JSON)
-
     with open('results/'+name+'_exp_progress.txt', 'a') as file:
         file.write(f'Best epoch: {best_epoch}')
 
@@ -155,15 +146,18 @@ if __name__ == "__main__":
     test_data_list = []
     for disaster, train_root, test_root in zip(train_set, train_roots, test_roots):
         dataset = xBD(train_root, disaster, 'train')
-        train_data_list.append(dataset[0])
+        train_data_list.append(dataset)
         dataset = xBD(test_root, disaster, 'test')
-        test_data_list.append(dataset[0])
+        test_data_list.append(dataset)
 
-    hold_dataset = xBD(mexico_hold, 'mexico-earthquake', 'hold')
+    hold_dataset = [xBD(mexico_hold, 'mexico-earthquake', 'hold')]
 
-    y_org = torch.cat([data.y for data in train_data_list])
-    y_org = parse_ordinal_output(y_org)
-    class_weight = compute_class_weight('balanced', np.unique(y_org), y_org)
+    y_all = []
+    for dataset in train_data_list:
+        y_all.extend([data.y for data in dataset])
+    y_all = torch.cat(y_all)
+    y_all = parse_ordinal_output(y_all)
+    class_weight = compute_class_weight('balanced', np.unique(y_all), y_all)
 
     model = DeeperGCN(dataset.num_node_features,
                       dataset.num_edge_features,

@@ -84,8 +84,8 @@ class xBD(Dataset):
         processed_files = []
         zones = self.labels['zone'].value_counts()[self.labels['zone'].value_counts()>1].index.tolist()
         for zone in zones:
-            if not (self.labels[self.labels['zone'] == zone]['class'] == 'un-classified').all() or \
-            not (self.labels[self.labels['zone'] == zone]['class'] != 'un-classified').sum() == 1:
+            if not ((self.labels[self.labels['zone'] == zone]['class'] == 'un-classified').all() or \
+                   (self.labels[self.labels['zone'] == zone]['class'] != 'un-classified').sum() == 1):
                 processed_files.append(os.path.join(self.processed_dir, f'{zone}.pt'))
         return processed_files
 
