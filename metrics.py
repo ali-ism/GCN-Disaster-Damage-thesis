@@ -22,4 +22,4 @@ def xview2_f1_score(y_true: torch.Tensor, out: torch.Tensor) -> float:
     y_true = parse_ordinal_output(y_true).detach().numpy()
     f1_classes = f1_score(y_true, y_pred, average=None)
     epsilon = 1e-6
-    return 4 / sum((f1+epsilon)**-1 for f1 in f1_classes)
+    return len(f1_classes) / sum((f1+epsilon)**-1 for f1 in f1_classes)

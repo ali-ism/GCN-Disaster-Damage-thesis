@@ -23,3 +23,12 @@ Neighbor sampler works on a single graph. So we can:
 - ClusterGCN: uses a graph clustering algorithm to sample dense subgraphs to use as mini-batches.
 - GraphSAINT: samples subgraphs based on a node sampling probability to use as mini-batches. The parameters of the sampling probability are also used to normalize the loss function to reduce bias due to sampling.
 - SIGN: does not rely on graph sampling but precomputes fixed neighborhood aggregations inspired by Inception. A regular MLP can subsequently be trained to make predictions.
+
+# Experiments
+
+| Train                                                                          | Test                  |
+|--------------------------------------------------------------------------------|-----------------------|
+| Mexico earthquake                                                              | Mexico earthquake     |
+| Palu tsunami                                                                   | Mexico earthquake     |
+| Palu tsunami + hurricane matthew + santa rosa wildfire                         | Mexico earthquake     |
+| Palu tsunami + hurricane matthew + santa rosa wildfire + 10% mexico earthquake | 90% mexico earthquake |
