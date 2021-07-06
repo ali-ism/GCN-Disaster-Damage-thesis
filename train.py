@@ -150,7 +150,7 @@ if __name__ == "__main__":
         dataset = xBD(test_root, disaster, 'test')
         test_data_list.append(dataset)
 
-    hold_dataset = [xBD(mexico_hold, 'mexico-earthquake', 'hold')]
+    hold_data_list = [xBD(mexico_hold, 'mexico-earthquake', 'hold')]
 
     y_all = []
     for dataset in train_data_list:
@@ -158,6 +158,7 @@ if __name__ == "__main__":
     y_all = torch.cat(y_all)
     y_all = parse_ordinal_output(y_all)
     class_weight = compute_class_weight('balanced', np.unique(y_all), y_all)
+    del y_all
 
     model = DeeperGCN(dataset.num_node_features,
                       dataset.num_edge_features,
@@ -206,7 +207,7 @@ if __name__ == "__main__":
         if epoch > 5:
             train_f1, _ = test(train_data_list)
             val_f1, val_loss = test(test_data_list)
-            test_f1, test_loss = test(hold_dataset)
+            test_f1, test_loss = test(hold_data_list)
             scheduler.step(val_loss)
             train_f1s[epoch-6] = train_f1
             val_f1s[epoch-6] = val_f1
