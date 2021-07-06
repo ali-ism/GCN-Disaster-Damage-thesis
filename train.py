@@ -75,7 +75,7 @@ def train(epoch):
                 subdata = subdata.to(device)
                 optimizer.zero_grad()
                 out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
-                loss = F.binary_cross_entropy(out, subdata.y.float(), weight=class_weight)
+                loss = F.binary_cross_entropy(input=out, target=subdata.y.float(), weight=class_weights)
                 loss.backward()
                 optimizer.step()
                 batch_loss += loss.item() * subdata.num_nodes
@@ -102,7 +102,7 @@ def test(dataset_list):
     ys = torch.cat(ys)
     f1 = xview2_f1_score(ys, outs)
     if dataset_list is not train_data_list:
-        loss = F.binary_cross_entropy(outs, ys.float(), weight=class_weight)
+        loss = F.binary_cross_entropy(input=outs, target=ys.float(), weight=class_weights)
     else:
         loss = None
     return f1, loss
@@ -157,7 +157,7 @@ if __name__ == "__main__":
         y_all.extend([data.y for data in dataset])
     y_all = torch.cat(y_all)
     y_all = parse_ordinal_output(y_all)
-    class_weight = compute_class_weight('balanced', np.unique(y_all), y_all)
+    class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all)
     del y_all
 
     model = DeeperGCN(dataset.num_node_features,
