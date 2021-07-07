@@ -1,7 +1,10 @@
+import os
 from math import sqrt
 import numpy as np
 import torch
-from typing import Tuple
+from typing import List, Tuple
+from metrics import parse_ordinal_output
+from sklearn.utils.class_weight import compute_class_weight
 
 
 def build_edge_idx(num_nodes: int) -> torch.Tensor:
@@ -19,20 +22,17 @@ def build_edge_idx(num_nodes: int) -> torch.Tensor:
     """
     # Initialize edge index matrix
     E = torch.zeros((2, (num_nodes * (num_nodes - 1))//2), dtype=torch.long)
-    
     # Populate 1st row
     i = 0
     for node in range(num_nodes):
         for _ in range(num_nodes - node - 1):
             E[0, i] = node
             i+=1
-
     # Populate 2nd row
     neighbors = []
     for node in range(num_nodes):
         neighbors.extend(np.arange(node+1, num_nodes))
     E[1, :] = torch.Tensor(neighbors)
-    
     return E
 
 
@@ -74,7 +74,20 @@ def get_edge_features(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[f
     s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
     s[s.isnan()] = 0
     node_sim = 1 - torch.sum(s)/D
-
     euc_sim = euclidean_similarity(coords1, coords2)
-
     return node_sim.item(), euc_sim
+
+
+def get_class_weights(set_id: int, train_data_list: List) -> torch.Tensor:
+    if os.path.isfile(f'weights/class_weights_{set_id}.pt'):
+        return torch.load(f'weights/class_weights_{set_id}.pt')
+    else:
+        y_all = []
+        for dataset in train_data_list:
+            y_all.extend([data.y for data in dataset])
+        y_all = torch.cat(y_all)
+        y_all = parse_ordinal_output(y_all)
+        class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all)
+        class_weights = torch.Tensor(class_weights)
+        torch.save(class_weights, f'weights/class_weights_{set_id}.pt')
+        return class_weights

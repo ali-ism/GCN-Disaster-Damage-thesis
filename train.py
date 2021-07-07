@@ -16,8 +16,8 @@ from torch_geometric.data import GraphSAINTNodeSampler
 from tqdm import tqdm
 from dataset import xBD
 from model import DeeperGCN
-from metrics import xview2_f1_score, parse_ordinal_output
-from sklearn.utils.class_weight import compute_class_weight
+from metrics import xview2_f1_score
+from utils import get_class_weights
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
@@ -26,8 +26,8 @@ seed = settings_dict['seed']
 batch_size = settings_dict['data']['batch_size']
 num_steps = settings_dict['data']['saint_num_steps']
 name = settings_dict['model']['name']
-
 train_set = settings_dict['train_set']
+set_id = settings_dict['set_id']
 train_roots = []
 test_roots = []
 for set in train_set:
@@ -43,9 +43,7 @@ for set in train_set:
     elif set == 'santa-rosa-wildfire':
         train_roots.append(settings_dict['data']['rosa_train_root'])
         test_roots.append(settings_dict['data']['rosa_test_root'])
-
-mexico_hold = settings_dict['data']['mexico_hold_root']
-
+hold_roots = settings_dict['data']['mexico_hold_root']
 hidden_units = settings_dict['model']['hidden_units']
 num_layers = settings_dict['model']['num_layers']
 dropout_rate = settings_dict['model']['dropout_rate']
@@ -150,15 +148,9 @@ if __name__ == "__main__":
         dataset = xBD(test_root, disaster, 'test')
         test_data_list.append(dataset)
 
-    hold_data_list = [xBD(mexico_hold, 'mexico-earthquake', 'hold')]
+    hold_data_list = [xBD(hold_roots, 'mexico-earthquake', 'hold')]
 
-    y_all = []
-    for dataset in train_data_list:
-        y_all.extend([data.y for data in dataset])
-    y_all = torch.cat(y_all)
-    y_all = parse_ordinal_output(y_all)
-    class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all)
-    del y_all
+    class_weights = get_class_weights(set_id, train_data_list)
 
     model = DeeperGCN(dataset.num_node_features,
                       dataset.num_edge_features,
