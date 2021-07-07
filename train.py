@@ -150,7 +150,7 @@ if __name__ == "__main__":
 
     hold_data_list = [xBD(hold_roots, 'mexico-earthquake', 'hold')]
 
-    class_weights = get_class_weights(set_id, train_data_list)
+    class_weights = get_class_weights(set_id, train_data_list).to(device)
 
     model = DeeperGCN(dataset.num_node_features,
                       dataset.num_edge_features,
