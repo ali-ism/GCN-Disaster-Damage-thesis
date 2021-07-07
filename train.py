@@ -27,7 +27,7 @@ batch_size = settings_dict['data']['batch_size']
 num_steps = settings_dict['data']['saint_num_steps']
 name = settings_dict['model']['name']
 train_set = settings_dict['train_set']
-set_id = settings_dict['set_id']
+set_id = settings_dict['train_set_id']
 train_roots = []
 test_roots = []
 for set in train_set:
