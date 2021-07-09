@@ -73,7 +73,7 @@ def train(epoch):
                 subdata = subdata.to(device)
                 optimizer.zero_grad()
                 out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
-                loss = F.binary_cross_entropy(input=out, target=subdata.y.float(), weight=class_weights)
+                loss = F.binary_cross_entropy(input=out, target=subdata.y.float(), weight=class_weights.to(device))
                 loss.backward()
                 optimizer.step()
                 batch_loss += loss.item() * subdata.num_nodes
@@ -150,7 +150,7 @@ if __name__ == "__main__":
 
     hold_data_list = [xBD(hold_roots, 'mexico-earthquake', 'hold')]
 
-    class_weights = get_class_weights(set_id, train_data_list).to(device)
+    class_weights = get_class_weights(set_id, train_data_list)
 
     model = DeeperGCN(dataset.num_node_features,
                       dataset.num_edge_features,
