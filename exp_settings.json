@@ -31,14 +31,14 @@
         "name": "mexico_01",
         "path": "weights",
         "hidden_units": 256,
-        "num_layers": 7,
+        "num_layers": 3,
         "lr": 0.003,
         "dropout_rate": 0.1
     },
     "train_set": ["mexico-earthquake"],
     "train_set_id": 1,
     "starting_epoch": 1,
-    "epochs": 100,
+    "epochs": 20,
     "seed": 42,
     "save_best_only": true
 }
