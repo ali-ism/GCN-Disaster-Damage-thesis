@@ -182,7 +182,5 @@ if __name__ == "__main__":
             print(f'Building dataset for {disaster} {subset}...')
             if not os.path.isdir(root_dir):
                 os.mkdir(root_dir)
-                os.mkdir(root_dir + '/processed')
-            #copy_from_full(disaster, subset, root_dir)
             xBD(root_dir, subset, disaster)
             print(f'****{disaster} {subset} done****')
