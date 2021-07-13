@@ -24,16 +24,16 @@
         "rosa_train_root": "/home/ami31/scratch/datasets/rosa_train",
         "rosa_test_root": "/home/ami31/scratch/datasets/rosa_test",
         "rosa_hold_root": "/home/ami31/scratch/datasets/rosa_hold",
-        "batch_size": 256,
+        "batch_size": 512,
         "saint_num_steps": 5
     },
     "model": {
         "name": "mexico_01",
         "path": "weights",
         "hidden_units": 256,
-        "num_layers": 3,
+        "num_layers": 7,
         "lr": 0.003,
-        "dropout_rate": 0.1
+        "dropout_rate": 0.5
     },
     "train_set": ["mexico-earthquake"],
     "train_set_id": 1,

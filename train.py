@@ -61,13 +61,13 @@ torch.backends.cudnn.benchmark = False
 
 def train(epoch):
     model.train()
-    pbar = tqdm(total=sum([len(dataset) for dataset in train_data_list]))
+    pbar = tqdm(total=num_train_graphs)
     pbar.set_description(f'Epoch {epoch:02d}')
     total_loss = 0
     for dataset in train_data_list:
         for data in dataset:
             sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
-            batch_loss = 0
+            data_loss = 0
             total_examples = 0
             for subdata in sampler:
                 subdata = subdata.to(device)
@@ -76,12 +76,12 @@ def train(epoch):
                 loss = F.binary_cross_entropy(input=out, target=subdata.y.float(), weight=class_weights.to(device))
                 loss.backward()
                 optimizer.step()
-                batch_loss += loss.item() * subdata.num_nodes
+                data_loss += loss.item() * subdata.num_nodes
                 total_examples += subdata.num_nodes
             pbar.update()
-            total_loss += batch_loss / total_examples
+            total_loss += data_loss / total_examples
     pbar.close()
-    return total_loss / len(train_data_list)
+    return total_loss / num_train_graphs
 
 
 @torch.no_grad()
@@ -109,19 +109,12 @@ def test(dataset_list):
 def save_results() -> None:
     plt.figure()
     plt.plot(train_losses)
-    plt.xlabel('epochs')
-    plt.ylabel('train_loss')
-    plt.savefig('results/'+name+'_train_loss.eps')
-    plt.figure()
     plt.plot(val_losses)
-    plt.xlabel('epochs')
-    plt.ylabel('val_loss')
-    plt.savefig('results/'+name+'_val_loss.eps')
-    plt.figure()
     plt.plot(test_losses)
+    plt.legend(['train', 'val', 'test'])
     plt.xlabel('epochs')
-    plt.ylabel('test_loss')
-    plt.savefig('results/'+name+'_test_loss.eps')
+    plt.ylabel('loss')
+    plt.savefig('results/'+name+'_loss.eps')
     plt.figure()
     plt.plot(train_f1s)
     plt.plot(val_f1s)
@@ -157,6 +150,8 @@ if __name__ == "__main__":
 
     class_weights = get_class_weights(set_id, train_data_list)
 
+    num_train_graphs = sum([len(dataset) for dataset in train_data_list])
+
     model = DeeperGCN(dataset.num_node_features,
                       dataset.num_edge_features,
                       hidden_units,
@@ -174,7 +169,11 @@ if __name__ == "__main__":
     if starting_epoch == 1:
         best_val_f1 = best_epoch = 0
         train_losses = np.empty(n_epochs)
-        train_f1s = val_f1s = test_f1s = val_losses = test_losses = np.empty(n_epochs-5)
+        train_f1s = np.empty(n_epochs-5)
+        val_f1s = np.empty(n_epochs-5)
+        test_f1s = np.empty(n_epochs-5)
+        val_losses = np.empty(n_epochs-5)
+        test_losses = np.empty(n_epochs-5)
     else:
         with open('results/'+name+'_best_val_epoch.json', 'r') as JSON:
             best_val_epoch = json.load(JSON)

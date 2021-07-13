@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch.nn import Module, ModuleList, Linear, LayerNorm, ReLU
-from torch_geometric.nn import GENConv, DeepGCNLayer
+from torch_geometric.nn import GENConv, DeepGCNLayer, SplineConv
 
 
 class DeeperGCN(Module):
@@ -42,3 +42,28 @@ class DeeperGCN(Module):
         x = F.dropout(x, p=self.dropout_rate, training=self.training)
 
         return torch.sigmoid(self.lin(x))
+
+
+class SplineNet(torch.nn.Module):
+    def __init__(self,
+                 num_node_features,
+                 hidden_channels,
+                 num_classes,
+                 num_layers,
+                 dropout_rate):
+        super(SplineNet, self).__init__()
+
+        self.dropout_rate = dropout_rate
+
+        self.layers = ModuleList()
+        self.layers.append(SplineConv(num_node_features, hidden_channels, dim=1, kernel_size=2))
+        for i in range(num_layers - 2):
+            self.layers.append(SplineConv(hidden_channels, hidden_channels, dim=1, kernel_size=2))
+        self.layers.append(SplineConv(hidden_channels, num_classes, dim=1, kernel_size=2))
+
+    def forward(self, x, edge_index, edge_attr):
+        for layer in self.layers:
+            x = F.dropout(x, p=self.dropout_rate, training=self.training)
+            x = layer(x, edge_index, edge_attr)
+            x = F.elu(x)
+        return torch.sigmoid(x)
