@@ -30,7 +30,6 @@
         "dropout_rate": 0.5
     },
     "train_set": ["mexico-earthquake"],
-    "train_set_id": 1,
     "starting_epoch": 1,
     "epochs": 20,
     "seed": 42,

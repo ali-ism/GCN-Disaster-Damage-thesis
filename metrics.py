@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 from sklearn.metrics import f1_score
 
 
@@ -8,6 +9,11 @@ def parse_ordinal_output(out: torch.Tensor) -> np.ndarray:
     idx = torch.argmax(idx, dim=1)
     idx = torch.where(idx == 0, 4, idx)
     return idx.detach().numpy()
+
+
+def to_onehot(y_ord: torch.Tensor, num_classes=4):
+    y_ord = parse_ordinal_output(y_ord) - 1
+    return F.one_hot(torch.LongTensor(y_ord), num_classes=num_classes)
 
 
 def xview2_f1_score(y_true: torch.Tensor, out: torch.Tensor) -> float:

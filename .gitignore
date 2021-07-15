@@ -1,6 +1,5 @@
 weights/
 datasets/
-results/
 OLD/disaster_dirs.json
 data/
 __pycache__/

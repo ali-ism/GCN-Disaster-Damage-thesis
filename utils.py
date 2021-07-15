@@ -78,16 +78,15 @@ def get_edge_features(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[f
     return node_sim.item(), euc_sim
 
 
-def get_class_weights(set_id: int, train_data_list: List) -> torch.Tensor:
-    if os.path.isfile(f'weights/class_weights_{set_id}.pt'):
-        return torch.load(f'weights/class_weights_{set_id}.pt')
+def get_class_weights(train_set: List[str], dataset) -> torch.Tensor:
+    name = '_'.join(text.replace('-', '_') for text in train_set)
+    if os.path.isfile(f'weights/class_weights_{name}.pt'):
+        return torch.load(f'weights/class_weights_{name}.pt')
     else:
-        y_all = []
-        for dataset in train_data_list:
-            y_all.extend([data.y for data in dataset])
+        y_all = [data.y for data in dataset]
         y_all = torch.cat(y_all)
         y_all = parse_ordinal_output(y_all)
         class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all)
         class_weights = torch.Tensor(class_weights)
-        torch.save(class_weights, f'weights/class_weights_{set_id}.pt')
+        torch.save(class_weights, f'weights/class_weights_{name}.pt')
         return class_weights

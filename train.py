@@ -27,23 +27,17 @@ batch_size = settings_dict['data']['batch_size']
 num_steps = settings_dict['data']['saint_num_steps']
 name = settings_dict['model']['name']
 train_set = settings_dict['train_set']
-set_id = settings_dict['train_set_id']
-train_roots = []
-test_roots = []
-for set in train_set:
-    if set == 'mexico-earthquake':
-        train_roots.append(settings_dict['data']['mexico_train_root'])
-        test_roots.append(settings_dict['data']['mexico_test_root'])
-    elif set == 'palu-tsunami':
-        train_roots.append(settings_dict['data']['palu_train_root'])
-        test_roots.append(settings_dict['data']['palu_test_root'])
-    elif set == 'hurricane-matthew':
-        train_roots.append(settings_dict['data']['matthew_train_root'])
-        test_roots.append(settings_dict['data']['matthew_test_root'])
-    elif set == 'santa-rosa-wildfire':
-        train_roots.append(settings_dict['data']['rosa_train_root'])
-        test_roots.append(settings_dict['data']['rosa_test_root'])
-hold_roots = settings_dict['data']['mexico_hold_root']
+if len(train_set) == 1:
+    if train_set[0] == 'mexico-earthquake':
+        train_root = settings_dict['data']['mexico_train_root']
+        test_root = settings_dict['data']['mexico_test_root']
+    else:
+        train_root = settings_dict['data']['palu_train_root']
+        test_root = settings_dict['data']['palu_test_root']
+else:
+    train_root = settings_dict['data']['palu_matthew_rosa_train_root']
+    test_root = settings_dict['data']['palu_matthew_rosa_test_root']
+hold_root = settings_dict['data']['mexico_hold_root']
 hidden_units = settings_dict['model']['hidden_units']
 num_layers = settings_dict['model']['num_layers']
 dropout_rate = settings_dict['model']['dropout_rate']
@@ -61,45 +55,43 @@ torch.backends.cudnn.benchmark = False
 
 def train(epoch):
     model.train()
-    pbar = tqdm(total=num_train_graphs)
+    pbar = tqdm(total=len(train_dataset))
     pbar.set_description(f'Epoch {epoch:02d}')
     total_loss = 0
-    for dataset in train_data_list:
-        for data in dataset:
-            sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
-            data_loss = 0
-            total_examples = 0
-            for subdata in sampler:
-                subdata = subdata.to(device)
-                optimizer.zero_grad()
-                out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
-                loss = F.binary_cross_entropy(input=out, target=subdata.y.float(), weight=class_weights.to(device))
-                loss.backward()
-                optimizer.step()
-                data_loss += loss.item() * subdata.num_nodes
-                total_examples += subdata.num_nodes
-            pbar.update()
-            total_loss += data_loss / total_examples
+    for data in train_dataset:
+        sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
+        data_loss = 0
+        total_examples = 0
+        for subdata in sampler:
+            subdata = subdata.to(device)
+            optimizer.zero_grad()
+            out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
+            loss = F.binary_cross_entropy(input=out, target=subdata.y.float(), weight=class_weights.to(device))
+            loss.backward()
+            optimizer.step()
+            data_loss += loss.item() * subdata.num_nodes
+            total_examples += subdata.num_nodes
+        total_loss += data_loss / total_examples
+        pbar.update()
     pbar.close()
-    return total_loss / num_train_graphs
+    return total_loss / len(train_dataset)
 
 
 @torch.no_grad()
-def test(dataset_list):
+def test(dataset):
     model.eval()
     ys = []
     outs = []
-    for dataset in dataset_list:
-        for data in dataset:
-            sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
-            for subdata in sampler:
-                subdata = subdata.to(device)
-                outs.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
-                ys.append(subdata.y.cpu())
+    for data in dataset:
+        sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
+        for subdata in sampler:
+            subdata = subdata.to(device)
+            outs.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
+            ys.append(subdata.y.cpu())
     outs = torch.cat(outs)
     ys = torch.cat(ys)
     f1 = xview2_f1_score(ys, outs)
-    if dataset_list is not train_data_list:
+    if dataset is not train_dataset:
         loss = F.binary_cross_entropy(input=outs, target=ys.float(), weight=class_weights)
     else:
         loss = None
@@ -137,25 +129,17 @@ def save_results() -> None:
 
 
 if __name__ == "__main__":
+    
+    train_dataset = xBD(train_root, 'train', train_set, shuffle=True)
+    test_dataset = xBD(train_root, 'test', train_set)
+    hold_dataset = xBD(hold_root, 'hold', ['mexico-earthquake'])
 
-    train_data_list = []
-    test_data_list = []
-    for disaster, train_root, test_root in zip(train_set, train_roots, test_roots):
-        dataset = xBD(train_root, disaster, 'train')
-        train_data_list.append(dataset)
-        dataset = xBD(test_root, disaster, 'test')
-        test_data_list.append(dataset)
+    class_weights = get_class_weights(train_set, train_dataset)
 
-    hold_data_list = [xBD(hold_roots, 'mexico-earthquake', 'hold')]
-
-    class_weights = get_class_weights(set_id, train_data_list)
-
-    num_train_graphs = sum([len(dataset) for dataset in train_data_list])
-
-    model = DeeperGCN(dataset.num_node_features,
-                      dataset.num_edge_features,
+    model = DeeperGCN(train_dataset.num_node_features,
+                      train_dataset.num_edge_features,
                       hidden_units,
-                      dataset.num_classes,
+                      train_dataset.num_classes,
                       num_layers,
                       dropout_rate)
     if starting_epoch != 1:
@@ -201,9 +185,9 @@ if __name__ == "__main__":
             torch.save(model.state_dict(), model_path)
 
         if epoch > 5:
-            train_f1, _ = test(train_data_list)
-            val_f1, val_loss = test(test_data_list)
-            test_f1, test_loss = test(hold_data_list)
+            train_f1, _ = test(train_dataset)
+            val_f1, val_loss = test(test_dataset)
+            test_f1, test_loss = test(hold_dataset)
             scheduler.step(val_loss)
             train_f1s[epoch-6] = train_f1
             val_f1s[epoch-6] = val_f1
