@@ -81,8 +81,8 @@ class xBD(Dataset):
         for labels in self.list_labels:
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
-                if not ((self.labels[self.labels['zone'] == zone]['class'] == 'un-classified').all() or \
-                        (self.labels[self.labels['zone'] == zone]['class'] != 'un-classified').sum() == 1):
+                if not ((labels[labels['zone'] == zone]['class'] == 'un-classified').all() or \
+                        (labels[labels['zone'] == zone]['class'] != 'un-classified').sum() == 1):
                     processed_files.append(os.path.join(self.processed_dir, f'{zone}.pt'))
         return processed_files
 
@@ -94,8 +94,8 @@ class xBD(Dataset):
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
                 if os.path.isfile(os.path.join(self.processed_dir, f'{zone}.pt')) or \
-                (self.labels[self.labels['zone'] == zone]['class'] == 'un-classified').all() or \
-                (self.labels[self.labels['zone'] == zone]['class'] != 'un-classified').sum() == 1:
+                (labels[labels['zone'] == zone]['class'] == 'un-classified').all() or \
+                (labels[labels['zone'] == zone]['class'] != 'un-classified').sum() == 1:
                     continue
                 print(f'Building {zone}...')
                 list_pre_images = list(map(str, Path(self.path + disaster).glob(f'{zone}_pre_disaster*')))
