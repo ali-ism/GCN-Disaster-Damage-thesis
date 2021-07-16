@@ -15,7 +15,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.data import GraphSAINTNodeSampler
 from tqdm import tqdm
 from dataset import xBD
-from model import DeeperGCN
+from model import DeeperGCN, SplineNet
 from metrics import xview2_f1_score
 from utils import get_class_weights
 
@@ -101,29 +101,29 @@ def test(dataset):
 def save_results() -> None:
     plt.figure()
     plt.plot(train_losses)
-    plt.plot(val_losses)
     plt.plot(test_losses)
-    plt.legend(['train', 'val', 'test'])
+    plt.plot(hold_losses)
+    plt.legend(['train', 'test', 'hold'])
     plt.xlabel('epochs')
     plt.ylabel('loss')
     plt.savefig('results/'+name+'_loss.eps')
     plt.figure()
     plt.plot(train_f1s)
-    plt.plot(val_f1s)
     plt.plot(test_f1s)
-    plt.legend(['train', 'val', 'test'])
+    plt.plot(hold_f1s)
+    plt.legend(['train', 'test', 'hold'])
     plt.xlabel('epochs')
     plt.ylabel('xview2 f1')
     plt.savefig('results/'+name+'_f1.eps')
     np.save('results/'+name+'_loss_train.npy', train_losses)
-    np.save('results/'+name+'_loss_val.npy', val_losses)
     np.save('results/'+name+'_loss_test.npy', test_losses)
+    np.save('results/'+name+'_loss_hold.npy', hold_losses)
     np.save('results/'+name+'_f1_train.npy', train_f1s)
-    np.save('results/'+name+'_f1_val.npy', val_f1s)
     np.save('results/'+name+'_f1_test.npy', test_f1s)
-    best_val_epoch = {'best_val_f1': best_val_f1, 'best_epoch': best_epoch}
-    with open('results/'+name+'_best_val_epoch.json', 'w') as JSON:
-        json.dump(best_val_epoch, JSON)
+    np.save('results/'+name+'_f1_hold.npy', hold_f1s)
+    best_test_epoch = {'best_test_f1': best_test_f1, 'best_epoch': best_epoch}
+    with open('results/'+name+'_best_test_epoch.json', 'w') as JSON:
+        json.dump(best_test_epoch, JSON)
     with open('results/'+name+'_exp_progress.txt', 'a') as file:
         file.write(f'Best epoch: {best_epoch}')
 
@@ -136,14 +136,19 @@ if __name__ == "__main__":
 
     class_weights = get_class_weights(train_set, train_dataset)
 
-    model = DeeperGCN(train_dataset.num_node_features,
+    """ model = DeeperGCN(train_dataset.num_node_features,
                       train_dataset.num_edge_features,
+                      hidden_units,
+                      train_dataset.num_classes,
+                      num_layers,
+                      dropout_rate) """
+    model = SplineNet(train_dataset.num_node_features,
                       hidden_units,
                       train_dataset.num_classes,
                       num_layers,
                       dropout_rate)
     if starting_epoch != 1:
-        model_path = path + '/' + name + '_best.pth'
+        model_path = path + '/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
     model = model.to(device)
 
@@ -151,24 +156,24 @@ if __name__ == "__main__":
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=20, min_lr=0.00001)
 
     if starting_epoch == 1:
-        best_val_f1 = best_epoch = 0
+        best_test_f1 = best_epoch = 0
         train_losses = np.empty(n_epochs)
-        train_f1s = np.empty(n_epochs-5)
-        val_f1s = np.empty(n_epochs-5)
-        test_f1s = np.empty(n_epochs-5)
-        val_losses = np.empty(n_epochs-5)
         test_losses = np.empty(n_epochs-5)
+        hold_losses = np.empty(n_epochs-5)
+        train_f1s = np.empty(n_epochs-5)
+        test_f1s = np.empty(n_epochs-5)
+        hold_f1s = np.empty(n_epochs-5)
     else:
-        with open('results/'+name+'_best_val_epoch.json', 'r') as JSON:
-            best_val_epoch = json.load(JSON)
-        best_val_f1 = best_val_epoch['best_val_f1']
-        best_epoch = best_val_epoch['best_epoch']
+        with open('results/'+name+'_best_test_epoch.json', 'r') as JSON:
+            best_test_epoch = json.load(JSON)
+        best_test_f1 = best_test_epoch['best_test_f1']
+        best_epoch = best_test_epoch['best_epoch']
         train_losses = np.load('results/'+name+'_loss_train.npy')
-        val_losses = np.load('results/'+name+'_loss_val.npy')
         test_losses = np.load('results/'+name+'_loss_test.npy')
+        hold_losses = np.load('results/'+name+'_loss_hold.npy')
         train_f1s = np.load('results/'+name+'_f1_train.npy')
-        val_f1s = np.load('results/'+name+'_f1_val.npy')
         test_f1s = np.load('results/'+name+'_f1_test.npy')
+        hold_f1s = np.load('results/'+name+'_f1_hold.npy')
 
     for epoch in range(starting_epoch, n_epochs+1):
 
@@ -181,26 +186,26 @@ if __name__ == "__main__":
         print(f'Epoch {epoch:02d}, Train Loss: {loss:.4f}')
     
         if not save_best_only:
-            model_path = path + '/' + name + '.pth'
+            model_path = path + '/' + name + '.pt'
             torch.save(model.state_dict(), model_path)
 
         if epoch > 5:
             train_f1, _ = test(train_dataset)
-            val_f1, val_loss = test(test_dataset)
-            test_f1, test_loss = test(hold_dataset)
-            scheduler.step(val_loss)
+            test_f1, test_loss = test(test_dataset)
+            hold_f1, hold_loss = test(hold_dataset)
+            scheduler.step(test_loss)
             train_f1s[epoch-6] = train_f1
-            val_f1s[epoch-6] = val_f1
             test_f1s[epoch-6] = test_f1
-            val_losses[epoch-6] = val_loss
+            hold_f1s[epoch-6] = hold_f1
             test_losses[epoch-6] = test_loss
-            print(f'Val Loss: {val_loss:.4f}, Test Loss: {test_loss:.4f}')
-            print(f'Train F1: {train_f1:.4f}, Val F1: {val_f1:.4f}, 'f'Test F1: {test_f1:.4f}')
+            hold_losses[epoch-6] = hold_loss
+            print(f'Test Loss: {test_loss:.4f}, Hold Loss: {hold_loss:.4f}')
+            print(f'Train F1: {train_f1:.4f}, Test F1: {test_f1:.4f}, Hold F1: {hold_f1:.4f}')
 
-            if val_f1 > best_val_f1:
-                best_val_f1 = val_f1
+            if test_f1 > best_test_f1:
+                best_test_f1 = test_f1
                 best_epoch = epoch
-                model_path = path + '/' + name + '_best.pth'
+                model_path = path + '/' + name + '_best.pt'
                 print(f'New best model saved to: {model_path}')
                 torch.save(model.state_dict(), model_path)
         

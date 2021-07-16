@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --gres=gpu
 #SBATCH --mem=0
-#SBATCH --time=0-01:00:00
+#SBATCH --time=0-02:00:00
 
 source ~/.bashrc
 

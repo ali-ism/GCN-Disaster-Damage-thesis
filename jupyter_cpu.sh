@@ -7,7 +7,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=0
-#SBATCH --time=0-01:00:00
+#SBATCH --time=0-02:00:00
 
 source ~/.bashrc
 

@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch.nn import Module, ModuleList, Linear, LayerNorm, ReLU
-from torch_geometric.nn import GENConv, DeepGCNLayer, SplineConv
+from torch_geometric.nn import GENConv, DeepGCNLayer, SplineConv, BatchNorm
 
 
 class DeeperGCN(Module):
@@ -15,10 +15,8 @@ class DeeperGCN(Module):
         super(DeeperGCN, self).__init__()
 
         self.dropout_rate = dropout_rate
-
         self.node_encoder = Linear(num_node_features, hidden_channels)
         self.edge_encoder = Linear(num_edge_features, hidden_channels)
-
         self.layers = ModuleList()
         for i in range(1, num_layers + 1):
             conv = GENConv(hidden_channels, hidden_channels, learn_t=True, num_layers=2, norm='layer')
@@ -26,22 +24,18 @@ class DeeperGCN(Module):
             act = ReLU(inplace=True)
             layer = DeepGCNLayer(conv, norm, act, block='res+', dropout=dropout_rate, ckpt_grad=i % 3)
             self.layers.append(layer)
-
         self.lin = Linear(hidden_channels, num_classes)
 
     def forward(self, x, edge_index, edge_attr):
         x = self.node_encoder(x)
         edge_attr = self.edge_encoder(edge_attr)
-
         x = self.layers[0].conv(x, edge_index, edge_attr)
-
         for layer in self.layers[1:]:
             x = layer(x, edge_index, edge_attr)
-
         x = self.layers[0].act(self.layers[0].norm(x))
         x = F.dropout(x, p=self.dropout_rate, training=self.training)
-
-        return torch.sigmoid(self.lin(x))
+        x = self.lin(x)
+        return torch.sigmoid(x)
 
 
 class SplineNet(torch.nn.Module):
@@ -54,16 +48,21 @@ class SplineNet(torch.nn.Module):
         super(SplineNet, self).__init__()
 
         self.dropout_rate = dropout_rate
-
-        self.layers = ModuleList()
-        self.layers.append(SplineConv(num_node_features, hidden_channels, dim=1, kernel_size=2))
+        self.convs = ModuleList()
+        self.batch_norms = ModuleList()
+        self.convs.append(SplineConv(num_node_features, hidden_channels, dim=1, kernel_size=2))
+        self.batch_norms.append(BatchNorm(hidden_channels))
         for i in range(num_layers - 2):
-            self.layers.append(SplineConv(hidden_channels, hidden_channels, dim=1, kernel_size=2))
-        self.layers.append(SplineConv(hidden_channels, num_classes, dim=1, kernel_size=2))
+            self.convs.append(SplineConv(hidden_channels, hidden_channels, dim=1, kernel_size=2))
+            self.batch_norms.append(BatchNorm(hidden_channels))
+        self.out = SplineConv(hidden_channels, num_classes, dim=1, kernel_size=2)
+
 
     def forward(self, x, edge_index, edge_attr):
-        for layer in self.layers:
-            x = F.dropout(x, p=self.dropout_rate, training=self.training)
-            x = layer(x, edge_index, edge_attr)
+        for batch_norm, conv in zip(self.batch_norms, self.convs):
+            x = conv(x, edge_index, edge_attr)
+            x = batch_norm(x)
             x = F.elu(x)
+            x = F.dropout(x, p=self.dropout_rate, training=self.training)
+        x = self.out(x, edge_index, edge_attr)
         return torch.sigmoid(x)

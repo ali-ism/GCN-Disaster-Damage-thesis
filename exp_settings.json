@@ -22,12 +22,12 @@
         "saint_num_steps": 5
     },
     "model": {
-        "name": "mexico_01",
+        "name": "mexico_02",
         "path": "weights",
         "hidden_units": 256,
         "num_layers": 7,
         "lr": 0.003,
-        "dropout_rate": 0.5
+        "dropout_rate": 0.2
     },
     "train_set": ["mexico-earthquake"],
     "starting_epoch": 1,
