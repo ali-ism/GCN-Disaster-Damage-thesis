@@ -30,10 +30,7 @@ del settings_dict
 
 torch.manual_seed(seed)
 
-transform = tr.Compose([
-    tr.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    tr.ToTensor()
-])
+transform = tr.ToTensor()
 
 class xBD(Dataset):
     def __init__(self,
