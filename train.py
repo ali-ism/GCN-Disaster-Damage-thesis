@@ -130,7 +130,7 @@ def save_results() -> None:
 
 if __name__ == "__main__":
     
-    train_dataset = xBD(train_root, 'train', train_set, shuffle=True)
+    train_dataset = xBD(train_root, 'train', train_set)
     test_dataset = xBD(train_root, 'test', train_set)
     hold_dataset = xBD(hold_root, 'hold', ['mexico-earthquake'])
 
