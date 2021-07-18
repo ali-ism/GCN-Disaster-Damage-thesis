@@ -67,7 +67,7 @@ def train(epoch):
             optimizer.zero_grad()
             out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
             y_true = to_onehot(subdata.y)
-            loss = F.nll_loss(input=out, target=y_true.float(), weight=class_weights.to(device))
+            loss = F.nll_loss(input=out, target=y_true, weight=class_weights.to(device))
             loss.backward()
             optimizer.step()
             data_loss += loss.item() * subdata.num_nodes
@@ -94,7 +94,7 @@ def test(dataset):
     f1 = xview2_f1_score(ys, outs)
     if dataset is not train_dataset:
         y = to_onehot(ys)
-        loss = F.nll_loss(input=outs, target=y.float(), weight=class_weights)
+        loss = F.nll_loss(input=outs, target=y, weight=class_weights)
     else:
         loss = None
     return f1, loss
