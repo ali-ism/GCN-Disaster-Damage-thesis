@@ -66,7 +66,7 @@ def train(epoch):
             subdata = subdata.to(device)
             optimizer.zero_grad()
             out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
-            y_true = to_onehot(subdata.y)
+            y_true = to_onehot(subdata.y).argmax(dim=1)
             loss = F.nll_loss(input=out, target=y_true, weight=class_weights.to(device))
             loss.backward()
             optimizer.step()
@@ -93,7 +93,7 @@ def test(dataset):
     ys = torch.cat(ys)
     f1 = xview2_f1_score(ys, outs)
     if dataset is not train_dataset:
-        y = to_onehot(ys)
+        y = to_onehot(ys).argmax(dim=1)
         loss = F.nll_loss(input=outs, target=y, weight=class_weights)
     else:
         loss = None
