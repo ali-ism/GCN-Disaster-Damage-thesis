@@ -138,17 +138,17 @@ if __name__ == "__main__":
 
     class_weights = get_class_weights(train_set, train_dataset)
 
-    """ model = DeeperGCN(train_dataset.num_node_features,
+    model = DeeperGCN(train_dataset.num_node_features,
                       train_dataset.num_edge_features,
                       hidden_units,
                       train_dataset.num_classes,
                       num_layers,
-                      dropout_rate) """
-    model = SplineNet(train_dataset.num_node_features,
+                      dropout_rate)
+    """ model = SplineNet(train_dataset.num_node_features,
                       hidden_units,
                       train_dataset.num_classes,
                       num_layers,
-                      dropout_rate)
+                      dropout_rate) """
     if starting_epoch != 1:
         model_path = path + '/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
