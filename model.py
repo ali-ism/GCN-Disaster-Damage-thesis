@@ -35,7 +35,7 @@ class DeeperGCN(Module):
         x = self.layers[0].act(self.layers[0].norm(x))
         x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.lin(x)
-        return torch.sigmoid(x)
+        return F.log_softmax(x, dim=1)
 
 
 class SplineNet(torch.nn.Module):
@@ -65,4 +65,4 @@ class SplineNet(torch.nn.Module):
             x = F.elu(x)
             x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.out(x, edge_index, edge_attr)
-        return torch.sigmoid(x)
+        return F.log_softmax(x, dim=1)

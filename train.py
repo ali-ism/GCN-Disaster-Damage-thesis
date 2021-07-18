@@ -16,7 +16,7 @@ from torch_geometric.data import GraphSAINTNodeSampler
 from tqdm import tqdm
 from dataset import xBD
 from model import DeeperGCN, SplineNet
-from metrics import xview2_f1_score
+from metrics import to_onehot, xview2_f1_score
 from utils import get_class_weights
 
 with open('exp_settings.json', 'r') as JSON:
@@ -66,7 +66,8 @@ def train(epoch):
             subdata = subdata.to(device)
             optimizer.zero_grad()
             out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
-            loss = F.binary_cross_entropy(input=out, target=subdata.y.float(), weight=class_weights.to(device))
+            y_true = to_onehot(subdata.y)
+            loss = F.nll_loss(input=out, target=y_true.float(), weight=class_weights.to(device))
             loss.backward()
             optimizer.step()
             data_loss += loss.item() * subdata.num_nodes
@@ -92,7 +93,8 @@ def test(dataset):
     ys = torch.cat(ys)
     f1 = xview2_f1_score(ys, outs)
     if dataset is not train_dataset:
-        loss = F.binary_cross_entropy(input=outs, target=ys.float(), weight=class_weights)
+        y = to_onehot(ys)
+        loss = F.nll_loss(input=outs, target=y.float(), weight=class_weights)
     else:
         loss = None
     return f1, loss

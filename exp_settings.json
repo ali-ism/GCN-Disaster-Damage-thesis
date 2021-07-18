@@ -18,7 +18,7 @@
         "palu_matthew_rosa_train_root": "/home/ami31/scratch/datasets/palu_matthew_rosa_train",
         "palu_matthew_rosa_test_root": "/home/ami31/scratch/datasets/palu_matthew_rosa_test",
         "palu_matthew_rosa_hold_root": "/home/ami31/scratch/datasets/palu_matthew_rosa_hold",
-        "batch_size": 128,
+        "batch_size": 256,
         "saint_num_steps": 5
     },
     "model": {
