@@ -8,12 +8,12 @@ def parse_ordinal_output(out: torch.Tensor) -> np.ndarray:
     idx = torch.where(out < 0.5, 1, 0)
     idx = torch.argmax(idx, dim=1)
     idx = torch.where(idx == 0, 4, idx) - 1
-    return idx.detach().numpy()
+    return idx
 
 
 def to_onehot(y_ord: torch.Tensor, num_classes=4) -> torch.Tensor:
-    y_ord = parse_ordinal_output(y_ord) - 1
-    return F.one_hot(torch.LongTensor(y_ord), num_classes=num_classes)
+    y_ord = parse_ordinal_output(y_ord)
+    return F.one_hot(y_ord.long(), num_classes=num_classes)
 
 
 def xview2_f1_score(y_true: torch.Tensor, out: torch.Tensor) -> float:
