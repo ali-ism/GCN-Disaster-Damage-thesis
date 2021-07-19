@@ -8,7 +8,6 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --gres=gpu
 #SBATCH --mem=0
-#SBATCH --time=3-00:00:00
 
 module purge
 module load python/3.8.2
