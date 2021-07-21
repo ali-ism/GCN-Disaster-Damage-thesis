@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-import json
 import pandas as pd
 from typing import List
 import torch
@@ -9,13 +8,10 @@ from PIL import Image
 from torch_geometric.data import Data, Dataset
 from utils import build_edge_idx, get_edge_features
 
-with open('exp_settings.json', 'r') as JSON:
-    settings_dict = json.load(JSON)
-
-seed = settings_dict['seed']
-train_path = settings_dict['data']['train_bldgs']
-test_path = settings_dict['data']['test_bldgs']
-hold_path = settings_dict['data']['hold_bldgs']
+seed = 42
+train_path = "/home/ami31/scratch/datasets/xbd/train_bldgs/"
+test_path = "/home/ami31/scratch/datasets/xbd/test_bldgs/"
+hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
 mexico_train = "/home/ami31/scratch/datasets/pixel/mexico_train"
 mexico_test = "/home/ami31/scratch/datasets/pixel/mexico_test"
 mexico_hold = "/home/ami31/scratch/datasets/pixel/mexico_hold"
@@ -25,8 +21,6 @@ palu_hold = "/home/ami31/scratch/datasets/pixel/palu_hold"
 palu_matthew_rosa_train = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_train"
 palu_matthew_rosa_test = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_test"
 palu_matthew_rosa_hold = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_hold"
-
-del settings_dict
 
 torch.manual_seed(seed)
 
@@ -107,8 +101,8 @@ class xBD(Dataset):
 
                     pre_image = Image.open(pre_image_file)
                     post_image = Image.open(post_image_file)
-                    pre_image = pre_image.resize((256, 256))
-                    post_image = post_image.resize((256, 256))
+                    pre_image = pre_image.resize((128, 128))
+                    post_image = post_image.resize((128, 128))
                     pre_image = transform(pre_image)
                     post_image = transform(post_image)
                     images = torch.cat((pre_image, post_image),0)

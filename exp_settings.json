@@ -6,18 +6,6 @@
         "path": "weights"
         },
     "data": {
-        "train_bldgs": "/home/ami31/scratch/datasets/xbd/train_bldgs/",
-        "test_bldgs": "/home/ami31/scratch/datasets/xbd/test_bldgs/",
-        "hold_bldgs": "/home/ami31/scratch/datasets/xbd/hold_bldgs/",
-        "mexico_train_root": "/home/ami31/scratch/datasets/mexico_train",
-        "mexico_test_root": "/home/ami31/scratch/datasets/mexico_test",
-        "mexico_hold_root": "/home/ami31/scratch/datasets/mexico_hold",
-        "palu_train_root": "/home/ami31/scratch/datasets/palu_train",
-        "palu_test_root": "/home/ami31/scratch/datasets/palu_test",
-        "palu_hold_root": "/home/ami31/scratch/datasets/palu_hold",
-        "palu_matthew_rosa_train_root": "/home/ami31/scratch/datasets/palu_matthew_rosa_train",
-        "palu_matthew_rosa_test_root": "/home/ami31/scratch/datasets/palu_matthew_rosa_test",
-        "palu_matthew_rosa_hold_root": "/home/ami31/scratch/datasets/palu_matthew_rosa_hold",
         "batch_size": 256,
         "saint_num_steps": 5
     },

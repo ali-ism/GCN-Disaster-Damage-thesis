@@ -15,29 +15,29 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.data import GraphSAINTNodeSampler
 from tqdm import tqdm
 from dataset import xBD
-from model import DeeperGCN, SplineNet
+from model import DeeperGCN
 from metrics import to_onehot, xview2_f1_score
 from utils import get_class_weights
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
-seed = settings_dict['seed']
+seed = 42
 batch_size = settings_dict['data']['batch_size']
 num_steps = settings_dict['data']['saint_num_steps']
 name = settings_dict['model']['name']
 train_set = settings_dict['train_set']
 if len(train_set) == 1:
     if train_set[0] == 'mexico-earthquake':
-        train_root = settings_dict['data']['mexico_train_root']
-        test_root = settings_dict['data']['mexico_test_root']
+        train_root = "/home/ami31/scratch/datasets/pixel/mexico_train"
+        test_root = "/home/ami31/scratch/datasets/pixel/mexico_test"
     else:
-        train_root = settings_dict['data']['palu_train_root']
-        test_root = settings_dict['data']['palu_test_root']
+        train_root = "/home/ami31/scratch/datasets/pixel/palu_train"
+        test_root = "/home/ami31/scratch/datasets/pixel/palu_test"
 else:
-    train_root = settings_dict['data']['palu_matthew_rosa_train_root']
-    test_root = settings_dict['data']['palu_matthew_rosa_test_root']
-hold_root = settings_dict['data']['mexico_hold_root']
+    train_root = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_train"
+    test_root = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_test"
+hold_root = "/home/ami31/scratch/datasets/pixel/mexico_hold"
 hidden_units = settings_dict['model']['hidden_units']
 num_layers = settings_dict['model']['num_layers']
 dropout_rate = settings_dict['model']['dropout_rate']

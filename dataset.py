@@ -13,24 +13,25 @@ from utils import build_edge_idx, get_edge_features
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
-seed = settings_dict['seed']
-train_path = settings_dict['data']['train_bldgs']
-test_path = settings_dict['data']['test_bldgs']
-hold_path = settings_dict['data']['hold_bldgs']
 resnet_pretrained = settings_dict['resnet']['pretrained']
 resnet_shared = settings_dict['resnet']['shared']
 resnet_diff = settings_dict['resnet']['diff']
-mexico_train = settings_dict['data']['mexico_train_root']
-mexico_test = settings_dict['data']['mexico_test_root']
-mexico_hold = settings_dict['data']['mexico_hold_root']
-palu_train = settings_dict['data']['palu_train_root']
-palu_test = settings_dict['data']['palu_test_root']
-palu_hold = settings_dict['data']['palu_hold_root']
-palu_matthew_rosa_train = settings_dict['data']['palu_matthew_rosa_train_root']
-palu_matthew_rosa_test = settings_dict['data']['palu_matthew_rosa_test_root']
-palu_matthew_rosa_hold = settings_dict['data']['palu_matthew_rosa_hold_root']
 
 del settings_dict
+
+seed = 42
+train_path = "/home/ami31/scratch/datasets/xbd/train_bldgs/"
+test_path = "/home/ami31/scratch/datasets/xbd/test_bldgs/"
+hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
+mexico_train = "/home/ami31/scratch/datasets/mexico_train"
+mexico_test = "/home/ami31/scratch/datasets/mexico_test"
+mexico_hold = "/home/ami31/scratch/datasets/mexico_hold"
+palu_train = "/home/ami31/scratch/datasets/palu_train"
+palu_test = "/home/ami31/scratch/datasets/palu_test"
+palu_hold = "/home/ami31/scratch/datasets/palu_hold"
+palu_matthew_rosa_train = "/home/ami31/scratch/datasets/palu_matthew_rosa_train"
+palu_matthew_rosa_test = "/home/ami31/scratch/datasets/palu_matthew_rosa_test"
+palu_matthew_rosa_hold = "/home/ami31/scratch/datasets/palu_matthew_rosa_hold"
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(seed)
@@ -88,6 +89,7 @@ class xBD(Dataset):
     def process(self):
         resnet50 = load_feature_extractor(resnet_pretrained, resnet_shared, resnet_diff)
         resnet50 = resnet50.to(device)
+        label_dict = {'no-damage':1,'minor-damage':2,'major-damage':3,'destroyed':4}
         
         for disaster, labels in zip(self.disasters, self.list_labels):
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
@@ -109,16 +111,8 @@ class xBD(Dataset):
                     label = labels.loc[os.path.split(post_image_file)[1],'class']
                     if label == 'un-classified':
                         continue
-                    elif label == 'no-damage':
-                        y.append([1,0,0,0])
-                    elif label == 'minor-damage':
-                        y.append([1,1,0,0])
-                    elif label == 'major-damage':
-                        y.append([1,1,1,0])
-                    elif label == 'destroyed':
-                        y.append([1,1,1,1])
                     else:
-                        raise ValueError(f'Label class {label} undefined.')
+                        y.append(label_dict[label])
 
                     coords.append((labels.loc[os.path.split(post_image_file)[1],'xcoord'],
                                    labels.loc[os.path.split(post_image_file)[1],'ycoord']))
@@ -170,12 +164,12 @@ class xBD(Dataset):
 
 if __name__ == "__main__":
     disaster_sets = [['mexico-earthquake'],
-                    ['palu-tsunami'],
-                    ['palu-tsunami', 'hurricane-matthew', 'santa-rosa-wildfire']]
+                    ['palu-tsunami']]
+                    #['palu-tsunami', 'hurricane-matthew', 'santa-rosa-wildfire']]
     subsets = ['train', 'test', 'hold']
     roots = [[mexico_train, mexico_test, mexico_hold],
-             [palu_train, palu_test, palu_hold],
-             [palu_matthew_rosa_train, palu_matthew_rosa_test, palu_matthew_rosa_hold]]
+             [palu_train, palu_test, palu_hold]]
+             #[palu_matthew_rosa_train, palu_matthew_rosa_test, palu_matthew_rosa_hold]]
     for disaster, root in zip(disaster_sets, roots):
         for subset, root_dir in zip(subsets, root):
             print(f'Building dataset for {disaster} {subset}...')
