@@ -10,7 +10,7 @@
         "saint_num_steps": 5
     },
     "model": {
-        "name": "mexico_02",
+        "name": "mexico_01",
         "path": "weights",
         "hidden_units": 256,
         "num_layers": 7,

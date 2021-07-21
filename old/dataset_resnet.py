@@ -1,28 +1,42 @@
 import os
 from pathlib import Path
+import json
 import pandas as pd
 from typing import List
 import torch
 import torchvision.transforms as tr
 from PIL import Image
 from torch_geometric.data import Data, Dataset
+from feature_extractor import load_feature_extractor
 from utils import build_edge_idx, get_edge_features
+
+with open('exp_settings.json', 'r') as JSON:
+    settings_dict = json.load(JSON)
+
+resnet_pretrained = settings_dict['resnet']['pretrained']
+resnet_shared = settings_dict['resnet']['shared']
+resnet_diff = settings_dict['resnet']['diff']
+
+del settings_dict
 
 seed = 42
 train_path = "/home/ami31/scratch/datasets/xbd/train_bldgs/"
 test_path = "/home/ami31/scratch/datasets/xbd/test_bldgs/"
 hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
-mexico_train = "/home/ami31/scratch/datasets/pixel/mexico_train"
-mexico_test = "/home/ami31/scratch/datasets/pixel/mexico_test"
-mexico_hold = "/home/ami31/scratch/datasets/pixel/mexico_hold"
-palu_train = "/home/ami31/scratch/datasets/pixel/palu_train"
-palu_test = "/home/ami31/scratch/datasets/pixel/palu_test"
-palu_hold = "/home/ami31/scratch/datasets/pixel/palu_hold"
-palu_matthew_rosa_train = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_train"
-palu_matthew_rosa_test = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_test"
-palu_matthew_rosa_hold = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_hold"
+mexico_train = "/home/ami31/scratch/datasets/mexico_train"
+mexico_test = "/home/ami31/scratch/datasets/mexico_test"
+mexico_hold = "/home/ami31/scratch/datasets/mexico_hold"
+palu_train = "/home/ami31/scratch/datasets/palu_train"
+palu_test = "/home/ami31/scratch/datasets/palu_test"
+palu_hold = "/home/ami31/scratch/datasets/palu_hold"
+palu_matthew_rosa_train = "/home/ami31/scratch/datasets/palu_matthew_rosa_train"
+palu_matthew_rosa_test = "/home/ami31/scratch/datasets/palu_matthew_rosa_test"
+palu_matthew_rosa_hold = "/home/ami31/scratch/datasets/palu_matthew_rosa_hold"
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 transform = tr.ToTensor()
 
@@ -73,7 +87,10 @@ class xBD(Dataset):
         return processed_files
 
     def process(self):
+        resnet50 = load_feature_extractor(resnet_pretrained, resnet_shared, resnet_diff)
+        resnet50 = resnet50.to(device)
         label_dict = {'no-damage':1,'minor-damage':2,'major-damage':3,'destroyed':4}
+        
         for disaster, labels in zip(self.disasters, self.list_labels):
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:
@@ -90,6 +107,7 @@ class xBD(Dataset):
 
                 for pre_image_file, post_image_file in zip(list_pre_images, list_post_images):
                     
+                    #ordinal encoding of labels
                     label = labels.loc[os.path.split(post_image_file)[1],'class']
                     if label == 'un-classified':
                         continue
@@ -101,12 +119,14 @@ class xBD(Dataset):
 
                     pre_image = Image.open(pre_image_file)
                     post_image = Image.open(post_image_file)
-                    pre_image = pre_image.resize((128, 128))
-                    post_image = post_image.resize((128, 128))
+                    pre_image = pre_image.resize((256, 256))
+                    post_image = post_image.resize((256, 256))
                     pre_image = transform(pre_image)
                     post_image = transform(post_image)
                     images = torch.cat((pre_image, post_image),0)
-                    x.append(images.flatten())
+                    images = images.to(device)
+                    with torch.no_grad():
+                        x.append(resnet50(images.unsqueeze(0)).flatten().cpu())
 
                 x = torch.stack(x)
                 y = torch.tensor(y)
