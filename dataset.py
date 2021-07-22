@@ -73,7 +73,7 @@ class xBD(Dataset):
         return processed_files
 
     def process(self):
-        label_dict = {'no-damage':1,'minor-damage':2,'major-damage':3,'destroyed':4}
+        label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
         for disaster, labels in zip(self.disasters, self.list_labels):
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
             for zone in zones:

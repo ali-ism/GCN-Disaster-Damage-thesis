@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from typing_extensions import Tuple
 
-
+"""
 def parse_ordinal_output(out: torch.Tensor) -> torch.Tensor:
     idx = torch.where(out < 0.5, 1, 0)
     idx = torch.argmax(idx, dim=1)
@@ -15,12 +15,11 @@ def parse_ordinal_output(out: torch.Tensor) -> torch.Tensor:
 def to_onehot(y_ord: torch.Tensor, num_classes=4) -> torch.Tensor:
     y_ord = parse_ordinal_output(y_ord)
     return F.one_hot(y_ord.long(), num_classes=num_classes)
-
+"""
 
 def score(y_true: torch.Tensor, y_pred: torch.Tensor) -> Tuple[float]:
     """
-    According to https://github.com/DIUx-xView/xView2_scoring:
-        the df1 is calculated by taking the harmonic mean of the 4 damage f1 scores (no damage, minor damage, major damage, and destroyed) df1 = 4 / sum((f1+epsilon)**-1 for f1 in [no_damage_f1, minor_damage_f1, major_damage_f1, destroyed_f1]), where epsilon = 1e-6
+    Claculates the accuracy, macro F1 score, weighted F1 score, xview2 F1 score and the ROC AUC score. The xview2 F1 score is calculated according to https://github.com/DIUx-xView/xView2_scoring.
     
     Args:
         y_true (torch.Tensor) of shape (n_samples) containing true labels.
