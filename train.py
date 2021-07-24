@@ -160,7 +160,13 @@ def save_results(hold=False) -> None:
         file.write(f'Best epoch: {best_epoch}')
     if hold:
         hold_dataset = xBD(hold_root, 'hold', ['mexico-earthquake'])
-        np.save('results/'+name+'_hold_scores.npy', np.asarray(test(hold_dataset)))
+        hold_scores = test(hold_dataset)
+        np.save('results/'+name+'_hold_scores.npy', np.asarray(hold_scores))
+        print(f'Hold accuracy: {hold_scores[0]:.4f}')
+        print(f'Hold macro F1: {hold_scores[1]:.4f}')
+        print(f'Hold weighted F1: {hold_scores[2]:.4f}')
+        print(f'Hold xview2: {hold_scores[3]:.4f}')
+        print(f'Hold auc: {hold_scores[4]:.4f}')
 
 
 if __name__ == "__main__":
