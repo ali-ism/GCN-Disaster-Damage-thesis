@@ -17,3 +17,10 @@
 | Palu tsunami                                                                   | Mexico earthquake     |
 | Palu tsunami + hurricane matthew + santa rosa wildfire                         | Mexico earthquake     |
 | Palu tsunami + hurricane matthew + santa rosa wildfire + 10% mexico earthquake | 90% mexico earthquake |
+
+| Train                                                                          | Test                  |
+|--------------------------------------------------------------------------------|-----------------------|
+| Mexico earthquake                                                              | Mexico earthquake     |
+| Palu tsunami                                                                   | Mexico earthquake     |
+| Palu tsunami + hurricane matthew + santa rosa wildfire                         | Mexico earthquake     |
+| Palu tsunami + hurricane matthew + santa rosa wildfire + 10% mexico earthquake | 90% mexico earthquake |

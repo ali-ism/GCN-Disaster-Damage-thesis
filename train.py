@@ -236,7 +236,7 @@ if __name__ == "__main__":
             model_path = path + '/' + name + '.pt'
             torch.save(model.state_dict(), model_path)
 
-        if epoch > 5:
+        if epoch > 3:
             train_acc[epoch-6], train_f1_macro[epoch-6], train_f1_weighted[epoch-6],\
             train_xview2[epoch-6], train_auc[epoch-6], _ = test(train_dataset)
             test_acc[epoch-6], test_f1_macro[epoch-6], test_f1_weighted[epoch-6],\
@@ -250,7 +250,7 @@ if __name__ == "__main__":
                 print(f'New best model saved to: {model_path}')
                 torch.save(model.state_dict(), model_path)
         
-        if not (epoch % 10):
+        if not (epoch % 5):
             save_results()
     
     with open('results/'+name+'_exp_settings.json', 'w') as JSON:
