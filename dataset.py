@@ -12,6 +12,7 @@ seed = 42
 train_path = "/home/ami31/scratch/datasets/xbd/train_bldgs/"
 test_path = "/home/ami31/scratch/datasets/xbd/test_bldgs/"
 hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
+tier3_path = "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"
 mexico_train = "/home/ami31/scratch/datasets/pixel/mexico_train"
 mexico_test = "/home/ami31/scratch/datasets/pixel/mexico_test"
 mexico_hold = "/home/ami31/scratch/datasets/pixel/mexico_hold"
@@ -21,6 +22,10 @@ palu_hold = "/home/ami31/scratch/datasets/pixel/palu_hold"
 palu_matthew_rosa_train = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_train"
 palu_matthew_rosa_test = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_test"
 palu_matthew_rosa_hold = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_hold"
+socal_train = "/home/ami31/scratch/datasets/pixel/socal_train"
+socal_test = "/home/ami31/scratch/datasets/pixel/socal_test"
+socal_hold = "/home/ami31/scratch/datasets/pixel/socal_hold"
+sunda = "/home/ami31/scratch/datasets/pixel/sunda"
 
 torch.manual_seed(seed)
 
@@ -40,8 +45,10 @@ class xBD(Dataset):
             self.path = test_path
         elif subset == 'hold':
             self.path = hold_path
+        elif subset == 'tier3':
+            self.path = tier3_path
         else:
-            raise ValueError("Subset can be either 'train', 'test' or 'hold'.")
+            raise ValueError("Subset can be either 'train', 'test', 'hold' or 'tier3'.")
         
         self.disasters = disasters
 
@@ -143,6 +150,7 @@ class xBD(Dataset):
 
 
 if __name__ == "__main__":
+    """
     disaster_sets = [['mexico-earthquake'],
                     ['palu-tsunami']]
                     #['palu-tsunami', 'hurricane-matthew', 'santa-rosa-wildfire']]
@@ -157,3 +165,18 @@ if __name__ == "__main__":
                 os.mkdir(root_dir)
             xBD(root_dir, subset, disaster)
             print(f'****{disaster} {subset} done****')
+    """
+    disaster_sets = [['socal-fire']]
+    subsets = ['train', 'test', 'hold']
+    roots = [[socal_train, socal_test, socal_hold]]
+    for disaster, root in zip(disaster_sets, roots):
+        for subset, root_dir in zip(subsets, root):
+            print(f'Building dataset for {disaster} {subset}...')
+            if not os.path.isdir(root_dir):
+                os.mkdir(root_dir)
+            xBD(root_dir, subset, disaster)
+            print(f'****{disaster} {subset} done****')
+    print(f'Building dataset for Sunda Tsunami...')
+    if not os.path.isdir(sunda):
+        os.mkdir(sunda)
+    xBD(sunda, 'tier3', 'sunda-tsunami')
