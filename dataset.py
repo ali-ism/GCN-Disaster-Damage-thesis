@@ -166,16 +166,6 @@ if __name__ == "__main__":
             xBD(root_dir, subset, disaster)
             print(f'****{disaster} {subset} done****')
     """
-    disaster_sets = [['socal-fire']]
-    subsets = ['train', 'test', 'hold']
-    roots = [[socal_train, socal_test, socal_hold]]
-    for disaster, root in zip(disaster_sets, roots):
-        for subset, root_dir in zip(subsets, root):
-            print(f'Building dataset for {disaster} {subset}...')
-            if not os.path.isdir(root_dir):
-                os.mkdir(root_dir)
-            xBD(root_dir, subset, disaster)
-            print(f'****{disaster} {subset} done****')
     print(f'Building dataset for Sunda Tsunami...')
     if not os.path.isdir(sunda):
         os.mkdir(sunda)
