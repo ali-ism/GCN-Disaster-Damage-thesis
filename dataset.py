@@ -179,4 +179,4 @@ if __name__ == "__main__":
     print(f'Building dataset for Sunda Tsunami...')
     if not os.path.isdir(sunda):
         os.mkdir(sunda)
-    xBD(sunda, 'tier3', 'sunda-tsunami')
+    xBD(sunda, 'tier3', ['sunda-tsunami'])
