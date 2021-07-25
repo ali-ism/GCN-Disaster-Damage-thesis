@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch_geometric.data import GraphSAINTNodeSampler
+from torch_geometric.data import GraphSAINTNodeSampler, RandomNodeSampler
 from tqdm import tqdm
 from dataset import xBD
 from model import DeeperGCN
@@ -83,7 +83,7 @@ def test(dataset):
     y_true = []
     y_pred = []
     for data in dataset:
-        sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
+        sampler = RandomNodeSampler(data, num_parts=batch_size, num_workers=2)
         for subdata in sampler:
             subdata = subdata.to(device)
             y_pred.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
