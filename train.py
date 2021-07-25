@@ -28,16 +28,14 @@ num_steps = settings_dict['data']['saint_num_steps']
 name = settings_dict['model']['name']
 train_set = settings_dict['train_set']
 if len(train_set) == 1:
-    if train_set[0] == 'mexico-earthquake':
-        train_root = "/home/ami31/scratch/datasets/pixel/mexico_train"
-        test_root = "/home/ami31/scratch/datasets/pixel/mexico_test"
+    if train_set[0] == 'socal-fire':
+        train_root = "/home/ami31/scratch/datasets/pixel/socal_train"
     else:
-        train_root = "/home/ami31/scratch/datasets/pixel/palu_train"
-        test_root = "/home/ami31/scratch/datasets/pixel/palu_test"
+        train_root = "/home/ami31/scratch/datasets/pixel/sunda"
 else:
-    train_root = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_train"
-    test_root = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_test"
-hold_root = "/home/ami31/scratch/datasets/pixel/mexico_hold"
+    train_root = "/home/ami31/scratch/datasets/pixel/sunda_tucaloosa_puna"
+test_root = "/home/ami31/scratch/datasets/pixel/socal_test"
+hold_root = "/home/ami31/scratch/datasets/pixel/socal_hold"
 hidden_units = settings_dict['model']['hidden_units']
 num_layers = settings_dict['model']['num_layers']
 dropout_rate = settings_dict['model']['dropout_rate']
@@ -83,7 +81,7 @@ def test(dataset):
     y_true = []
     y_pred = []
     for data in dataset:
-        sampler = RandomNodeSampler(data, num_parts=batch_size, num_workers=2)
+        sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
         for subdata in sampler:
             subdata = subdata.to(device)
             y_pred.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
@@ -159,7 +157,7 @@ def save_results(hold=False) -> None:
     with open('results/'+name+'_exp_progress.txt', 'a') as file:
         file.write(f'Best epoch: {best_epoch}')
     if hold:
-        hold_dataset = xBD(hold_root, 'hold', ['mexico-earthquake'])
+        hold_dataset = xBD(hold_root, 'hold', ['socal-fire'])
         hold_scores = test(hold_dataset)
         np.save('results/'+name+'_hold_scores.npy', np.asarray(hold_scores))
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
@@ -172,7 +170,7 @@ def save_results(hold=False) -> None:
 if __name__ == "__main__":
     
     train_dataset = xBD(train_root, 'train', train_set).shuffle()
-    test_dataset = xBD(train_root, 'test', train_set)
+    test_dataset = xBD(test_root, 'test', train_set)
 
     class_weights = get_class_weights(train_set, train_dataset)
 
@@ -188,22 +186,22 @@ if __name__ == "__main__":
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=20, min_lr=0.00001)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=0.00001)
 
     if starting_epoch == 1:
         best_test_auc = best_epoch = 0
         train_loss = np.empty(n_epochs)
-        test_loss = np.empty(n_epochs-5)
-        train_acc = np.empty(n_epochs-5)
-        test_acc = np.empty(n_epochs-5)
-        train_f1_macro = np.empty(n_epochs-5)
-        test_f1_macro = np.empty(n_epochs-5)
-        train_f1_weighted = np.empty(n_epochs-5)
-        test_f1_weighted = np.empty(n_epochs-5)
-        train_xview2 = np.empty(n_epochs-5)
-        test_xview2 = np.empty(n_epochs-5)
-        train_auc = np.empty(n_epochs-5)
-        test_auc = np.empty(n_epochs-5)
+        test_loss = np.empty(n_epochs)
+        train_acc = np.empty(n_epochs)
+        test_acc = np.empty(n_epochs)
+        train_f1_macro = np.empty(n_epochs)
+        test_f1_macro = np.empty(n_epochs)
+        train_f1_weighted = np.empty(n_epochs)
+        test_f1_weighted = np.empty(n_epochs)
+        train_xview2 = np.empty(n_epochs)
+        test_xview2 = np.empty(n_epochs)
+        train_auc = np.empty(n_epochs)
+        test_auc = np.empty(n_epochs)
     else:
         with open('results/'+name+'_best_test.json', 'r') as JSON:
             best_test = json.load(JSON)
@@ -227,28 +225,26 @@ if __name__ == "__main__":
         with open('results/'+name+'_exp_progress.txt', 'w') as file:
             file.write(f'Last epoch: {epoch}\n')
         
-        loss = train(epoch)
-        train_loss[epoch-1] = loss
+        train_loss[epoch-1] = train(epoch)
         print('**********************************************')
-        print(f'Epoch {epoch:02d}, Train Loss: {loss:.4f}')
+        print(f'Epoch {epoch:02d}, Train Loss: {train_loss[epoch-1]:.4f}')
     
         if not save_best_only:
             model_path = path + '/' + name + '.pt'
             torch.save(model.state_dict(), model_path)
 
-        if epoch > 3:
-            train_acc[epoch-6], train_f1_macro[epoch-6], train_f1_weighted[epoch-6],\
-            train_xview2[epoch-6], train_auc[epoch-6], _ = test(train_dataset)
-            test_acc[epoch-6], test_f1_macro[epoch-6], test_f1_weighted[epoch-6],\
-            test_xview2[epoch-6], test_auc[epoch-6], test_loss[epoch-6] = test(test_dataset)
-            scheduler.step(test_loss[epoch-6])
+        train_acc[epoch-1], train_f1_macro[epoch-1], train_f1_weighted[epoch-1],\
+        train_xview2[epoch-1], train_auc[epoch-1], _ = test(train_dataset)
+        test_acc[epoch-1], test_f1_macro[epoch-1], test_f1_weighted[epoch-1],\
+        test_xview2[epoch-1], test_auc[epoch-1], test_loss[epoch-1] = test(test_dataset)
+        scheduler.step(test_loss[epoch-1])
 
-            if test_auc[epoch-6] > best_test_auc:
-                best_test_auc = test_auc[epoch-6]
-                best_epoch = epoch
-                model_path = path + '/' + name + '_best.pt'
-                print(f'New best model saved to: {model_path}')
-                torch.save(model.state_dict(), model_path)
+        if test_auc[epoch-1] > best_test_auc:
+            best_test_auc = test_auc[epoch-1]
+            best_epoch = epoch
+            model_path = path + '/' + name + '_best.pt'
+            print(f'New best model saved.')
+            torch.save(model.state_dict(), model_path)
         
         if not (epoch % 5):
             save_results()

@@ -10,16 +10,16 @@
         "saint_num_steps": 5
     },
     "model": {
-        "name": "mexico_01",
+        "name": "socal_01",
         "path": "weights",
         "hidden_units": 256,
         "num_layers": 7,
         "lr": 0.003,
-        "dropout_rate": 0.2
+        "dropout_rate": 0.5
     },
-    "train_set": ["mexico-earthquake"],
+    "train_set": ["socal-fire"],
     "starting_epoch": 1,
-    "epochs": 20,
+    "epochs": 40,
     "seed": 42,
     "save_best_only": true
 }
