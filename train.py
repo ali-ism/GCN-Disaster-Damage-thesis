@@ -57,19 +57,28 @@ def train(epoch):
     pbar.set_description(f'Epoch {epoch:02d}')
     total_loss = 0
     for data in train_dataset:
-        sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
-        data_loss = 0
-        total_examples = 0
-        for subdata in sampler:
-            subdata = subdata.to(device)
+        if data.num_nodes > batch_size:
+            sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
+            data_loss = 0
+            total_examples = 0
+            for subdata in sampler:
+                subdata = subdata.to(device)
+                optimizer.zero_grad()
+                out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
+                loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights.to(device))
+                loss.backward()
+                optimizer.step()
+                data_loss += loss.item() * subdata.num_nodes
+                total_examples += subdata.num_nodes
+            total_loss += data_loss / total_examples
+        else:
+            data = data.to(device)
             optimizer.zero_grad()
-            out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
-            loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights.to(device))
+            out = model(data.x, data.edge_index, data.edge_attr)
+            loss = F.nll_loss(input=out, target=data.y, weight=class_weights.to(device))
             loss.backward()
             optimizer.step()
-            data_loss += loss.item() * subdata.num_nodes
-            total_examples += subdata.num_nodes
-        total_loss += data_loss / total_examples
+            total_loss += loss.item()
         pbar.update()
     pbar.close()
     return total_loss / len(train_dataset)
@@ -81,11 +90,16 @@ def test(dataset):
     y_true = []
     y_pred = []
     for data in dataset:
-        sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
-        for subdata in sampler:
-            subdata = subdata.to(device)
-            y_pred.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
-            y_true.append(subdata.y.cpu())
+        if data.num_nodes > batch_size:
+            sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
+            for subdata in sampler:
+                subdata = subdata.to(device)
+                y_pred.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
+                y_true.append(subdata.y.cpu())
+        else:
+            data = data.to(device)
+            y_pred.append(model(data.x, data.edge_index, data.edge_attr).cpu())
+            y_true.append(data.y.cpu())
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, xview2_f1, auc = score(y_true, y_pred)
@@ -139,6 +153,7 @@ def save_results(hold=False) -> None:
     plt.xlabel('epochs')
     plt.ylabel('auc')
     plt.savefig('results/'+name+'_auc.eps')
+    plt.close('all')
     np.save('results/'+name+'_loss_train.npy', train_loss)
     np.save('results/'+name+'_loss_test.npy', test_loss)
     np.save('results/'+name+'_acc_train.npy', train_acc)
