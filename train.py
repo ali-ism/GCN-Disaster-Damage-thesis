@@ -102,12 +102,12 @@ def test(dataset):
             y_true.append(data.y.cpu())
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
-    accuracy, f1_macro, f1_weighted, xview2_f1, auc = score(y_true, y_pred)
+    accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
     if dataset is not train_dataset:
         loss = F.nll_loss(input=y_pred, target=y_true, weight=class_weights)
     else:
         loss = None
-    return accuracy, f1_macro, f1_weighted, xview2_f1, auc, loss
+    return accuracy, f1_macro, f1_weighted, auc, loss
 
 
 def save_results(hold=False) -> None:
@@ -140,13 +140,6 @@ def save_results(hold=False) -> None:
     plt.ylabel('weighted f1')
     plt.savefig('results/'+name+'_weighted_f1.eps')
     plt.figure()
-    plt.plot(train_xview2)
-    plt.plot(test_xview2)
-    plt.legend(['train', 'test'])
-    plt.xlabel('epochs')
-    plt.ylabel('xview2 f1')
-    plt.savefig('results/'+name+'_xview2.eps')
-    plt.figure()
     plt.plot(train_auc)
     plt.plot(test_auc)
     plt.legend(['train', 'test'])
@@ -162,15 +155,11 @@ def save_results(hold=False) -> None:
     np.save('results/'+name+'_macro_f1_test.npy', test_f1_macro)
     np.save('results/'+name+'_weighted_f1_train.npy', train_f1_weighted)
     np.save('results/'+name+'_weighted_f1_test.npy', test_f1_weighted)
-    np.save('results/'+name+'_xview2_train.npy', train_xview2)
-    np.save('results/'+name+'_xview2_test.npy', test_xview2)
     np.save('results/'+name+'_auc_train.npy', train_auc)
     np.save('results/'+name+'_auc_test.npy', test_auc)
-    best_test = {'best_test_f1': best_test_auc, 'best_epoch': best_epoch}
+    best_test = {'best_test_auc': best_test_auc, 'best_epoch': best_epoch}
     with open('results/'+name+'_best_test.json', 'w') as JSON:
         json.dump(best_test, JSON)
-    with open('results/'+name+'_exp_progress.txt', 'a') as file:
-        file.write(f'Best epoch: {best_epoch}')
     if hold:
         hold_dataset = xBD(hold_root, 'hold', ['socal-fire'])
         hold_scores = test(hold_dataset)
@@ -178,8 +167,7 @@ def save_results(hold=False) -> None:
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
         print(f'Hold macro F1: {hold_scores[1]:.4f}')
         print(f'Hold weighted F1: {hold_scores[2]:.4f}')
-        print(f'Hold xview2: {hold_scores[3]:.4f}')
-        print(f'Hold auc: {hold_scores[4]:.4f}')
+        print(f'Hold auc: {hold_scores[3]:.4f}')
 
 
 if __name__ == "__main__":
@@ -213,8 +201,6 @@ if __name__ == "__main__":
         test_f1_macro = np.empty(n_epochs)
         train_f1_weighted = np.empty(n_epochs)
         test_f1_weighted = np.empty(n_epochs)
-        train_xview2 = np.empty(n_epochs)
-        test_xview2 = np.empty(n_epochs)
         train_auc = np.empty(n_epochs)
         test_auc = np.empty(n_epochs)
     else:
@@ -230,15 +216,10 @@ if __name__ == "__main__":
         test_f1_macro = np.load('results/'+name+'_macro_f1_test.npy')
         train_f1_weighted = np.load('results/'+name+'_weighted_f1_train.npy')
         test_f1_weighted = np.load('results/'+name+'_weighted_f1_test.npy')
-        train_xview2 = np.load('results/'+name+'_xview2_train.npy')
-        test_xview2 = np.load('results/'+name+'_xview2_test.npy')
         train_auc = np.load('results/'+name+'_auc_train.npy')
         test_auc = np.load('results/'+name+'_auc_test.npy')
 
     for epoch in range(starting_epoch, n_epochs+1):
-
-        with open('results/'+name+'_exp_progress.txt', 'w') as file:
-            file.write(f'Last epoch: {epoch}\n')
         
         train_loss[epoch-1] = train(epoch)
         print('**********************************************')
@@ -248,10 +229,8 @@ if __name__ == "__main__":
             model_path = path + '/' + name + '.pt'
             torch.save(model.state_dict(), model_path)
 
-        train_acc[epoch-1], train_f1_macro[epoch-1], train_f1_weighted[epoch-1],\
-        train_xview2[epoch-1], train_auc[epoch-1], _ = test(train_dataset)
-        test_acc[epoch-1], test_f1_macro[epoch-1], test_f1_weighted[epoch-1],\
-        test_xview2[epoch-1], test_auc[epoch-1], test_loss[epoch-1] = test(test_dataset)
+        train_acc[epoch-1], train_f1_macro[epoch-1], train_f1_weighted[epoch-1], train_auc[epoch-1], _ = test(train_dataset)
+        test_acc[epoch-1], test_f1_macro[epoch-1], test_f1_weighted[epoch-1], test_auc[epoch-1], test_loss[epoch-1] = test(test_dataset)
         scheduler.step(test_loss[epoch-1])
 
         if test_auc[epoch-1] > best_test_auc:
