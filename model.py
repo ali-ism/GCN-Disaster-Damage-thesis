@@ -6,12 +6,13 @@ from torch_geometric.nn import GENConv, DeepGCNLayer, SplineConv, BatchNorm
 
 class DeeperGCN(Module):
     def __init__(self,
-                 num_node_features,
-                 num_edge_features,
-                 hidden_channels,
-                 num_classes,
-                 num_layers,
-                 dropout_rate):
+                 num_node_features: int,
+                 num_edge_features: int,
+                 hidden_channels: int,
+                 num_classes: int,
+                 num_layers: int,
+                 dropout_rate: float,
+                 msg_norm: bool):
         super(DeeperGCN, self).__init__()
 
         self.dropout_rate = dropout_rate
@@ -19,7 +20,8 @@ class DeeperGCN(Module):
         self.edge_encoder = Linear(num_edge_features, hidden_channels)
         self.layers = ModuleList()
         for i in range(1, num_layers + 1):
-            conv = GENConv(hidden_channels, hidden_channels, learn_t=True, num_layers=2, norm='layer')
+            conv = GENConv(hidden_channels, hidden_channels, learn_t=True, num_layers=2,
+                           norm='layer', msg_norm=msg_norm, learn_msg_scale=msg_norm)
             norm = LayerNorm(hidden_channels, elementwise_affine=True)
             act = ReLU(inplace=True)
             layer = DeepGCNLayer(conv, norm, act, block='res+', dropout=dropout_rate, ckpt_grad=i % 3)

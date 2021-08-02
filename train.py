@@ -39,6 +39,7 @@ hold_root = "/home/ami31/scratch/datasets/pixel/socal_hold"
 hidden_units = settings_dict['model']['hidden_units']
 num_layers = settings_dict['model']['num_layers']
 dropout_rate = settings_dict['model']['dropout_rate']
+msg_norm = settings_dict['model']['msg_norm']
 lr = settings_dict['model']['lr']
 n_epochs = settings_dict['epochs']
 starting_epoch = settings_dict['starting_epoch']
@@ -182,7 +183,8 @@ if __name__ == "__main__":
                       hidden_units,
                       train_dataset.num_classes,
                       num_layers,
-                      dropout_rate)
+                      dropout_rate,
+                      msg_norm)
     if starting_epoch != 1:
         model_path = path + '/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
