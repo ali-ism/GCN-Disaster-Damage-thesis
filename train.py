@@ -164,7 +164,15 @@ def save_results(hold=False) -> None:
     if hold:
         hold_dataset = xBD(hold_root, 'hold', ['socal-fire'])
         hold_scores = test(hold_dataset)
-        np.save('results/'+name+'_hold_scores.npy', np.asarray(hold_scores))
+        print('Hold results for last model.')
+        print(f'Hold accuracy: {hold_scores[0]:.4f}')
+        print(f'Hold macro F1: {hold_scores[1]:.4f}')
+        print(f'Hold weighted F1: {hold_scores[2]:.4f}')
+        print(f'Hold auc: {hold_scores[3]:.4f}')
+        model_path = path + '/' + name + '_best.pt'
+        model.load_state_dict(torch.load(model_path))
+        hold_scores = test(hold_dataset)
+        print('Hold results for best model.')
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
         print(f'Hold macro F1: {hold_scores[1]:.4f}')
         print(f'Hold weighted F1: {hold_scores[2]:.4f}')
