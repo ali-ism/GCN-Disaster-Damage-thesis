@@ -10,17 +10,17 @@
         "saint_num_steps": 5
     },
     "model": {
-        "name": "socal_05",
+        "name": "socal_06",
         "path": "weights",
         "hidden_units": 128,
-        "num_layers": 14,
+        "num_layers": 56,
         "lr": 0.01,
         "dropout_rate": 0.5,
         "msg_norm": true
     },
     "train_set": ["socal-fire"],
     "starting_epoch": 1,
-    "epochs": 50,
+    "epochs": 100,
     "seed": 42,
     "save_best_only": true
 }
