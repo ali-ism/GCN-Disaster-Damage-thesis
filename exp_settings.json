@@ -10,11 +10,11 @@
         "saint_num_steps": 5
     },
     "model": {
-        "name": "socal_03",
+        "name": "socal_05",
         "path": "weights",
         "hidden_units": 128,
         "num_layers": 14,
-        "lr": 0.003,
+        "lr": 0.01,
         "dropout_rate": 0.5,
         "msg_norm": true
     },
