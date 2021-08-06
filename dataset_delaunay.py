@@ -3,33 +3,26 @@ from pathlib import Path
 import pandas as pd
 from typing import List
 import torch
-import torchvision.transforms as tr
+from torchvision.transforms import ToTensor
+from torch_geometric.transforms import Compose, Delaunay, FaceToEdge
 from PIL import Image
 from torch_geometric.data import Data, Dataset
-from utils import build_edge_idx, get_edge_features
+from utils import get_edge_features
 
 seed = 42
 train_path = "/home/ami31/scratch/datasets/xbd/train_bldgs/"
 test_path = "/home/ami31/scratch/datasets/xbd/test_bldgs/"
 hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
 tier3_path = "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"
-mexico_train = "/home/ami31/scratch/datasets/pixel/mexico_train"
-mexico_test = "/home/ami31/scratch/datasets/pixel/mexico_test"
-mexico_hold = "/home/ami31/scratch/datasets/pixel/mexico_hold"
-palu_train = "/home/ami31/scratch/datasets/pixel/palu_train"
-palu_test = "/home/ami31/scratch/datasets/pixel/palu_test"
-palu_hold = "/home/ami31/scratch/datasets/pixel/palu_hold"
-palu_matthew_rosa_train = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_train"
-palu_matthew_rosa_test = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_test"
-palu_matthew_rosa_hold = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_hold"
-socal_train = "/home/ami31/scratch/datasets/pixel/socal_train"
-socal_test = "/home/ami31/scratch/datasets/pixel/socal_test"
-socal_hold = "/home/ami31/scratch/datasets/pixel/socal_hold"
-sunda = "/home/ami31/scratch/datasets/pixel/sunda"
+socal_train = "/home/ami31/scratch/datasets/delaunay/socal_train"
+socal_test = "/home/ami31/scratch/datasets/delaunay/socal_test"
+socal_hold = "/home/ami31/scratch/datasets/delaunay/socal_hold"
+sunda = "/home/ami31/scratch/datasets/delaunay/sunda"
 
 torch.manual_seed(seed)
 
-transform = tr.ToTensor()
+tensor_trans = ToTensor()
+del_trans = Compose([Delaunay(), FaceToEdge()])
 
 class xBD(Dataset):
     def __init__(self,
@@ -109,16 +102,19 @@ class xBD(Dataset):
                     post_image = Image.open(post_image_file)
                     pre_image = pre_image.resize((128, 128))
                     post_image = post_image.resize((128, 128))
-                    pre_image = transform(pre_image)
-                    post_image = transform(post_image)
+                    pre_image = tensor_trans(pre_image)
+                    post_image = tensor_trans(post_image)
                     images = torch.cat((pre_image, post_image),0)
                     x.append(images.flatten())
 
                 x = torch.stack(x)
                 y = torch.tensor(y)
+                coords = torch.tensor(coords)
 
-                #edge index matrix
-                edge_index = build_edge_idx(x.shape[0])
+                data = Data(x=x, y=y, pos=coords)
+                data = del_trans(data)
+
+                edge_index = data.edge_index
 
                 #edge features
                 edge_attr = torch.empty((edge_index.shape[1],2))
@@ -127,11 +123,9 @@ class xBD(Dataset):
                     node2 = x[edge_index[1,i]]
                     coords1 = coords[edge_index[0,i]]
                     coords2 = coords[edge_index[1,i]]
-                    attr1, attr2 = get_edge_features(node1, node2, coords1, coords2)
-                    edge_attr[i,0] = attr1
-                    edge_attr[i,1] = attr2
+                    edge_attr[i,0], edge_attr[i,1] = get_edge_features(node1, node2, coords1, coords2)
                 
-                data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, pos=torch.tensor(coords))
+                data.edge_attr = edge_attr
 
                 if self.pre_filter is not None and not self.pre_filter(data):
                     continue
@@ -149,14 +143,10 @@ class xBD(Dataset):
 
 
 if __name__ == "__main__":
-    """
-    disaster_sets = [['mexico-earthquake'],
-                    ['palu-tsunami']]
-                    #['palu-tsunami', 'hurricane-matthew', 'santa-rosa-wildfire']]
+
+    disaster_sets = [['socal-fire']]
     subsets = ['train', 'test', 'hold']
-    roots = [[mexico_train, mexico_test, mexico_hold],
-             [palu_train, palu_test, palu_hold]]
-             #[palu_matthew_rosa_train, palu_matthew_rosa_test, palu_matthew_rosa_hold]]
+    roots = [[socal_train, socal_test, socal_hold]]
     for disaster, root in zip(disaster_sets, roots):
         for subset, root_dir in zip(subsets, root):
             print(f'Building dataset for {disaster} {subset}...')
@@ -169,3 +159,4 @@ if __name__ == "__main__":
     if not os.path.isdir(sunda):
         os.mkdir(sunda)
     xBD(sunda, 'tier3', ['sunda-tsunami'])
+    """
