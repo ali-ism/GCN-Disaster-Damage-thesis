@@ -24,7 +24,7 @@ torch.manual_seed(seed)
 tensor_trans = ToTensor()
 del_trans = Compose([Delaunay(), FaceToEdge()])
 
-class xBD(Dataset):
+class xBDDelaunay(Dataset):
     def __init__(self,
                  root: str,
                  subset: str,
@@ -55,7 +55,7 @@ class xBD(Dataset):
         
         self.num_classes = 4
 
-        super(xBD, self).__init__(root, transform, pre_transform)
+        super(xBDDelaunay, self).__init__(root, transform, pre_transform)
 
     @property
     def raw_file_names(self) -> List:
@@ -152,7 +152,7 @@ if __name__ == "__main__":
             print(f'Building dataset for {disaster} {subset}...')
             if not os.path.isdir(root_dir):
                 os.mkdir(root_dir)
-            xBD(root_dir, subset, disaster)
+            xBDDelaunay(root_dir, subset, disaster)
             print(f'****{disaster} {subset} done****')
     """
     print(f'Building dataset for Sunda Tsunami...')

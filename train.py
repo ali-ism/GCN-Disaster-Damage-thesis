@@ -15,6 +15,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.data import GraphSAINTNodeSampler, RandomNodeSampler
 from tqdm import tqdm
 from dataset import xBD
+from dataset_delaunay import xBDDelaunay
 from model import DeeperGCN
 from metrics import score
 from utils import get_class_weights
@@ -28,15 +29,29 @@ num_steps = settings_dict['data']['saint_num_steps']
 delaunay = settings_dict['data']['delaunay']
 name = settings_dict['model']['name']
 train_set = settings_dict['train_set']
-if len(train_set) == 1:
-    if train_set[0] == 'socal-fire':
-        train_root = "/home/ami31/scratch/datasets/pixel/socal_train"
+if delaunay:
+    if len(train_set) == 1:
+        if train_set[0] == 'socal-fire':
+            train_root = "/home/ami31/scratch/datasets/delaunay/socal_train"
+            subset = 'train'
+        else:
+            train_root = "/home/ami31/scratch/datasets/delaunay/sunda"
+            subset = 'tier3'
     else:
-        train_root = "/home/ami31/scratch/datasets/pixel/sunda"
+        train_root = "/home/ami31/scratch/datasets/delaunay/sunda_tucaloosa_puna"
+        subset = 'tier3'
+    test_root = "/home/ami31/scratch/datasets/delaunay/socal_test"
+    hold_root = "/home/ami31/scratch/datasets/delaunay/socal_hold"
 else:
-    train_root = "/home/ami31/scratch/datasets/pixel/sunda_tucaloosa_puna"
-test_root = "/home/ami31/scratch/datasets/pixel/socal_test"
-hold_root = "/home/ami31/scratch/datasets/pixel/socal_hold"
+    if len(train_set) == 1:
+        if train_set[0] == 'socal-fire':
+            train_root = "/home/ami31/scratch/datasets/pixel/socal_train"
+        else:
+            train_root = "/home/ami31/scratch/datasets/pixel/sunda"
+    else:
+        train_root = "/home/ami31/scratch/datasets/pixel/sunda_tucaloosa_puna"
+    test_root = "/home/ami31/scratch/datasets/pixel/socal_test"
+    hold_root = "/home/ami31/scratch/datasets/pixel/socal_hold"
 hidden_units = settings_dict['model']['hidden_units']
 num_layers = settings_dict['model']['num_layers']
 dropout_rate = settings_dict['model']['dropout_rate']
@@ -163,7 +178,10 @@ def save_results(hold=False) -> None:
     with open('results/'+name+'_best_test.json', 'w') as JSON:
         json.dump(best_test, JSON)
     if hold:
-        hold_dataset = xBD(hold_root, 'hold', ['socal-fire'])
+        if delaunay:
+            hold_dataset = xBDDelaunay(hold_root, 'hold', ['socal-fire'])
+        else:
+            hold_dataset = xBD(hold_root, 'hold', ['socal-fire'])
         hold_scores = test(hold_dataset)
         print('Hold results for last model.')
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
@@ -181,9 +199,13 @@ def save_results(hold=False) -> None:
 
 
 if __name__ == "__main__":
-    
-    train_dataset = xBD(train_root, 'train', train_set).shuffle()
-    test_dataset = xBD(test_root, 'test', train_set)
+
+    if delaunay:
+        train_dataset = xBDDelaunay(train_root, subset, train_set).shuffle()
+        test_dataset = xBDDelaunay(test_root, 'test', train_set)
+    else:
+        train_dataset = xBD(train_root, subset, train_set).shuffle()
+        test_dataset = xBD(test_root, 'test', train_set)
 
     class_weights = get_class_weights(train_set, train_dataset)
 
