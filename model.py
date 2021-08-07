@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch.nn import Module, ModuleList, Linear, LayerNorm, ReLU
-from torch_geometric.nn import GENConv, DeepGCNLayer, SplineConv, BatchNorm
+from torch_geometric.nn import GENConv, DeepGCNLayer, SplineConv, GCNConv, BatchNorm
 
 
 class DeeperGCN(Module):
@@ -39,8 +39,8 @@ class DeeperGCN(Module):
         x = self.lin(x)
         return F.log_softmax(x, dim=1)
 
-"""
-class SplineNet(torch.nn.Module):
+
+class SplineNet(Module):
     def __init__(self,
                  num_node_features,
                  hidden_channels,
@@ -54,7 +54,7 @@ class SplineNet(torch.nn.Module):
         self.batch_norms = ModuleList()
         self.convs.append(SplineConv(num_node_features, hidden_channels, dim=1, kernel_size=2))
         self.batch_norms.append(BatchNorm(hidden_channels))
-        for i in range(num_layers - 2):
+        for _ in range(num_layers - 2):
             self.convs.append(SplineConv(hidden_channels, hidden_channels, dim=1, kernel_size=2))
             self.batch_norms.append(BatchNorm(hidden_channels))
         self.out = SplineConv(hidden_channels, num_classes, dim=1, kernel_size=2)
@@ -68,4 +68,33 @@ class SplineNet(torch.nn.Module):
             x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.out(x, edge_index, edge_attr)
         return F.log_softmax(x, dim=1)
-"""
+
+
+class GCNNet(Module):
+    def __init__(self,
+                 num_node_features,
+                 hidden_channels,
+                 num_classes,
+                 num_layers,
+                 dropout_rate):
+        super(GCNNet, self).__init__()
+
+        self.dropout_rate = dropout_rate
+        self.convs = ModuleList()
+        self.batch_norms = ModuleList()
+        self.convs.append(GCNConv(num_node_features, hidden_channels))
+        self.batch_norms.append(BatchNorm(hidden_channels))
+        for _ in range(num_layers - 2):
+            self.convs.append(GCNConv(hidden_channels, hidden_channels))
+            self.batch_norms.append(BatchNorm(hidden_channels))
+        self.out = GCNConv(hidden_channels, num_classes)
+
+
+    def forward(self, x, edge_index):
+        for batch_norm, conv in zip(self.batch_norms, self.convs):
+            x = conv(x, edge_index)
+            x = batch_norm(x)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout_rate, training=self.training)
+        x = self.out(x, edge_index)
+        return F.log_softmax(x, dim=1)
