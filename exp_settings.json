@@ -11,7 +11,7 @@
         "delaunay": true
     },
     "model": {
-        "name": "socal_07",
+        "name": "socal_08",
         "path": "weights",
         "hidden_units": 128,
         "num_layers": 7,
