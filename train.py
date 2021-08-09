@@ -16,7 +16,7 @@ from torch_geometric.data import GraphSAINTNodeSampler, RandomNodeSampler
 from tqdm import tqdm
 from dataset import xBD
 from dataset_delaunay import xBDDelaunay
-from model import DeeperGCN
+from model import DeeperGCN, GCNNet
 from metrics import score
 from utils import get_class_weights
 
@@ -81,7 +81,7 @@ def train(epoch):
             for subdata in sampler:
                 subdata = subdata.to(device)
                 optimizer.zero_grad()
-                out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
+                out = model(subdata.x, subdata.edge_index)
                 loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights.to(device))
                 loss.backward()
                 optimizer.step()
@@ -91,7 +91,7 @@ def train(epoch):
         else:
             data = data.to(device)
             optimizer.zero_grad()
-            out = model(data.x, data.edge_index, data.edge_attr)
+            out = model(data.x, data.edge_index)
             loss = F.nll_loss(input=out, target=data.y, weight=class_weights.to(device))
             loss.backward()
             optimizer.step()
@@ -111,11 +111,11 @@ def test(dataset):
             sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
             for subdata in sampler:
                 subdata = subdata.to(device)
-                y_pred.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
+                y_pred.append(model(subdata.x, subdata.edge_index).cpu())
                 y_true.append(subdata.y.cpu())
         else:
             data = data.to(device)
-            y_pred.append(model(data.x, data.edge_index, data.edge_attr).cpu())
+            y_pred.append(model(data.x, data.edge_index).cpu())
             y_true.append(data.y.cpu())
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
@@ -183,7 +183,7 @@ def save_results(hold=False) -> None:
         else:
             hold_dataset = xBD(hold_root, 'hold', ['socal-fire'])
         hold_scores = test(hold_dataset)
-        print('Hold results for last model.')
+        print('\nHold results for last model.')
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
         print(f'Hold macro F1: {hold_scores[1]:.4f}')
         print(f'Hold weighted F1: {hold_scores[2]:.4f}')
@@ -191,7 +191,7 @@ def save_results(hold=False) -> None:
         model_path = path + '/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
         hold_scores = test(hold_dataset)
-        print('/nHold results for best model.')
+        print('\nHold results for best model.')
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
         print(f'Hold macro F1: {hold_scores[1]:.4f}')
         print(f'Hold weighted F1: {hold_scores[2]:.4f}')
@@ -209,6 +209,7 @@ if __name__ == "__main__":
 
     class_weights = get_class_weights(train_set, train_dataset)
 
+    """
     model = DeeperGCN(train_dataset.num_node_features,
                       train_dataset.num_edge_features,
                       hidden_units,
@@ -216,6 +217,12 @@ if __name__ == "__main__":
                       num_layers,
                       dropout_rate,
                       msg_norm)
+    """
+    model = GCNNet(train_dataset.num_node_features,
+                   hidden_units,
+                   train_dataset.num_classes,
+                   num_layers,
+                   dropout_rate)
     if starting_epoch != 1:
         model_path = path + '/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
