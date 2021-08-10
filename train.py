@@ -12,11 +12,11 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch_geometric.data import GraphSAINTNodeSampler, RandomNodeSampler
+from torch_geometric.data import RandomNodeSampler
 from tqdm import tqdm
 from dataset import xBD
 from dataset_delaunay import xBDDelaunay
-from model import DeeperGCN, GCNNet
+from model import DeeperGCN, GCN
 from metrics import score
 from utils import get_class_weights
 
@@ -25,7 +25,6 @@ with open('exp_settings.json', 'r') as JSON:
 
 seed = 42
 batch_size = settings_dict['data']['batch_size']
-num_steps = settings_dict['data']['saint_num_steps']
 delaunay = settings_dict['data']['delaunay']
 name = settings_dict['model']['name']
 train_set = settings_dict['train_set']
@@ -56,6 +55,7 @@ hidden_units = settings_dict['model']['hidden_units']
 num_layers = settings_dict['model']['num_layers']
 dropout_rate = settings_dict['model']['dropout_rate']
 msg_norm = settings_dict['model']['msg_norm']
+edge_features = settings_dict['model']['edge_features']
 lr = settings_dict['model']['lr']
 n_epochs = settings_dict['epochs']
 starting_epoch = settings_dict['starting_epoch']
@@ -75,13 +75,16 @@ def train(epoch):
     total_loss = 0
     for data in train_dataset:
         if data.num_nodes > batch_size:
-            sampler = GraphSAINTNodeSampler(data, batch_size=batch_size, num_steps=num_steps, num_workers=2)
+            sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
             data_loss = 0
             total_examples = 0
             for subdata in sampler:
                 subdata = subdata.to(device)
                 optimizer.zero_grad()
-                out = model(subdata.x, subdata.edge_index)
+                if edge_features:
+                    out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
+                else:
+                    out = model(subdata.x, subdata.edge_index)
                 loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights.to(device))
                 loss.backward()
                 optimizer.step()
@@ -91,7 +94,10 @@ def train(epoch):
         else:
             data = data.to(device)
             optimizer.zero_grad()
-            out = model(data.x, data.edge_index)
+            if edge_features:
+                out = model(data.x, data.edge_index, data.edge_attr)
+            else:
+                out = model(data.x, data.edge_index)
             loss = F.nll_loss(input=out, target=data.y, weight=class_weights.to(device))
             loss.backward()
             optimizer.step()
@@ -111,11 +117,17 @@ def test(dataset):
             sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
             for subdata in sampler:
                 subdata = subdata.to(device)
-                y_pred.append(model(subdata.x, subdata.edge_index).cpu())
+                if edge_features:
+                    y_pred.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
+                else:
+                    y_pred.append(model(subdata.x, subdata.edge_index).cpu())
                 y_true.append(subdata.y.cpu())
         else:
             data = data.to(device)
-            y_pred.append(model(data.x, data.edge_index).cpu())
+            if edge_features:
+                y_pred.append(model(data.x, data.edge_index, data.edge_attr).cpu())
+            else:
+                y_pred.append(model(data.x, data.edge_index).cpu())
             y_true.append(data.y.cpu())
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
@@ -134,35 +146,35 @@ def save_results(hold=False) -> None:
     plt.legend(['train', 'test'])
     plt.xlabel('epochs')
     plt.ylabel('loss')
-    plt.savefig('results/'+name+'_loss.eps')
+    plt.savefig('results/'+name+'_loss.pdf')
     plt.figure()
     plt.plot(train_acc)
     plt.plot(test_acc)
     plt.legend(['train', 'test'])
     plt.xlabel('epochs')
     plt.ylabel('accuracy')
-    plt.savefig('results/'+name+'_acc.eps')
+    plt.savefig('results/'+name+'_acc.pdf')
     plt.figure()
     plt.plot(train_f1_macro)
     plt.plot(test_f1_macro)
     plt.legend(['train', 'test'])
     plt.xlabel('epochs')
     plt.ylabel('macro f1')
-    plt.savefig('results/'+name+'_macro_f1.eps')
+    plt.savefig('results/'+name+'_macro_f1.pdf')
     plt.figure()
     plt.plot(train_f1_weighted)
     plt.plot(test_f1_weighted)
     plt.legend(['train', 'test'])
     plt.xlabel('epochs')
     plt.ylabel('weighted f1')
-    plt.savefig('results/'+name+'_weighted_f1.eps')
+    plt.savefig('results/'+name+'_weighted_f1.pdf')
     plt.figure()
     plt.plot(train_auc)
     plt.plot(test_auc)
     plt.legend(['train', 'test'])
     plt.xlabel('epochs')
     plt.ylabel('auc')
-    plt.savefig('results/'+name+'_auc.eps')
+    plt.savefig('results/'+name+'_auc.pdf')
     plt.close('all')
     np.save('results/'+name+'_loss_train.npy', train_loss)
     np.save('results/'+name+'_loss_test.npy', test_loss)
@@ -218,18 +230,18 @@ if __name__ == "__main__":
                       dropout_rate,
                       msg_norm)
     """
-    model = GCNNet(train_dataset.num_node_features,
-                   hidden_units,
-                   train_dataset.num_classes,
-                   num_layers,
-                   dropout_rate)
+    model = GCN(train_dataset.num_node_features,
+                hidden_units,
+                train_dataset.num_classes,
+                num_layers,
+                dropout_rate)
     if starting_epoch != 1:
         model_path = path + '/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=0.00001)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=0.00001, verbose=True)
 
     if starting_epoch == 1:
         best_test_auc = best_epoch = 0

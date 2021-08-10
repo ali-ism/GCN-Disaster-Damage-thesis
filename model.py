@@ -58,7 +58,6 @@ class SplineNet(Module):
             self.batch_norms.append(BatchNorm(hidden_channels))
         self.out = SplineConv(hidden_channels, num_classes, dim=1, kernel_size=2)
 
-
     def forward(self, x, edge_index, edge_attr):
         for batch_norm, conv in zip(self.batch_norms, self.convs):
             x = conv(x, edge_index, edge_attr)
@@ -69,14 +68,14 @@ class SplineNet(Module):
         return F.log_softmax(x, dim=1)
 
 
-class GCNNet(Module):
+class GCN(Module):
     def __init__(self,
                  num_node_features,
                  hidden_channels,
                  num_classes,
                  num_layers,
                  dropout_rate):
-        super(GCNNet, self).__init__()
+        super(GCN, self).__init__()
 
         self.dropout_rate = dropout_rate
         self.convs = ModuleList()
@@ -87,7 +86,6 @@ class GCNNet(Module):
             self.convs.append(GCNConv(hidden_channels, hidden_channels))
             self.batch_norms.append(BatchNorm(hidden_channels))
         self.out = GCNConv(hidden_channels, num_classes)
-
 
     def forward(self, x, edge_index):
         for batch_norm, conv in zip(self.batch_norms, self.convs):
