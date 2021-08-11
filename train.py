@@ -23,7 +23,6 @@ from utils import get_class_weights
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
-seed = 42
 batch_size = settings_dict['data']['batch_size']
 delaunay = settings_dict['data']['delaunay']
 name = settings_dict['model']['name']
@@ -51,19 +50,13 @@ else:
         train_root = "/home/ami31/scratch/datasets/pixel/sunda_tucaloosa_puna"
     test_root = "/home/ami31/scratch/datasets/pixel/socal_test"
     hold_root = "/home/ami31/scratch/datasets/pixel/socal_hold"
-hidden_units = settings_dict['model']['hidden_units']
-num_layers = settings_dict['model']['num_layers']
-dropout_rate = settings_dict['model']['dropout_rate']
-msg_norm = settings_dict['model']['msg_norm']
 edge_features = settings_dict['model']['edge_features']
-lr = settings_dict['model']['lr']
 n_epochs = settings_dict['epochs']
 starting_epoch = settings_dict['starting_epoch']
 path = settings_dict['model']['path']
-save_best_only = settings_dict['save_best_only']
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-torch.manual_seed(seed)
+torch.manual_seed(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
@@ -224,23 +217,24 @@ if __name__ == "__main__":
     """
     model = DeeperGCN(train_dataset.num_node_features,
                       train_dataset.num_edge_features,
-                      hidden_units,
+                      settings_dict['model']['hidden_units'],
                       train_dataset.num_classes,
-                      num_layers,
-                      dropout_rate,
-                      msg_norm)
+                      settings_dict['model']['num_layers'],
+                      settings_dict['model']['dropout_rate'],
+                      settings_dict['model']['msg_norm'])
     """
     model = GCN(train_dataset.num_node_features,
-                hidden_units,
+                settings_dict['model']['hidden_units'],
                 train_dataset.num_classes,
-                num_layers,
-                dropout_rate)
+                settings_dict['model']['num_layers'],
+                settings_dict['model']['dropout_rate'],
+                settings_dict['model']['fc_output'])
     if starting_epoch != 1:
         model_path = path + '/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
     model = model.to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=0.00001, verbose=True)
 
     if starting_epoch == 1:
@@ -277,7 +271,7 @@ if __name__ == "__main__":
         print('**********************************************')
         print(f'Epoch {epoch:02d}, Train Loss: {train_loss[epoch-1]:.4f}')
     
-        if not save_best_only:
+        if not settings_dict['save_best_only']:
             model_path = path + '/' + name + '.pt'
             torch.save(model.state_dict(), model_path)
 

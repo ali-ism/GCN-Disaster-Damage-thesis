@@ -74,10 +74,12 @@ class GCN(Module):
                  hidden_channels,
                  num_classes,
                  num_layers,
-                 dropout_rate):
+                 dropout_rate,
+                 fc_output=False):
         super(GCN, self).__init__()
 
         self.dropout_rate = dropout_rate
+        self.fc_output = fc_output
         self.convs = ModuleList()
         self.batch_norms = ModuleList()
         self.convs.append(GCNConv(num_node_features, hidden_channels))
@@ -85,21 +87,45 @@ class GCN(Module):
         for _ in range(num_layers - 2):
             self.convs.append(GCNConv(hidden_channels, hidden_channels))
             self.batch_norms.append(BatchNorm(hidden_channels))
-        #self.out = GCNConv(hidden_channels, num_classes)
-        self.fc = Linear(hidden_channels, hidden_channels)
-        self.bn = BatchNorm(hidden_channels)
-        self.out = Linear(hidden_channels, num_classes)
+        if not fc_output:
+            self.out = GCNConv(hidden_channels, num_classes)
+        else:
+            self.fc = Linear(hidden_channels, hidden_channels)
+            self.bn = BatchNorm(hidden_channels)
+            self.fcout = Linear(hidden_channels, num_classes)
 
-    def forward(self, x, edge_index):
+    def forward(self, x, edge_index, edge_attr=None):
+        if edge_attr is not None:
+            return self.edge_forward(x, edge_index, edge_attr)
+        else:
+            for batch_norm, conv in zip(self.batch_norms, self.convs):
+                x = conv(x, edge_index)
+                x = batch_norm(x)
+                x = F.relu(x)
+                x = F.dropout(x, p=self.dropout_rate, training=self.training)
+            if not self.fc_output:
+                x = self.out(x, edge_index)
+            else:
+                x = self.fc(x)
+                x = self.bn(x)
+                x = F.relu(x)
+                x = F.dropout(x, p=self.dropout_rate, training=self.training)
+                x = self.fcout(x)
+            return F.log_softmax(x, dim=1)
+    
+    def edge_forward(self, x, edge_index, edge_attr):
+        edge_attr = edge_attr[:,0]
         for batch_norm, conv in zip(self.batch_norms, self.convs):
-            x = conv(x, edge_index)
+            x = conv(x, edge_index, edge_attr)
             x = batch_norm(x)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout_rate, training=self.training)
-        #x = self.out(x, edge_index)
-        x = self.fc(x)
-        x = self.bn(x)
-        x = F.relu(x)
-        x = F.dropout(x, p=self.dropout_rate, training=self.training)
-        x = self.out(x)
+        if not self.fc_output:
+            x = self.out(x, edge_index, edge_attr)
+        else:
+            x = self.fc(x)
+            x = self.bn(x)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout_rate, training=self.training)
+            x = self.fcout(x)
         return F.log_softmax(x, dim=1)
