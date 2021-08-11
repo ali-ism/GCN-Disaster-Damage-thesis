@@ -11,18 +11,18 @@
         "delaunay": true
     },
     "model": {
-        "name": "socal_09",
+        "name": "socal_10",
         "path": "weights",
         "hidden_units": 64,
         "num_layers": 3,
         "lr": 0.01,
-        "dropout_rate": 0.5,
+        "dropout_rate": 0.4,
         "msg_norm": true,
         "edge_features": false
     },
     "train_set": ["socal-fire"],
     "starting_epoch": 1,
-    "epochs": 30,
+    "epochs": 50,
     "seed": 42,
     "save_best_only": true
 }

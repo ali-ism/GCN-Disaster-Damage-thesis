@@ -85,7 +85,10 @@ class GCN(Module):
         for _ in range(num_layers - 2):
             self.convs.append(GCNConv(hidden_channels, hidden_channels))
             self.batch_norms.append(BatchNorm(hidden_channels))
-        self.out = GCNConv(hidden_channels, num_classes)
+        #self.out = GCNConv(hidden_channels, num_classes)
+        self.fc = Linear(hidden_channels, hidden_channels)
+        self.bn = BatchNorm(hidden_channels)
+        self.out = Linear(hidden_channels, num_classes)
 
     def forward(self, x, edge_index):
         for batch_norm, conv in zip(self.batch_norms, self.convs):
@@ -93,5 +96,10 @@ class GCN(Module):
             x = batch_norm(x)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout_rate, training=self.training)
-        x = self.out(x, edge_index)
+        #x = self.out(x, edge_index)
+        x = self.fc(x)
+        x = self.bn(x)
+        x = F.relu(x)
+        x = F.dropout(x, p=self.dropout_rate, training=self.training)
+        x = self.out(x)
         return F.log_softmax(x, dim=1)
