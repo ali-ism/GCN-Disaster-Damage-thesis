@@ -16,7 +16,7 @@ class DeeperGCN(Module):
 
         self.dropout_rate = dropout_rate
         self.node_encoder = Linear(num_node_features, hidden_channels)
-        self.edge_encoder = Linear(num_edge_features, hidden_channels)
+        self.edge_encoder = Linear(num_edge_features-1, hidden_channels)
         self.layers = ModuleList()
         for i in range(1, num_layers + 1):
             conv = GENConv(hidden_channels, hidden_channels, learn_t=True, num_layers=2,
@@ -28,6 +28,7 @@ class DeeperGCN(Module):
         self.lin = Linear(hidden_channels, num_classes)
 
     def forward(self, x, edge_index, edge_attr):
+        edge_attr = edge_attr[:,0]
         x = self.node_encoder(x)
         edge_attr = self.edge_encoder(edge_attr)
         x = self.layers[0].conv(x, edge_index, edge_attr)
