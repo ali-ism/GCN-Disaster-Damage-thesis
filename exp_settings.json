@@ -1,28 +1,23 @@
 {
-    "resnet":{
-        "pretrained": false,
-        "shared": false,
-        "diff": true,
-        "path": "weights"
-        },
     "data": {
         "batch_size": 256,
         "saint_num_steps": 5,
         "delaunay": true
     },
     "model": {
-        "name": "socal_11",
+        "name": "socal_12",
         "path": "weights",
+        "type": "deepgcn",
         "hidden_units": 64,
-        "num_layers": 3,
+        "num_layers": 14,
         "lr": 0.01,
-        "dropout_rate": 0.4,
+        "dropout_rate": 0.5,
         "msg_norm": true,
-        "edge_features": true,
+        "edge_features": false,
         "fc_output": false
     },
     "train_set": ["socal-fire"],
     "starting_epoch": 1,
-    "epochs": 50,
+    "epochs": 200,
     "save_best_only": true
 }

@@ -1,11 +1,3 @@
-# ------------------------------------------------------------------------------
-# This code is (modified) from
-# https://github.com/rusty1s/pytorch_geometric/blob/master/examples/ogbn_proteins_deepgcn.py
-# and
-# https://github.com/rusty1s/pytorch_geometric/blob/master/examples/graph_saint.py
-# Licensed under the MIT License.
-# Written by Matthias Fey (http://rusty1s.github.io)
-# ------------------------------------------------------------------------------
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -126,7 +118,7 @@ def test(dataset):
     y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
     if dataset is not train_dataset:
-        loss = F.nll_loss(input=y_pred, target=y_true, weight=class_weights)
+        loss = F.nll_loss(input=y_pred, target=y_true, weight=class_weights) / len(dataset)
     else:
         loss = None
     return accuracy, f1_macro, f1_weighted, auc, loss
@@ -179,9 +171,6 @@ def save_results(hold=False) -> None:
     np.save('results/'+name+'_weighted_f1_test.npy', test_f1_weighted)
     np.save('results/'+name+'_auc_train.npy', train_auc)
     np.save('results/'+name+'_auc_test.npy', test_auc)
-    best_test = {'best_test_auc': best_test_auc, 'best_epoch': best_epoch}
-    with open('results/'+name+'_best_test.json', 'w') as JSON:
-        json.dump(best_test, JSON)
     if hold:
         if delaunay:
             hold_dataset = xBDDelaunay(hold_root, 'hold', ['socal-fire'])
@@ -214,21 +203,21 @@ if __name__ == "__main__":
 
     class_weights = get_class_weights(train_set, train_dataset)
 
-    """
-    model = DeeperGCN(train_dataset.num_node_features,
-                      train_dataset.num_edge_features,
-                      settings_dict['model']['hidden_units'],
-                      train_dataset.num_classes,
-                      settings_dict['model']['num_layers'],
-                      settings_dict['model']['dropout_rate'],
-                      settings_dict['model']['msg_norm'])
-    """
-    model = GCN(train_dataset.num_node_features,
-                settings_dict['model']['hidden_units'],
-                train_dataset.num_classes,
-                settings_dict['model']['num_layers'],
-                settings_dict['model']['dropout_rate'],
-                settings_dict['model']['fc_output'])
+    if settings_dict['model']['type'] == 'gcn':
+        model = GCN(train_dataset.num_node_features,
+                    settings_dict['model']['hidden_units'],
+                    train_dataset.num_classes,
+                    settings_dict['model']['num_layers'],
+                    settings_dict['model']['dropout_rate'],
+                    settings_dict['model']['fc_output'])
+    elif settings_dict['model']['type'] == 'deepgcn':
+        model = DeeperGCN(train_dataset.num_node_features,
+                        train_dataset.num_edge_features,
+                        settings_dict['model']['hidden_units'],
+                        train_dataset.num_classes,
+                        settings_dict['model']['num_layers'],
+                        settings_dict['model']['dropout_rate'],
+                        settings_dict['model']['msg_norm'])
     if starting_epoch != 1:
         model_path = path + '/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
@@ -237,8 +226,9 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=0.00001, verbose=True)
 
+    best_test_auc = best_epoch = 0
+
     if starting_epoch == 1:
-        best_test_auc = best_epoch = 0
         train_loss = np.empty(n_epochs)
         test_loss = np.empty(n_epochs)
         train_acc = np.empty(n_epochs)
@@ -250,10 +240,6 @@ if __name__ == "__main__":
         train_auc = np.empty(n_epochs)
         test_auc = np.empty(n_epochs)
     else:
-        with open('results/'+name+'_best_test.json', 'r') as JSON:
-            best_test = json.load(JSON)
-        best_test_auc = best_test['best_test_auc']
-        best_epoch = best_test['best_epoch']
         train_loss = np.load('results/'+name+'_loss_train.npy')
         test_loss = np.load('results/'+name+'_loss_test.npy')
         train_acc = np.load('results/'+name+'_acc_train.npy')
@@ -283,13 +269,11 @@ if __name__ == "__main__":
             best_test_auc = test_auc[epoch-1]
             best_epoch = epoch
             model_path = path + '/' + name + '_best.pt'
-            print(f'New best model saved.')
+            print(f'New best model saved with AUC {best_test_auc} at epoch {best_epoch}.')
             torch.save(model.state_dict(), model_path)
         
         if not (epoch % 5):
             save_results()
     
-    with open('results/'+name+'_exp_settings.json', 'w') as JSON:
-        json.dump(settings_dict, JSON)
-    
+    print(f'\nBest test AUC {best_test_auc} at epoch {best_epoch}.\n')
     save_results(hold=True)
