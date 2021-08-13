@@ -58,11 +58,10 @@ def train(epoch):
     pbar = tqdm(total=len(train_dataset))
     pbar.set_description(f'Epoch {epoch:02d}')
     total_loss = 0
+    total_examples = 0
     for data in train_dataset:
         if data.num_nodes > batch_size:
             sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
-            data_loss = 0
-            total_examples = 0
             for subdata in sampler:
                 subdata = subdata.to(device)
                 optimizer.zero_grad()
@@ -73,9 +72,8 @@ def train(epoch):
                 loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights.to(device))
                 loss.backward()
                 optimizer.step()
-                data_loss += loss.item() * subdata.num_nodes
+                total_loss += loss.item() * subdata.num_nodes
                 total_examples += subdata.num_nodes
-            total_loss += data_loss / total_examples
         else:
             data = data.to(device)
             optimizer.zero_grad()
@@ -86,10 +84,11 @@ def train(epoch):
             loss = F.nll_loss(input=out, target=data.y, weight=class_weights.to(device))
             loss.backward()
             optimizer.step()
-            total_loss += loss.item()
+            total_loss += loss.item() * data.num_nodes
+            total_examples += data.num_nodes
         pbar.update()
     pbar.close()
-    return total_loss / len(train_dataset)
+    return total_loss / total_examples
 
 
 @torch.no_grad()
@@ -118,7 +117,7 @@ def test(dataset):
     y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
     if dataset is not train_dataset:
-        loss = F.nll_loss(input=y_pred, target=y_true, weight=class_weights) / len(dataset)
+        loss = F.nll_loss(input=y_pred, target=y_true, weight=class_weights)
     else:
         loss = None
     return accuracy, f1_macro, f1_weighted, auc, loss

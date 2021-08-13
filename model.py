@@ -44,7 +44,7 @@ class DeeperGCN(Module):
         return F.log_softmax(x, dim=1)
 
 
-class SplineNet(Module):
+""" class SplineNet(Module):
     def __init__(self,
                  num_node_features,
                  hidden_channels,
@@ -70,7 +70,7 @@ class SplineNet(Module):
             x = F.elu(x)
             x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.out(x, edge_index, edge_attr)
-        return F.log_softmax(x, dim=1)
+        return F.log_softmax(x, dim=1) """
 
 
 class GCN(Module):
