@@ -5,7 +5,7 @@
         "delaunay": true
     },
     "model": {
-        "name": "socal_12",
+        "name": "socal_13",
         "path": "weights",
         "type": "deepgcn",
         "hidden_units": 32,
@@ -13,7 +13,7 @@
         "lr": 0.01,
         "dropout_rate": 0.5,
         "msg_norm": true,
-        "edge_features": true,
+        "edge_features": false,
         "fc_output": false
     },
     "train_set": ["socal-fire"],
