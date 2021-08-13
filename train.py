@@ -68,7 +68,7 @@ def train(epoch):
                 if edge_features:
                     out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
                 else:
-                    out = model(subdata.x, subdata.edge_index)
+                    out = model(subdata.x, subdata.edge_index, None)
                 loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights.to(device))
                 loss.backward()
                 optimizer.step()
@@ -80,7 +80,7 @@ def train(epoch):
             if edge_features:
                 out = model(data.x, data.edge_index, data.edge_attr)
             else:
-                out = model(data.x, data.edge_index)
+                out = model(data.x, data.edge_index, None)
             loss = F.nll_loss(input=out, target=data.y, weight=class_weights.to(device))
             loss.backward()
             optimizer.step()
@@ -104,14 +104,14 @@ def test(dataset):
                 if edge_features:
                     y_pred.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
                 else:
-                    y_pred.append(model(subdata.x, subdata.edge_index).cpu())
+                    y_pred.append(model(subdata.x, subdata.edge_index, None).cpu())
                 y_true.append(subdata.y.cpu())
         else:
             data = data.to(device)
             if edge_features:
                 y_pred.append(model(data.x, data.edge_index, data.edge_attr).cpu())
             else:
-                y_pred.append(model(data.x, data.edge_index).cpu())
+                y_pred.append(model(data.x, data.edge_index, None).cpu())
             y_true.append(data.y.cpu())
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
