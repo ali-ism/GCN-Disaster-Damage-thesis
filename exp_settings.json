@@ -1,11 +1,10 @@
 {
     "data": {
         "batch_size": 256,
-        "saint_num_steps": 5,
         "delaunay": true
     },
     "model": {
-        "name": "socal_13",
+        "name": "socal_14",
         "path": "weights",
         "type": "deepgcn",
         "hidden_units": 32,
@@ -13,11 +12,11 @@
         "lr": 0.01,
         "dropout_rate": 0.5,
         "msg_norm": true,
-        "edge_features": false,
+        "edge_features": true,
         "fc_output": false
     },
     "train_set": ["socal-fire"],
     "starting_epoch": 1,
-    "epochs": 200,
+    "epochs": 50,
     "save_best_only": true
 }

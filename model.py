@@ -17,7 +17,7 @@ class DeeperGCN(Module):
         self.dropout_rate = dropout_rate
         self.node_encoder = Linear(num_node_features, hidden_channels)
         ################################################################
-        #self.edge_encoder = Linear(num_edge_features-1, hidden_channels)
+        self.edge_encoder = Linear(num_edge_features-1, hidden_channels)
         ################################################################
         self.layers = ModuleList()
         for i in range(1, num_layers + 1):
@@ -29,15 +29,28 @@ class DeeperGCN(Module):
             self.layers.append(layer)
         self.lin = Linear(hidden_channels, num_classes)
 
-    def forward(self, x, edge_index, edge_attr):
-        ##########################################
-        #edge_attr = edge_attr[:,0].unsqueeze(dim=1)
-        ###########################################
+    def forward(self, x, edge_index, edge_attr=None):
+        if edge_attr is None:
+            return self.forward_no_edge(x, edge_index)
+        else:
+            ##########################################
+            edge_attr = edge_attr[:,0].unsqueeze(dim=1)
+            ###########################################
+            x = self.node_encoder(x)
+            edge_attr = self.edge_encoder(edge_attr)
+            x = self.layers[0].conv(x, edge_index, edge_attr)
+            for layer in self.layers[1:]:
+                x = layer(x, edge_index, edge_attr)
+            x = self.layers[0].act(self.layers[0].norm(x))
+            x = F.dropout(x, p=self.dropout_rate, training=self.training)
+            x = self.lin(x)
+            return F.log_softmax(x, dim=1)
+    
+    def forward_no_edge(self, x, edge_index):
         x = self.node_encoder(x)
-        #edge_attr = self.edge_encoder(edge_attr)
-        x = self.layers[0].conv(x, edge_index)#, edge_attr)
+        x = self.layers[0].conv(x, edge_index)
         for layer in self.layers[1:]:
-            x = layer(x, edge_index)#, edge_attr)
+            x = layer(x, edge_index)
         x = self.layers[0].act(self.layers[0].norm(x))
         x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.lin(x)
