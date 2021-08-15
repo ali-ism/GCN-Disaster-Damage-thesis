@@ -204,6 +204,7 @@ class CNNGCN(Module):
         super(CNNGCN, self).__init__()
 
         self.dropout_rate = dropout_rate
+        self.fc_output = fc_output
         self.node_encoder = SiameseResnetEncoder()
         self.convs = ModuleList()
         self.batch_norms = ModuleList()
