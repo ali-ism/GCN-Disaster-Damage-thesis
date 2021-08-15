@@ -8,7 +8,7 @@ from torch_geometric.data import RandomNodeSampler
 from tqdm import tqdm
 from dataset import xBD
 from dataset_delaunay import xBDDelaunay
-from model import DeeperGCN, GCN
+from model import GCN, DeeperGCN, CNNDeeperGCN
 from metrics import score
 from utils import get_class_weights
 
@@ -217,6 +217,13 @@ if __name__ == "__main__":
                         settings_dict['model']['num_layers'],
                         settings_dict['model']['dropout_rate'],
                         settings_dict['model']['msg_norm'])
+    elif settings_dict['model']['type'] == 'cnndeepgcn':
+        model = CNNDeeperGCN(train_dataset.num_edge_features,
+                             settings_dict['model']['hidden_units'],
+                             train_dataset.num_classes,
+                             settings_dict['model']['num_layers'],
+                             settings_dict['model']['dropout_rate'],
+                             settings_dict['model']['msg_norm'])
     if starting_epoch != 1:
         model_path = path + '/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
