@@ -4,11 +4,11 @@
         "delaunay": true
     },
     "model": {
-        "name": "socal_14",
+        "name": "socal_15",
         "path": "weights",
-        "type": "deepgcn",
+        "type": "cnngcn",
         "hidden_units": 32,
-        "num_layers": 14,
+        "num_layers": 2,
         "lr": 0.01,
         "dropout_rate": 0.5,
         "msg_norm": true,
