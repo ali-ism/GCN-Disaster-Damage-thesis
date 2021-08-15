@@ -108,27 +108,15 @@ class DeeperGCN(Module):
         self.lin = Linear(hidden_channels, num_classes)
 
     def forward(self, x, edge_index, edge_attr=None):
-        if edge_attr is None:
-            return self.forward_no_edge(x, edge_index)
-        else:
-            ##########################################
+        ##########################################
+        if edge_attr is not None:
             edge_attr = edge_attr[:,0].unsqueeze(dim=1)
-            ###########################################
-            x = self.node_encoder(x)
-            edge_attr = self.edge_encoder(edge_attr)
-            x = self.layers[0].conv(x, edge_index, edge_attr)
-            for layer in self.layers[1:]:
-                x = layer(x, edge_index, edge_attr)
-            x = self.layers[0].act(self.layers[0].norm(x))
-            x = F.dropout(x, p=self.dropout_rate, training=self.training)
-            x = self.lin(x)
-            return F.log_softmax(x, dim=1)
-    
-    def forward_no_edge(self, x, edge_index):
+        ###########################################
         x = self.node_encoder(x)
-        x = self.layers[0].conv(x, edge_index)
+        edge_attr = self.edge_encoder(edge_attr)
+        x = self.layers[0].conv(x, edge_index, edge_attr)
         for layer in self.layers[1:]:
-            x = layer(x, edge_index)
+            x = layer(x, edge_index, edge_attr)
         x = self.layers[0].act(self.layers[0].norm(x))
         x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.lin(x)
@@ -148,7 +136,7 @@ class SiameseResnetEncoder(Module):
         x1 = self.resnet(x1)
         x2 = self.resnet(x2)
         x = torch.add(input=x1, other=x2, alpha=-1)
-        return x.reshape(1,-1)
+        return x.flatten(start_dim=1)
 
 class SiameseResnetClf(Module):
     def __init__(self, hidden_channels, num_classes, dropout_rate):
