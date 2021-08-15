@@ -32,27 +32,9 @@ class GCN(Module):
             self.fcout = Linear(hidden_channels, num_classes)
 
     def forward(self, x, edge_index, edge_attr=None):
-        if edge_attr is not None:
-            return self.edge_forward(x, edge_index, edge_attr)
-        else:
-            for batch_norm, conv in zip(self.batch_norms, self.convs):
-                x = conv(x, edge_index)
-                x = batch_norm(x)
-                x = F.relu(x)
-                x = F.dropout(x, p=self.dropout_rate, training=self.training)
-            if not self.fc_output:
-                x = self.out(x, edge_index)
-            else:
-                x = self.fc(x)
-                x = self.bn(x)
-                x = F.relu(x)
-                x = F.dropout(x, p=self.dropout_rate, training=self.training)
-                x = self.fcout(x)
-            return F.log_softmax(x, dim=1)
-    
-    def edge_forward(self, x, edge_index, edge_attr):
         ###########################
-        edge_attr = edge_attr[:,0]
+        if edge_attr is not None:
+            edge_attr = edge_attr[:,0]
         ###########################
         for batch_norm, conv in zip(self.batch_norms, self.convs):
             x = conv(x, edge_index, edge_attr)
@@ -222,27 +204,9 @@ class CNNGCN(Module):
 
     def forward(self, x, edge_index, edge_attr=None):
         x= self.node_encoder(x)
-        if edge_attr is not None:
-            return self.edge_forward(x, edge_index, edge_attr)
-        else:
-            for batch_norm, conv in zip(self.batch_norms, self.convs):
-                x = conv(x, edge_index)
-                x = batch_norm(x)
-                x = F.relu(x)
-                x = F.dropout(x, p=self.dropout_rate, training=self.training)
-            if not self.fc_output:
-                x = self.out(x, edge_index)
-            else:
-                x = self.fc(x)
-                x = self.bn(x)
-                x = F.relu(x)
-                x = F.dropout(x, p=self.dropout_rate, training=self.training)
-                x = self.fcout(x)
-            return F.log_softmax(x, dim=1)
-    
-    def edge_forward(self, x, edge_index, edge_attr):
         ###########################
-        edge_attr = edge_attr[:,0]
+        if edge_attr is not None:
+            edge_attr = edge_attr[:,0]
         ###########################
         for batch_norm, conv in zip(self.batch_norms, self.convs):
             x = conv(x, edge_index, edge_attr)
