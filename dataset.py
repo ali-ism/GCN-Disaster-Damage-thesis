@@ -17,7 +17,7 @@ tier3_path = "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"
 
 torch.manual_seed(42)
 
-tensor_trans = ToTensor()
+transform = ToTensor()
 delaunay = Compose([Delaunay(), FaceToEdge()])
 
 class xBD(Dataset):
@@ -83,8 +83,8 @@ class xBD(Dataset):
                     post_image = Image.open(post_image_file)
                     pre_image = pre_image.resize((128, 128))
                     post_image = post_image.resize((128, 128))
-                    pre_image = tensor_trans(pre_image)
-                    post_image = tensor_trans(post_image)
+                    pre_image = transform(pre_image)
+                    post_image = transform(post_image)
                     images = torch.cat((pre_image, post_image),0)
                     x.append(images.flatten())
 

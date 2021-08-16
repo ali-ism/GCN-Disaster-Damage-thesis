@@ -17,9 +17,9 @@ with open('exp_settings.json', 'r') as JSON:
 batch_size = settings_dict['data']['batch_size']
 delaunay = settings_dict['data']['delaunay']
 name = settings_dict['model']['name']
-disaster = settings_dict['data']['disaster']
-paths = settings_dict['data']['paths']
-train_root = "/home/ami31/scratch/datasets/delaunay/socal_train"
+train_disaster = settings_dict['data']['train_disasters']
+train_paths = settings_dict['data']['train_paths']
+train_root = settings_dict['data']['train_root']
 test_root = "/home/ami31/scratch/datasets/delaunay/socal_test"
 hold_root = "/home/ami31/scratch/datasets/delaunay/socal_hold"
 edge_features = settings_dict['model']['edge_features']
@@ -170,10 +170,10 @@ def save_results(hold=False) -> None:
 
 if __name__ == "__main__":
 
-    train_dataset = xBD(train_root, paths, disaster).shuffle()
+    train_dataset = xBD(train_root, train_paths, train_disaster).shuffle()
     test_dataset = xBD(test_root, ['/home/ami31/scratch/datasets/xbd/test_bldgs/'], ['socal-fire'])
 
-    class_weights = get_class_weights(disaster, train_dataset)
+    class_weights = get_class_weights(train_disaster, train_dataset)
 
     if settings_dict['model']['type'] == 'gcn':
         model = GCN(train_dataset.num_node_features,
