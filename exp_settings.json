@@ -1,10 +1,11 @@
 {
     "data": {
-        "batch_size": 256,
-        "delaunay": true
+        "disaster": ["socal-fire", "portugal-wildfire"],
+        "subset": ["/home/ami31/scratch/datasets/xbd/train_bldgs/", "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"],
+        "batch_size": 256
     },
     "model": {
-        "name": "socal_15",
+        "name": "socal_portugal_01",
         "path": "weights",
         "type": "cnngcn",
         "hidden_units": 32,
@@ -15,7 +16,6 @@
         "edge_features": true,
         "fc_output": false
     },
-    "train_set": ["socal-fire"],
     "starting_epoch": 1,
     "epochs": 50,
     "save_best_only": true

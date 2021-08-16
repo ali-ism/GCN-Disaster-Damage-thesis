@@ -7,7 +7,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.data import RandomNodeSampler
 from tqdm import tqdm
 from dataset import xBD
-from dataset_delaunay import xBDDelaunay
 from model import GCN, DeeperGCN, CNNGCN
 from metrics import score
 from utils import get_class_weights
@@ -18,30 +17,11 @@ with open('exp_settings.json', 'r') as JSON:
 batch_size = settings_dict['data']['batch_size']
 delaunay = settings_dict['data']['delaunay']
 name = settings_dict['model']['name']
-train_set = settings_dict['train_set']
-if delaunay:
-    if len(train_set) == 1:
-        if train_set[0] == 'socal-fire':
-            train_root = "/home/ami31/scratch/datasets/delaunay/socal_train"
-            subset = 'train'
-        else:
-            train_root = "/home/ami31/scratch/datasets/delaunay/sunda"
-            subset = 'tier3'
-    else:
-        train_root = "/home/ami31/scratch/datasets/delaunay/sunda_tucaloosa_puna"
-        subset = 'tier3'
-    test_root = "/home/ami31/scratch/datasets/delaunay/socal_test"
-    hold_root = "/home/ami31/scratch/datasets/delaunay/socal_hold"
-else:
-    if len(train_set) == 1:
-        if train_set[0] == 'socal-fire':
-            train_root = "/home/ami31/scratch/datasets/pixel/socal_train"
-        else:
-            train_root = "/home/ami31/scratch/datasets/pixel/sunda"
-    else:
-        train_root = "/home/ami31/scratch/datasets/pixel/sunda_tucaloosa_puna"
-    test_root = "/home/ami31/scratch/datasets/pixel/socal_test"
-    hold_root = "/home/ami31/scratch/datasets/pixel/socal_hold"
+disaster = settings_dict['data']['disaster']
+paths = settings_dict['data']['paths']
+train_root = "/home/ami31/scratch/datasets/delaunay/socal_train"
+test_root = "/home/ami31/scratch/datasets/delaunay/socal_test"
+hold_root = "/home/ami31/scratch/datasets/delaunay/socal_hold"
 edge_features = settings_dict['model']['edge_features']
 n_epochs = settings_dict['epochs']
 starting_epoch = settings_dict['starting_epoch']
@@ -171,10 +151,7 @@ def save_results(hold=False) -> None:
     np.save('results/'+name+'_auc_train.npy', train_auc)
     np.save('results/'+name+'_auc_test.npy', test_auc)
     if hold:
-        if delaunay:
-            hold_dataset = xBDDelaunay(hold_root, 'hold', ['socal-fire'])
-        else:
-            hold_dataset = xBD(hold_root, 'hold', ['socal-fire'])
+        hold_dataset = xBD(hold_root, ['/home/ami31/scratch/datasets/xbd/hold_bldgs/'], ['socal-fire'])
         hold_scores = test(hold_dataset)
         print('\nHold results for last model.')
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
@@ -193,14 +170,10 @@ def save_results(hold=False) -> None:
 
 if __name__ == "__main__":
 
-    if delaunay:
-        train_dataset = xBDDelaunay(train_root, subset, train_set).shuffle()
-        test_dataset = xBDDelaunay(test_root, 'test', train_set)
-    else:
-        train_dataset = xBD(train_root, subset, train_set).shuffle()
-        test_dataset = xBD(test_root, 'test', train_set)
+    train_dataset = xBD(train_root, paths, disaster).shuffle()
+    test_dataset = xBD(test_root, ['/home/ami31/scratch/datasets/xbd/test_bldgs/'], ['socal-fire'])
 
-    class_weights = get_class_weights(train_set, train_dataset)
+    class_weights = get_class_weights(disaster, train_dataset)
 
     if settings_dict['model']['type'] == 'gcn':
         model = GCN(train_dataset.num_node_features,

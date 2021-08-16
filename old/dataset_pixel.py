@@ -3,28 +3,35 @@ from pathlib import Path
 import pandas as pd
 from typing import List
 import torch
-from torchvision.transforms import ToTensor
-from torch_geometric.transforms import Compose, Delaunay, FaceToEdge
+import torchvision.transforms as tr
 from PIL import Image
 from torch_geometric.data import Data, Dataset
-from utils import get_edge_features
+from utils import build_edge_idx, get_edge_features
 
 seed = 42
 train_path = "/home/ami31/scratch/datasets/xbd/train_bldgs/"
 test_path = "/home/ami31/scratch/datasets/xbd/test_bldgs/"
 hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
 tier3_path = "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"
-socal_train = "/home/ami31/scratch/datasets/delaunay/socal_train"
-socal_test = "/home/ami31/scratch/datasets/delaunay/socal_test"
-socal_hold = "/home/ami31/scratch/datasets/delaunay/socal_hold"
-sunda = "/home/ami31/scratch/datasets/delaunay/sunda"
+mexico_train = "/home/ami31/scratch/datasets/pixel/mexico_train"
+mexico_test = "/home/ami31/scratch/datasets/pixel/mexico_test"
+mexico_hold = "/home/ami31/scratch/datasets/pixel/mexico_hold"
+palu_train = "/home/ami31/scratch/datasets/pixel/palu_train"
+palu_test = "/home/ami31/scratch/datasets/pixel/palu_test"
+palu_hold = "/home/ami31/scratch/datasets/pixel/palu_hold"
+palu_matthew_rosa_train = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_train"
+palu_matthew_rosa_test = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_test"
+palu_matthew_rosa_hold = "/home/ami31/scratch/datasets/pixel/palu_matthew_rosa_hold"
+socal_train = "/home/ami31/scratch/datasets/pixel/socal_train"
+socal_test = "/home/ami31/scratch/datasets/pixel/socal_test"
+socal_hold = "/home/ami31/scratch/datasets/pixel/socal_hold"
+sunda = "/home/ami31/scratch/datasets/pixel/sunda"
 
 torch.manual_seed(seed)
 
-tensor_trans = ToTensor()
-del_trans = Compose([Delaunay(), FaceToEdge()])
+transform = tr.ToTensor()
 
-class xBDDelaunay(Dataset):
+class xBD(Dataset):
     def __init__(self,
                  root: str,
                  subset: str,
@@ -55,7 +62,7 @@ class xBDDelaunay(Dataset):
         
         self.num_classes = 4
 
-        super(xBDDelaunay, self).__init__(root, transform, pre_transform)
+        super(xBD, self).__init__(root, transform, pre_transform)
 
     @property
     def raw_file_names(self) -> List:
@@ -102,19 +109,16 @@ class xBDDelaunay(Dataset):
                     post_image = Image.open(post_image_file)
                     pre_image = pre_image.resize((128, 128))
                     post_image = post_image.resize((128, 128))
-                    pre_image = tensor_trans(pre_image)
-                    post_image = tensor_trans(post_image)
+                    pre_image = transform(pre_image)
+                    post_image = transform(post_image)
                     images = torch.cat((pre_image, post_image),0)
                     x.append(images.flatten())
 
                 x = torch.stack(x)
                 y = torch.tensor(y)
-                coords = torch.tensor(coords)
 
-                data = Data(x=x, y=y, pos=coords)
-                data = del_trans(data)
-
-                edge_index = data.edge_index
+                #edge index matrix
+                edge_index = build_edge_idx(x.shape[0])
 
                 #edge features
                 edge_attr = torch.empty((edge_index.shape[1],2))
@@ -123,9 +127,11 @@ class xBDDelaunay(Dataset):
                     node2 = x[edge_index[1,i]]
                     coords1 = coords[edge_index[0,i]]
                     coords2 = coords[edge_index[1,i]]
-                    edge_attr[i,0], edge_attr[i,1] = get_edge_features(node1, node2, coords1, coords2)
+                    attr1, attr2 = get_edge_features(node1, node2, coords1, coords2)
+                    edge_attr[i,0] = attr1
+                    edge_attr[i,1] = attr2
                 
-                data.edge_attr = edge_attr
+                data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, pos=torch.tensor(coords))
 
                 if self.pre_filter is not None and not self.pre_filter(data):
                     continue
@@ -143,20 +149,23 @@ class xBDDelaunay(Dataset):
 
 
 if __name__ == "__main__":
-
-    disaster_sets = [['socal-fire']]
+    """
+    disaster_sets = [['mexico-earthquake'],
+                    ['palu-tsunami']]
+                    #['palu-tsunami', 'hurricane-matthew', 'santa-rosa-wildfire']]
     subsets = ['train', 'test', 'hold']
-    roots = [[socal_train, socal_test, socal_hold]]
+    roots = [[mexico_train, mexico_test, mexico_hold],
+             [palu_train, palu_test, palu_hold]]
+             #[palu_matthew_rosa_train, palu_matthew_rosa_test, palu_matthew_rosa_hold]]
     for disaster, root in zip(disaster_sets, roots):
         for subset, root_dir in zip(subsets, root):
             print(f'Building dataset for {disaster} {subset}...')
             if not os.path.isdir(root_dir):
                 os.mkdir(root_dir)
-            xBDDelaunay(root_dir, subset, disaster)
+            xBD(root_dir, subset, disaster)
             print(f'****{disaster} {subset} done****')
     """
     print(f'Building dataset for Sunda Tsunami...')
     if not os.path.isdir(sunda):
         os.mkdir(sunda)
     xBD(sunda, 'tier3', ['sunda-tsunami'])
-    """

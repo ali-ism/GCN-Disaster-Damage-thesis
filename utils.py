@@ -77,18 +77,18 @@ def get_edge_features(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[f
     return node_sim.item(), euc_sim
 
 
-def get_class_weights(train_set: List[str], dataset) -> torch.Tensor:
+def get_class_weights(disasters: List[str], dataset) -> torch.Tensor:
     """
         Computes the class weights yo be used in the loss function for mitigating the effect of class imbalance.
 
         Args:
-            train_set (List[str]): names of the included datasets.
+            disasters (List[str]): names of the included datasets.
             dataset: PyG dataset instance.
         
         Returns:
             class_weights (Tensor): class weights tensor of shape (n_classes).
     """
-    name = '_'.join(text.replace('-', '_') for text in train_set)
+    name = '_'.join(text.replace('-', '_') for text in disasters)
     if os.path.isfile(f'weights/class_weights_{name}.pt'):
         return torch.load(f'weights/class_weights_{name}.pt')
     else:
