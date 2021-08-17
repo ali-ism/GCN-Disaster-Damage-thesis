@@ -21,7 +21,12 @@ transform = ToTensor()
 delaunay = Compose([Delaunay(), FaceToEdge()])
 
 class xBD(Dataset):
-    def __init__(self, root: str, paths: List[str], disasters: List[str], transform=None, pre_transform=None) -> None:
+    def __init__(self,
+                root: str,
+                paths: List[str],
+                disasters: List[str],
+                transform=None,
+                pre_transform=None) -> None:
         
         self.paths = paths
         self.disasters = disasters

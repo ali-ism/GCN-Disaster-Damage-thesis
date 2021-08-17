@@ -3,8 +3,6 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import plotly.express as px
-import networkx as nx
-from torch_geometric.utils import to_networkx
 from typing import Iterable
 
 class CmapString:

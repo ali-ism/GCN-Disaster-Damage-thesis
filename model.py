@@ -7,12 +7,12 @@ from torch_geometric.nn import GENConv, DeepGCNLayer, SplineConv, GCNConv, Batch
 
 class GCN(Module):
     def __init__(self,
-                 num_node_features,
-                 hidden_channels,
-                 num_classes,
-                 num_layers,
-                 dropout_rate,
-                 fc_output=False):
+                num_node_features:int,
+                hidden_channels: int,
+                num_classes: int,
+                num_layers: int,
+                dropout_rate: float,
+                fc_output: bool=False):
         super(GCN, self).__init__()
 
         self.dropout_rate = dropout_rate
@@ -54,11 +54,11 @@ class GCN(Module):
 
 """ class SplineNet(Module):
     def __init__(self,
-                 num_node_features,
-                 hidden_channels,
-                 num_classes,
-                 num_layers,
-                 dropout_rate):
+                num_node_features,
+                hidden_channels,
+                num_classes,
+                num_layers,
+                dropout_rate):
         super(SplineNet, self).__init__()
 
         self.dropout_rate = dropout_rate
@@ -83,13 +83,13 @@ class GCN(Module):
 
 class DeeperGCN(Module):
     def __init__(self,
-                 num_node_features: int,
-                 num_edge_features: int,
-                 hidden_channels: int,
-                 num_classes: int,
-                 num_layers: int,
-                 dropout_rate: float,
-                 msg_norm: bool):
+                num_node_features: int,
+                num_edge_features: int,
+                hidden_channels: int,
+                num_classes: int,
+                num_layers: int,
+                dropout_rate: float,
+                msg_norm: bool):
         super(DeeperGCN, self).__init__()
 
         self.dropout_rate = dropout_rate
@@ -100,7 +100,7 @@ class DeeperGCN(Module):
         self.layers = ModuleList()
         for i in range(1, num_layers + 1):
             conv = GENConv(hidden_channels, hidden_channels, learn_t=True, num_layers=2,
-                           norm='layer', msg_norm=msg_norm, learn_msg_scale=msg_norm)
+                norm='layer', msg_norm=msg_norm, learn_msg_scale=msg_norm)
             norm = LayerNorm(hidden_channels, elementwise_affine=True)
             act = ReLU(inplace=True)
             layer = DeepGCNLayer(conv, norm, act, block='res+', dropout=dropout_rate, ckpt_grad=i % 3)
@@ -129,7 +129,7 @@ class SiameseResnetEncoder(Module):
         self.resnet = resnet50(pretrained=True, progress=False)
         self.resnet = Sequential(*(list(self.resnet.children())[:-1]))
     
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         x = x.reshape((-1, 6, 128, 128))
         x1 = x[:,:3,:,:]
         x2 = x[:,3:,:,:]
@@ -139,7 +139,7 @@ class SiameseResnetEncoder(Module):
         return x.flatten(start_dim=1)
 
 class SiameseResnetClf(Module):
-    def __init__(self, hidden_channels, num_classes, dropout_rate):
+    def __init__(self, hidden_channels: int, num_classes: int, dropout_rate: float):
         super().__init__()
         
         self.dropout_rate = dropout_rate
@@ -164,13 +164,14 @@ class SiameseResnetClf(Module):
         x = self.out(x)
         return F.log_softmax(x, dim=1)
 
+
 class CNNGCN(Module):
     def __init__(self,
-                 hidden_channels: int,
-                 num_classes: int,
-                 num_layers: int,
-                 dropout_rate: float,
-                 fc_output: bool):
+                hidden_channels: int,
+                num_classes: int,
+                num_layers: int,
+                dropout_rate: float,
+                fc_output: bool):
         super(CNNGCN, self).__init__()
 
         self.dropout_rate = dropout_rate

@@ -15,7 +15,6 @@ with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
 batch_size = settings_dict['data']['batch_size']
-delaunay = settings_dict['data']['delaunay']
 name = settings_dict['model']['name']
 train_disaster = settings_dict['data']['train_disasters']
 train_paths = settings_dict['data']['train_paths']
@@ -25,7 +24,6 @@ hold_root = "/home/ami31/scratch/datasets/delaunay/socal_hold"
 edge_features = settings_dict['model']['edge_features']
 n_epochs = settings_dict['epochs']
 starting_epoch = settings_dict['starting_epoch']
-path = settings_dict['model']['path']
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(42)
@@ -33,7 +31,7 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 
-def train(epoch):
+def train(epoch: int):
     model.train()
     pbar = tqdm(total=len(train_dataset))
     pbar.set_description(f'Epoch {epoch:02d}')
@@ -103,7 +101,7 @@ def test(dataset):
     return accuracy, f1_macro, f1_weighted, auc, loss
 
 
-def save_results(hold=False) -> None:
+def save_results(hold: bool=False) -> None:
     plt.figure()
     plt.plot(train_loss)
     plt.plot(test_loss)
@@ -158,7 +156,7 @@ def save_results(hold=False) -> None:
         print(f'Hold macro F1: {hold_scores[1]:.4f}')
         print(f'Hold weighted F1: {hold_scores[2]:.4f}')
         print(f'Hold auc: {hold_scores[3]:.4f}')
-        model_path = path + '/' + name + '_best.pt'
+        model_path = 'weights/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
         hold_scores = test(hold_dataset)
         print('\nHold results for best model.')
@@ -183,26 +181,28 @@ if __name__ == "__main__":
                     settings_dict['model']['dropout_rate'],
                     settings_dict['model']['fc_output'])
     elif settings_dict['model']['type'] == 'deepgcn':
-        model = DeeperGCN(train_dataset.num_node_features,
-                        train_dataset.num_edge_features,
-                        settings_dict['model']['hidden_units'],
-                        train_dataset.num_classes,
-                        settings_dict['model']['num_layers'],
-                        settings_dict['model']['dropout_rate'],
-                        settings_dict['model']['msg_norm'])
+        model = DeeperGCN(
+            train_dataset.num_node_features,
+            train_dataset.num_edge_features,
+            settings_dict['model']['hidden_units'],
+            train_dataset.num_classes,
+            settings_dict['model']['num_layers'],
+            settings_dict['model']['dropout_rate'],
+            settings_dict['model']['msg_norm'])
     elif settings_dict['model']['type'] == 'cnngcn':
-        model = CNNGCN(settings_dict['model']['hidden_units'],
-                       train_dataset.num_classes,
-                       settings_dict['model']['num_layers'],
-                       settings_dict['model']['dropout_rate'],
-                       settings_dict['model']['fc_output'])
+        model = CNNGCN(
+            settings_dict['model']['hidden_units'],
+            train_dataset.num_classes,
+            settings_dict['model']['num_layers'],
+            settings_dict['model']['dropout_rate'],
+            settings_dict['model']['fc_output'])
     if starting_epoch != 1:
-        model_path = path + '/' + name + '_best.pt'
+        model_path = 'weights/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=0.00001, verbose=True)
+    #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=0.00001, verbose=True)
 
     best_test_auc = best_epoch = 0
 
@@ -236,17 +236,19 @@ if __name__ == "__main__":
         print(f'Epoch {epoch:02d}, Train Loss: {train_loss[epoch-1]:.4f}')
     
         if not settings_dict['save_best_only']:
-            model_path = path + '/' + name + '.pt'
+            model_path = 'weights/' + name + '.pt'
             torch.save(model.state_dict(), model_path)
 
-        train_acc[epoch-1], train_f1_macro[epoch-1], train_f1_weighted[epoch-1], train_auc[epoch-1], _ = test(train_dataset)
-        test_acc[epoch-1], test_f1_macro[epoch-1], test_f1_weighted[epoch-1], test_auc[epoch-1], test_loss[epoch-1] = test(test_dataset)
-        scheduler.step(test_loss[epoch-1])
+        train_acc[epoch-1], train_f1_macro[epoch-1],\
+            train_f1_weighted[epoch-1], train_auc[epoch-1], _ = test(train_dataset)
+        test_acc[epoch-1], test_f1_macro[epoch-1], test_f1_weighted[epoch-1],\
+            test_auc[epoch-1], test_loss[epoch-1] = test(test_dataset)
+        #scheduler.step(test_loss[epoch-1])
 
         if test_auc[epoch-1] > best_test_auc:
             best_test_auc = test_auc[epoch-1]
             best_epoch = epoch
-            model_path = path + '/' + name + '_best.pt'
+            model_path = 'weights/' + name + '_best.pt'
             print(f'New best model saved with AUC {best_test_auc} at epoch {best_epoch}.')
             torch.save(model.state_dict(), model_path)
         

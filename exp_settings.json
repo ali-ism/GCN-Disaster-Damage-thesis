@@ -11,7 +11,7 @@
         "type": "cnngcn",
         "hidden_units": 32,
         "num_layers": 2,
-        "lr": 0.01,
+        "lr": 0.001,
         "dropout_rate": 0.5,
         "msg_norm": true,
         "edge_features": true,
