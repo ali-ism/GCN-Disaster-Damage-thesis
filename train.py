@@ -3,11 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+#from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.data import RandomNodeSampler
 from tqdm import tqdm
 from dataset import xBD
-from model import GCN, DeeperGCN, CNNGCN
+from model import CNNGCN
 from metrics import score
 from utils import get_class_weights
 
@@ -35,8 +35,7 @@ def train(epoch: int):
     model.train()
     pbar = tqdm(total=len(train_dataset))
     pbar.set_description(f'Epoch {epoch:02d}')
-    total_loss = 0
-    total_examples = 0
+    total_loss = total_examples = 0
     for data in train_dataset:
         if data.num_nodes > batch_size:
             sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
@@ -74,31 +73,46 @@ def test(dataset):
     model.eval()
     y_true = []
     y_pred = []
+    if dataset is train_dataset:
+        total_loss = 0
+        total_examples = 0
     for data in dataset:
         if data.num_nodes > batch_size:
             sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
             for subdata in sampler:
                 subdata = subdata.to(device)
                 if edge_features:
-                    y_pred.append(model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu())
+                    out = model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu()
+                    y_pred.append(out)
                 else:
-                    y_pred.append(model(subdata.x, subdata.edge_index).cpu())
+                    out = model(subdata.x, subdata.edge_index).cpu()
+                    y_pred.append(out)
                 y_true.append(subdata.y.cpu())
+                if dataset is train_dataset:
+                    loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights)
+                    total_loss += loss.item() * subdata.num_nodes
+                    total_examples += subdata.num_nodes
         else:
             data = data.to(device)
             if edge_features:
-                y_pred.append(model(data.x, data.edge_index, data.edge_attr).cpu())
+                out = model(data.x, data.edge_index, data.edge_attr).cpu()
+                y_pred.append(out)
             else:
-                y_pred.append(model(data.x, data.edge_index).cpu())
+                out = model(data.x, data.edge_index).cpu()
+                y_pred.append(out)
             y_true.append(data.y.cpu())
+            if dataset is train_dataset:
+                loss = F.nll_loss(input=out, target=data.y, weight=class_weights)
+                total_loss += loss.item() * data.num_nodes
+                total_examples += data.num_nodes
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
-    if dataset is not train_dataset:
-        loss = F.nll_loss(input=y_pred, target=y_true, weight=class_weights)
-    else:
-        loss = None
-    return accuracy, f1_macro, f1_weighted, auc, loss
+    #if dataset is not train_dataset:
+    #    loss = F.nll_loss(input=y_pred, target=y_true, weight=class_weights)
+    #else:
+    #    loss = None
+    return accuracy, f1_macro, f1_weighted, auc, total_loss / total_examples
 
 
 def save_results(hold: bool=False) -> None:
@@ -173,29 +187,11 @@ if __name__ == "__main__":
 
     class_weights = get_class_weights(train_disaster, train_dataset)
 
-    if settings_dict['model']['type'] == 'gcn':
-        model = GCN(train_dataset.num_node_features,
-                    settings_dict['model']['hidden_units'],
-                    train_dataset.num_classes,
-                    settings_dict['model']['num_layers'],
-                    settings_dict['model']['dropout_rate'],
-                    settings_dict['model']['fc_output'])
-    elif settings_dict['model']['type'] == 'deepgcn':
-        model = DeeperGCN(
-            train_dataset.num_node_features,
-            train_dataset.num_edge_features,
-            settings_dict['model']['hidden_units'],
-            train_dataset.num_classes,
-            settings_dict['model']['num_layers'],
-            settings_dict['model']['dropout_rate'],
-            settings_dict['model']['msg_norm'])
-    elif settings_dict['model']['type'] == 'cnngcn':
-        model = CNNGCN(
-            settings_dict['model']['hidden_units'],
-            train_dataset.num_classes,
-            settings_dict['model']['num_layers'],
-            settings_dict['model']['dropout_rate'],
-            settings_dict['model']['fc_output'])
+    model = CNNGCN(
+        settings_dict['model']['hidden_units'],
+        train_dataset.num_classes,
+        settings_dict['model']['num_layers'],
+        settings_dict['model']['dropout_rate'])
     if starting_epoch != 1:
         model_path = 'weights/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))

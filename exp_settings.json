@@ -6,16 +6,13 @@
         "batch_size": 256
     },
     "model": {
-        "name": "socal_portugal_01",
-        "path": "weights",
-        "type": "cnngcn",
+        "name": "socal_portugal_02",
         "hidden_units": 32,
         "num_layers": 2,
         "lr": 0.001,
         "dropout_rate": 0.5,
         "msg_norm": true,
-        "edge_features": true,
-        "fc_output": false
+        "edge_features": false
     },
     "starting_epoch": 1,
     "epochs": 50,
