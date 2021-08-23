@@ -3,7 +3,8 @@
         "train_root": "/home/ami31/scratch/datasets/delaunay/socal_portugal_train",
         "train_disasters": ["socal-fire", "portugal-wildfire"],
         "train_paths": ["/home/ami31/scratch/datasets/xbd/train_bldgs/", "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"],
-        "batch_size": 256
+        "batch_size": 256,
+        "merge_classes": false
     },
     "model": {
         "name": "socal_portugal_02",
@@ -12,7 +13,8 @@
         "lr": 0.001,
         "dropout_rate": 0.5,
         "msg_norm": true,
-        "edge_features": false
+        "edge_features": false,
+        "enc_diff": true
     },
     "starting_epoch": 1,
     "epochs": 50,

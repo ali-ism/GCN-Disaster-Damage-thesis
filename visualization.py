@@ -21,12 +21,12 @@ class CmapString:
 
 def plot_on_image(labels: pd.DataFrame, subset: str, zone: str):
     plt.figure(figsize=(12,8))
-    #subset_marker = subset[subset.find('/')+len('/'):subset.rfind('_')]
+    subset = subset[subset.find('/')+len('/'):subset.rfind('_')]
     img = plt.imread(f'datasets/xbd/{subset}/images/{zone}_post_disaster.png')
     plt.imshow(img)
     cmap = {'no-damage': 'blue', 'minor-damage': 'orange', 'major-damage': 'red', 'destroyed': 'purple', 'un-classified': 'white'}
     for _, row in labels[labels['zone']==zone].iterrows():
-        plt.scatter(row['xcoord'], row['ycoord'], label=row['zone'], color=cmap[row['class']])
+        plt.scatter(row['xcoords'], row['ycoords'], label=row['zone'], color=cmap[row['class']])
     plt.axis('off')
     plt.show()
 

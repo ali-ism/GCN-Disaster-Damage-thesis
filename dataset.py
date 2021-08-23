@@ -21,12 +21,13 @@ transform = ToTensor()
 delaunay = Compose([Delaunay(), FaceToEdge()])
 
 class xBD(Dataset):
-    def __init__(self,
-                root: str,
-                paths: List[str],
-                disasters: List[str],
-                transform=None,
-                pre_transform=None) -> None:
+    def __init__(
+        self,
+        root: str,
+        paths: List[str],
+        disasters: List[str],
+        transform=None,
+        pre_transform=None) -> None:
         
         self.paths = paths
         self.disasters = disasters
@@ -58,7 +59,7 @@ class xBD(Dataset):
                     processed_files.append(os.path.join(self.processed_dir, f'{zone}.pt'))
         return processed_files
 
-    def process(self):
+    def process(self) -> None:
         label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
         for disaster, labels, path in zip(self.disasters, self.list_labels, self.paths):
             zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
@@ -120,10 +121,10 @@ class xBD(Dataset):
                 
                 torch.save(data, os.path.join(self.processed_dir, f'{zone}.pt'))
     
-    def len(self):
+    def len(self) -> int:
         return len(self.processed_file_names)
 
-    def get(self, idx):
+    def get(self, idx: int):
         data = torch.load(os.path.join(self.processed_dir, self.processed_file_names[idx]))
         return data
 
