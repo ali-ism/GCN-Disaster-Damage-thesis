@@ -12,11 +12,10 @@
         "num_layers": 2,
         "lr": 0.001,
         "dropout_rate": 0.5,
-        "msg_norm": true,
         "edge_features": false,
         "enc_diff": true
     },
     "starting_epoch": 1,
-    "epochs": 50,
+    "epochs": 30,
     "save_best_only": true
 }
