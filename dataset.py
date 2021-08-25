@@ -21,6 +21,17 @@ transform = ToTensor()
 delaunay = Compose([Delaunay(), FaceToEdge()])
 
 class xBD(Dataset):
+    """
+    xBD graph dataset.
+    Every building (pre and post) is a node.
+    Edge are created accoring to the Delaunay triangulation.
+    Edge features are calculated as a similarity measure between the nodes.
+
+    Args:
+        root (str): path where the processed dataset is saved.
+        paths (List[str]): paths to the desired data split (train, test, hold or tier3).
+        disasters (List[str]): names of the included disasters.
+    """
     def __init__(
         self,
         root: str,
@@ -42,7 +53,7 @@ class xBD(Dataset):
         
         self.num_classes = 4
 
-        super(xBD, self).__init__(root, transform, pre_transform)
+        super().__init__(root, transform, pre_transform)
 
     @property
     def raw_file_names(self) -> List:

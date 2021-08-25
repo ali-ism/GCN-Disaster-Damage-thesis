@@ -1,29 +1,19 @@
+import os
 import json
-from typing import Tuple
+from pathlib import Path
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 import torch
+from torch.utils.data import Dataset, DataLoader
+from torchvision.transforms import ToTensor
 import torch.nn.functional as F
-#from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch_geometric.data import RandomNodeSampler
+from PIL import Image
+from sklearn.utils.class_weight import compute_class_weight
+from typing import Callable, List, Tuple
+from model import SiameseNet
+from utils import score
 from tqdm import tqdm
-from dataset import xBD
-from model import CNNSage
-from utils import get_class_weights, merge_classes, score
-
-with open('exp_settings.json', 'r') as JSON:
-    settings_dict = json.load(JSON)
-
-batch_size = settings_dict['data']['batch_size']
-name = settings_dict['model']['name']
-train_disaster = settings_dict['data']['train_disasters']
-train_paths = settings_dict['data']['train_paths']
-train_root = settings_dict['data']['train_root']
-test_root = "/home/ami31/scratch/datasets/delaunay/socal_test"
-hold_root = "/home/ami31/scratch/datasets/delaunay/socal_hold"
-edge_features = settings_dict['model']['edge_features']
-n_epochs = settings_dict['epochs']
-starting_epoch = settings_dict['starting_epoch']
+from train import make_plot
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(42)
@@ -31,99 +21,117 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 
+with open('exp_settings.json', 'r') as JSON:
+    settings_dict = json.load(JSON)
+
+batch_size = settings_dict['data']['batch_size']
+name = settings_dict['model']['name'] + '_SiameseClf_'
+train_disaster = settings_dict['data']['train_disasters']
+train_paths = settings_dict['data']['train_paths']
+merge_classes = settings_dict['data']['merge_classes']
+n_epochs = settings_dict['epochs']
+starting_epoch = settings_dict['starting_epoch']
+
+
+transform = ToTensor()
+
+class xBDImages(Dataset):
+    """
+    xBD building image dataset.
+
+    Args:
+        paths (List[str]): paths to the desired data split (train, test, hold or tier3).
+        disasters (List[str]): names of the included disasters.
+    """
+    def __init__(
+        self,
+        paths: List[str],
+        disasters: List[str],
+        merge_classes: bool=False,
+        transform: Callable=None) -> None:
+
+        list_labels = []
+        for disaster, path in zip(disasters, paths):
+            labels = pd.read_csv(list(Path(path + disaster).glob('*.csv*'))[0], index_col=0)
+            labels.drop(columns=['long','lat'], inplace=True)
+            labels['image_path'] = str(Path(path + disaster))
+            list_labels.append(labels)
+        
+        self.labels = pd.concat(list_labels)
+        self.label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
+        self.num_classes = 4
+        self.merge_classes = merge_classes
+        self.transform = transform
+    
+    def __len__(self) -> int:
+        return self.labels.shape[0]
+    
+    def __getitem__(self, idx) -> Tuple[torch.Tensor]:
+
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        post_image_file = self.labels['image_path'][idx] + self.labels.index[idx]
+        pre_image_file = post_image_file.replace('post', 'pre')
+        pre_image = Image.open(pre_image_file)
+        post_image = Image.open(post_image_file)
+        pre_image = pre_image.resize((128, 128))
+        post_image = post_image.resize((128, 128))
+        pre_image = transform(pre_image)
+        post_image = transform(post_image)
+        images = torch.cat((pre_image, post_image),0).flatten()
+
+        if self.transform is not None:
+            images = self.transform(images)
+
+        y = torch.tensor(self.label_dict[self.labels['class'][idx]])
+
+        if self.merge_classes:
+            y[y==3] = 2
+        
+        sample = {'x': images, 'y': y}
+
+        return sample
+
+
 def train(epoch: int) -> float:
     model.train()
-    pbar = tqdm(total=len(train_dataset))
+    pbar = tqdm(total=len(train_loader))
     pbar.set_description(f'Epoch {epoch:02d}')
-    total_loss = total_examples = 0
-    for data in train_dataset:
-        if data.num_nodes > batch_size:
-            sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
-            for subdata in sampler:
-                subdata = subdata.to(device)
-                optimizer.zero_grad()
-                if edge_features:
-                    out = model(subdata.x, subdata.edge_index, subdata.edge_attr[:,0])
-                else:
-                    out = model(subdata.x, subdata.edge_index)
-                loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights.to(device))
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item() * subdata.num_nodes
-                total_examples += subdata.num_nodes
-        else:
-            data = data.to(device)
-            optimizer.zero_grad()
-            if edge_features:
-                out = model(data.x, data.edge_index, data.edge_attr[:,0])
-            else:
-                out = model(data.x, data.edge_index)
-            loss = F.nll_loss(input=out, target=data.y, weight=class_weights.to(device))
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item() * data.num_nodes
-            total_examples += data.num_nodes
-        pbar.update()
+    total_loss = 0
+    for data in train_loader:
+        data = data.to(device)
+        optimizer.zero_grad()
+        out = model(data.x)
+        loss = F.nll_loss(input=out, target=data.y, weight=class_weights.to(device))
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+        pbar.update(data.x.shape[0])
     pbar.close()
-    return total_loss / total_examples
+    return total_loss / len(train_loader)
 
 
 @torch.no_grad()
-def test(dataset) -> Tuple[float]:
+def test(dataloader) -> Tuple[float]:
     model.eval()
     y_true = []
     y_pred = []
-    if dataset is train_dataset:
+    if dataloader is train_loader:
         total_loss = 0
-        total_examples = 0
-    for data in dataset:
-        if data.num_nodes > batch_size:
-            sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
-            for subdata in sampler:
-                subdata = subdata.to(device)
-                if edge_features:
-                    out = model(subdata.x, subdata.edge_index, subdata.edge_attr[:,0]).cpu()
-                    y_pred.append(out)
-                else:
-                    out = model(subdata.x, subdata.edge_index).cpu()
-                    y_pred.append(out)
-                y_true.append(subdata.y.cpu())
-                if dataset is train_dataset:
-                    loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights)
-                    total_loss += loss.item() * subdata.num_nodes
-                    total_examples += subdata.num_nodes
-        else:
-            data = data.to(device)
-            if edge_features:
-                out = model(data.x, data.edge_index, data.edge_attr[:,0]).cpu()
-                y_pred.append(out)
-            else:
-                out = model(data.x, data.edge_index).cpu()
-                y_pred.append(out)
-            y_true.append(data.y.cpu())
-            if dataset is train_dataset:
-                loss = F.nll_loss(input=out, target=data.y, weight=class_weights)
-                total_loss += loss.item() * data.num_nodes
-                total_examples += data.num_nodes
+    for data in dataloader:
+        data = data.to(device)
+        out = model(data.x).cpu()
+        y_pred.append(out)
+        y_true.append(data.y.cpu())
+        if dataloader is train_loader:
+            loss = F.nll_loss(input=out, target=data.y.cpu(), weight=class_weights)
+            total_loss += loss.item()
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
-    #if dataset is not train_dataset:
-    #    loss = F.nll_loss(input=y_pred, target=y_true, weight=class_weights)
-    #else:
-    #    loss = None
-    return accuracy, f1_macro, f1_weighted, auc, total_loss / total_examples
+    return accuracy, f1_macro, f1_weighted, auc, total_loss / len(dataloader)
 
-
-def make_plot(train: np.ndarray, test: np.ndarray, type: str) -> None:
-    plt.figure()
-    plt.plot(train)
-    plt.plot(test)
-    plt.legend(['train', 'test'])
-    plt.xlabel('epochs')
-    plt.ylabel(type)
-    plt.savefig('results/'+name+'_'+type+'.pdf')
-    plt.close()
 
 def save_results(hold: bool=False) -> None:
     make_plot(train_loss, test_loss, 'loss')
@@ -152,8 +160,13 @@ def save_results(hold: bool=False) -> None:
         print(f'Test macro F1: {test_f1_macro[-1]:.4f}')
         print(f'Test weighted F1: {test_f1_weighted[-1]:.4f}')
         print(f'Test auc: {test_auc[-1]:.4f}')
-        hold_dataset = xBD(hold_root, ['/home/ami31/scratch/datasets/xbd/hold_bldgs/'], ['socal-fire'])
-        hold_scores = test(hold_dataset)
+        hold_dataset = xBDImages(
+            ['/home/ami31/scratch/datasets/xbd/hold_bldgs/'],
+            ['socal-fire'],
+            merge_classes
+        )
+        hold_dataloader = DataLoader(hold_dataset, batch_size)
+        hold_scores = test(hold_dataloader)
         print('\nHold results for last model.')
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
         print(f'Hold macro F1: {hold_scores[1]:.4f}')
@@ -171,7 +184,7 @@ def save_results(hold: bool=False) -> None:
         print(f'Test auc: {test_auc[best_epoch]:.4f}')
         model_path = 'weights/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
-        hold_scores = test(hold_dataset)
+        hold_scores = test(hold_dataloader)
         print('\nHold results for best model.')
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
         print(f'Hold macro F1: {hold_scores[1]:.4f}')
@@ -181,32 +194,26 @@ def save_results(hold: bool=False) -> None:
 
 if __name__ == "__main__":
 
-    if settings_dict['data']['merge_classes']:
-        transform = merge_classes
+    train_dataset = xBDImages(train_paths, train_disaster, merge_classes)
+    test_dataset = xBDImages(['/home/ami31/scratch/datasets/xbd/test_bldgs/'], ['socal-fire'], merge_classes)
+
+    train_loader = DataLoader(train_dataset, batch_size, True)
+    test_loader = DataLoader(train_dataset, batch_size)
+
+    if os.path.isfile(f'weights/class_weights_{name}.pt'):
+        class_weights = torch.load(f'weights/class_weights_{name}.pt')
     else:
-        transform = None
-
-    train_dataset = xBD(
-        train_root,
-        train_paths,
-        train_disaster,
-        transform=transform
-    ).shuffle()
-    test_dataset = xBD(
-        test_root,
-        ['/home/ami31/scratch/datasets/xbd/test_bldgs/'],
-        ['socal-fire'],
-        transform=transform
-    )
-
-    class_weights = get_class_weights(train_disaster, train_dataset)
+        y_all = [data.y for data in train_dataset]
+        y_all = torch.cat(y_all).numpy()
+        class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all)
+        class_weights = torch.Tensor(class_weights)
+        torch.save(class_weights, f'weights/class_weights_{name}.pt')
 
     num_classes = 3 if settings_dict['data']['merge_classes'] else train_disaster.num_classes
 
-    model = CNNSage(
+    model = SiameseNet(
         settings_dict['model']['hidden_units'],
         num_classes,
-        settings_dict['model']['num_layers'],
         settings_dict['model']['dropout_rate'],
         settings_dict['model']['enc_diff']
     )
