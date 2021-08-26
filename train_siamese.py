@@ -33,7 +33,7 @@ n_epochs = settings_dict['epochs']
 starting_epoch = settings_dict['starting_epoch']
 
 
-transform = ToTensor()
+to_tensor = ToTensor()
 
 class xBDImages(Dataset):
     """
@@ -77,8 +77,8 @@ class xBDImages(Dataset):
         post_image = Image.open(post_image_file)
         pre_image = pre_image.resize((128, 128))
         post_image = post_image.resize((128, 128))
-        pre_image = transform(pre_image)
-        post_image = transform(post_image)
+        pre_image = to_tensor(pre_image)
+        post_image = to_tensor(post_image)
         images = torch.cat((pre_image, post_image),0).flatten()
 
         if self.transform is not None:
@@ -130,7 +130,11 @@ def test(dataloader) -> Tuple[float]:
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
-    return accuracy, f1_macro, f1_weighted, auc, total_loss / len(dataloader)
+    if dataloader is train_loader:
+        total_loss = total_loss / len(dataloader)
+    else:
+        total_loss = None
+    return accuracy, f1_macro, f1_weighted, auc, total_loss
 
 
 def save_results(hold: bool=False) -> None:

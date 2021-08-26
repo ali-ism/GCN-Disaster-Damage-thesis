@@ -108,11 +108,11 @@ def test(dataset) -> Tuple[float]:
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
-    #if dataset is not train_dataset:
-    #    loss = F.nll_loss(input=y_pred, target=y_true, weight=class_weights)
-    #else:
-    #    loss = None
-    return accuracy, f1_macro, f1_weighted, auc, total_loss / total_examples
+    if dataset is train_dataset:
+        total_loss = total_loss / total_examples
+    else:
+        total_loss = None
+    return accuracy, f1_macro, f1_weighted, auc, total_loss
 
 
 def make_plot(train: np.ndarray, test: np.ndarray, type: str) -> None:
@@ -152,7 +152,12 @@ def save_results(hold: bool=False) -> None:
         print(f'Test macro F1: {test_f1_macro[-1]:.4f}')
         print(f'Test weighted F1: {test_f1_weighted[-1]:.4f}')
         print(f'Test auc: {test_auc[-1]:.4f}')
-        hold_dataset = xBD(hold_root, ['/home/ami31/scratch/datasets/xbd/hold_bldgs/'], ['socal-fire'])
+        hold_dataset = xBD(
+            hold_root,
+            ['/home/ami31/scratch/datasets/xbd/hold_bldgs/'],
+            ['socal-fire'],
+            transform=transform
+        )
         hold_scores = test(hold_dataset)
         print('\nHold results for last model.')
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
@@ -201,7 +206,7 @@ if __name__ == "__main__":
 
     class_weights = get_class_weights(train_disaster, train_dataset)
 
-    num_classes = 3 if settings_dict['data']['merge_classes'] else train_disaster.num_classes
+    num_classes = 3 if settings_dict['data']['merge_classes'] else train_dataset.num_classes
 
     model = CNNSage(
         settings_dict['model']['hidden_units'],
