@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn import Module, ModuleList, Sequential, Linear
 from torchvision.models import resnet34
-from torch_geometric.nn import SAGEConv, GraphConv, BatchNorm
+from torch_geometric.nn import SAGEConv, GraphConv, BatchNorm, LayerNorm
 
 
 class SiameseEncoder(Module):
@@ -70,19 +70,19 @@ class CNNSage(Module):
         self.dropout_rate = dropout_rate
         self.node_encoder = SiameseEncoder(diff)
         self.convs = ModuleList()
-        self.batch_norms = ModuleList()
+        self.layer_norms = ModuleList()
         self.convs.append(SAGEConv(self.node_encoder.get_output_shape(), hidden_channels))
-        self.batch_norms.append(BatchNorm(hidden_channels))
+        self.layer_norms.append(LayerNorm(hidden_channels))
         for _ in range(num_layers - 2):
             self.convs.append(SAGEConv(hidden_channels, hidden_channels))
-            self.batch_norms.append(BatchNorm(hidden_channels))
+            self.layer_norms.append(LayerNorm(hidden_channels))
         self.out = SAGEConv(hidden_channels, num_classes)
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         x= self.node_encoder(x)
-        for batch_norm, conv in zip(self.batch_norms, self.convs):
+        for layer_norm, conv in zip(self.layer_norms, self.convs):
             x = conv(x, edge_index)
-            x = batch_norm(x)
+            x = layer_norm(x)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.out(x, edge_index)
@@ -102,19 +102,19 @@ class CNNGraph(Module):
         self.dropout_rate = dropout_rate
         self.node_encoder = SiameseEncoder(diff)
         self.convs = ModuleList()
-        self.batch_norms = ModuleList()
+        self.layer_norms = ModuleList()
         self.convs.append(GraphConv(self.node_encoder.get_output_shape(), hidden_channels, 'mean'))
-        self.batch_norms.append(BatchNorm(hidden_channels))
+        self.layer_norms.append(LayerNorm(hidden_channels))
         for _ in range(num_layers - 2):
             self.convs.append(GraphConv(hidden_channels, hidden_channels, 'mean'))
-            self.batch_norms.append(BatchNorm(hidden_channels))
+            self.layer_norms.append(LayerNorm(hidden_channels))
         self.out = GraphConv(hidden_channels, num_classes, 'mean')
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor) -> torch.Tensor:
         x= self.node_encoder(x)
-        for batch_norm, conv in zip(self.batch_norms, self.convs):
+        for layer_norm, conv in zip(self.layer_norms, self.convs):
             x = conv(x, edge_index, edge_attr)
-            x = batch_norm(x)
+            x = layer_norm(x)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.out(x, edge_index, edge_attr)
