@@ -118,8 +118,5 @@ def score(y_true: torch.Tensor, y_pred: torch.Tensor) -> Tuple[float]:
     accuracy = accuracy_score(y_true, y_pred.argmax(dim=1, keepdim=True))
     f1_macro = f1_score(y_true, y_pred.argmax(dim=1, keepdim=True), average='macro')
     f1_weighted = f1_score(y_true, y_pred.argmax(dim=1, keepdim=True), average='weighted')
-    #f1_classes = f1_score(y_true, y_pred.argmax(dim=1, keepdim=True), average=None)
-    #epsilon = 1e-6
-    #xview2_f1 = len(f1_classes) / sum((f1+epsilon)**-1 for f1 in f1_classes)
     auc = roc_auc_score(y_true, torch.exp(y_pred), average='macro', multi_class='ovr')
     return accuracy, f1_macro, f1_weighted, auc

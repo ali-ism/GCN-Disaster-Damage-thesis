@@ -20,24 +20,18 @@ class CmapString:
         return [self.mpl_cmap(self.hash_table[x], **kwargs) for x in self.domain]
 
 
-def plot_on_image(labels: pd.DataFrame, subset: str, zone: str):
-    plt.figure(figsize=(12,8))
-    subset = subset[subset.find('/')+len('/'):subset.rfind('_')]
-    img = plt.imread(f'datasets/xbd/{subset}/images/{zone}_post_disaster.png')
-    plt.imshow(img)
-    cmap = {'no-damage': 'blue', 'minor-damage': 'orange', 'major-damage': 'red', 'destroyed': 'purple', 'un-classified': 'white'}
-    for _, row in labels[labels['zone']==zone].iterrows():
-        plt.scatter(row['xcoords'], row['ycoords'], label=row['zone'], color=cmap[row['class']])
-    plt.axis('off')
-    plt.show()
-
-
-def plot_on_map(labels: pd.DataFrame, mapbox=True):
+def plot_on_map(labels: pd.DataFrame, mapbox: bool=True) -> None:
     cmap = CmapString(palette='viridis', domain=labels['zone'].values)
     if mapbox:
-        fig = px.scatter_mapbox(data_frame=labels, lat='lat', lon='long',
-                                color=cmap.color_list(), mapbox_style='open-street-map',
-                                hover_name='class', zoom=10)
+        fig = px.scatter_mapbox(
+            data_frame=labels,
+            lat='lat',
+            lon='long',
+            color=cmap.color_list(),
+            mapbox_style='open-street-map',
+            hover_name='class',
+            zoom=10
+        )
         fig.layout.update(showlegend=False)
         fig.show()
     else:
@@ -59,7 +53,7 @@ from shapely import wkt
 def read_label(label_path):
     with open(label_path) as json_file:
         image_json = json.load(json_file)
-        return image_json
+    return image_json
 
 damage_dict = {
     "no-damage": (0, 255, 0, 50),
@@ -94,7 +88,7 @@ def annotate_img(draw, coords):
 
         del draw
 
-def display_img(json_path, time='post', annotated=True):
+def display_img(json_path: str, time: str='post', annotated: bool=True):
     if time=='pre':
         json_path = json_path.replace('post', 'pre')
         
@@ -113,14 +107,13 @@ def display_img(json_path, time='post', annotated=True):
 
     return img
 
-def plot_image(label):
+def plot_image(label: str) -> None:
 
     # read images
     img_A = display_img(label, time='pre', annotated=False)
     img_B = display_img(label, time='post', annotated=False)
     img_C = display_img(label, time='pre', annotated=True)
     img_D = display_img(label, time='post', annotated=True)
-
 
     # display images
     fig, ax = plt.subplots(2,2)
