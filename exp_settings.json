@@ -4,13 +4,13 @@
         "train_disasters": ["socal-fire", "portugal-wildfire"],
         "train_paths": ["/home/ami31/scratch/datasets/xbd/train_bldgs/", "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"],
         "batch_size": 256,
-        "merge_classes": false
+        "merge_classes": true
     },
     "model": {
         "name": "socal_portugal_02",
         "hidden_units": 32,
         "num_layers": 2,
-        "lr": 0.001,
+        "lr": 0.0003,
         "dropout_rate": 0.5,
         "edge_features": false,
         "enc_diff": true
