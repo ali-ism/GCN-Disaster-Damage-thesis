@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 #from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch_geometric.data import RandomNodeSampler
+from torch.utils.data import ConcatDataset
+from torch_geometric.data import DataLoader, RandomNodeSampler
 from tqdm import tqdm
 from dataset import xBD
 from model import CNNSage
@@ -16,9 +17,9 @@ with open('exp_settings.json', 'r') as JSON:
 
 batch_size = settings_dict['data']['batch_size']
 name = settings_dict['model']['name']
-train_disaster = settings_dict['data']['train_disasters']
+train_disasters = settings_dict['data']['train_disasters']
 train_paths = settings_dict['data']['train_paths']
-train_root = settings_dict['data']['train_root']
+train_roots = settings_dict['data']['train_roots']
 test_root = "/home/ami31/scratch/datasets/delaunay/socal_test"
 hold_root = "/home/ami31/scratch/datasets/delaunay/socal_hold"
 edge_features = settings_dict['model']['edge_features']
@@ -36,7 +37,7 @@ def train(epoch: int) -> float:
     pbar = tqdm(total=len(train_dataset))
     pbar.set_description(f'Epoch {epoch:02d}')
     total_loss = total_examples = 0
-    for data in train_dataset:
+    for data in train_loader:
         if data.num_nodes > batch_size:
             sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
             for subdata in sampler:
@@ -73,7 +74,7 @@ def test(dataset) -> Tuple[float]:
     model.eval()
     y_true = []
     y_pred = []
-    if dataset is train_dataset:
+    if dataset is train_loader:
         total_loss = 0
         total_examples = 0
     for data in dataset:
@@ -88,7 +89,7 @@ def test(dataset) -> Tuple[float]:
                     out = model(subdata.x, subdata.edge_index).cpu()
                     y_pred.append(out)
                 y_true.append(subdata.y.cpu())
-                if dataset is train_dataset:
+                if dataset is train_loader:
                     loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights)
                     total_loss += loss.item() * subdata.num_nodes
                     total_examples += subdata.num_nodes
@@ -101,14 +102,14 @@ def test(dataset) -> Tuple[float]:
                 out = model(data.x, data.edge_index).cpu()
                 y_pred.append(out)
             y_true.append(data.y.cpu())
-            if dataset is train_dataset:
+            if dataset is train_loader:
                 loss = F.nll_loss(input=out, target=data.y, weight=class_weights)
                 total_loss += loss.item() * data.num_nodes
                 total_examples += data.num_nodes
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
-    if dataset is train_dataset:
+    if dataset is train_loader:
         total_loss = total_loss / total_examples
     else:
         total_loss = None
@@ -191,12 +192,13 @@ if __name__ == "__main__":
     else:
         transform = None
 
-    train_dataset = xBD(
-        train_root,
-        train_paths,
-        train_disaster,
-        transform=transform
-    ).shuffle()
+    train_dataset = []
+    for root, path, disaster in zip(train_roots, train_paths, train_disasters):
+        train_dataset.append(xBD(root, train_paths, disaster, transform=transform))
+    
+    train_dataset = ConcatDataset(train_dataset)
+    train_loader = DataLoader(train_dataset, shuffle=True)
+
     test_dataset = xBD(
         test_root,
         ['/home/ami31/scratch/datasets/xbd/test_bldgs/'],
@@ -204,7 +206,7 @@ if __name__ == "__main__":
         transform=transform
     )
 
-    class_weights = get_class_weights(train_disaster, train_dataset)
+    class_weights = get_class_weights(train_disasters, train_dataset)
 
     num_classes = 3 if settings_dict['data']['merge_classes'] else train_dataset.num_classes
 
@@ -259,7 +261,7 @@ if __name__ == "__main__":
             torch.save(model.state_dict(), model_path)
 
         train_acc[epoch-1], train_f1_macro[epoch-1],\
-            train_f1_weighted[epoch-1], train_auc[epoch-1], _ = test(train_dataset)
+            train_f1_weighted[epoch-1], train_auc[epoch-1], _ = test(train_loader)
         test_acc[epoch-1], test_f1_macro[epoch-1], test_f1_weighted[epoch-1],\
             test_auc[epoch-1], test_loss[epoch-1] = test(test_dataset)
         #scheduler.step(test_loss[epoch-1])
