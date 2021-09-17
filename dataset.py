@@ -7,7 +7,6 @@ from torchvision.transforms import ToTensor
 from torch_geometric.transforms import Compose, Delaunay, FaceToEdge
 from PIL import Image
 from torch_geometric.data import Data, Dataset
-from utils import get_edge_features
 
 
 train_path = "/home/ami31/scratch/datasets/xbd/train_bldgs/"
@@ -109,13 +108,14 @@ class xBD(Dataset):
             edge_index = data.edge_index
 
             #edge features
-            edge_attr = torch.empty((edge_index.shape[1],2))
+            edge_attr = torch.empty((edge_index.shape[1],1))
             for i in range(edge_index.shape[1]):
                 node1 = x[edge_index[0,i]]
                 node2 = x[edge_index[1,i]]
-                coords1 = coords[edge_index[0,i]]
-                coords2 = coords[edge_index[1,i]]
-                edge_attr[i,0], edge_attr[i,1] = get_edge_features(node1, node2, coords1, coords2)
+                s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
+                s[s.isnan()] = 1
+                s = 1 - torch.sum(s)/node1.shape[0]
+                edge_attr[i,0] = s.item()
             
             data.edge_attr = edge_attr
 

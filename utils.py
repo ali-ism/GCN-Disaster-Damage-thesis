@@ -73,7 +73,7 @@ def get_edge_features(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[f
     """
     D = node1.shape[0]
     s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
-    s[s.isnan()] = 0
+    s[s.isnan()] = 1
     node_sim = 1 - torch.sum(s)/D
     euc_sim = euclidean_similarity(coords1, coords2)
     return node_sim.item(), euc_sim

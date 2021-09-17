@@ -54,12 +54,13 @@ class xBDImages(Dataset):
         for disaster, path in zip(disasters, paths):
             labels = pd.read_csv(list(Path(path + disaster).glob('*.csv*'))[0], index_col=0)
             labels.drop(columns=['long','lat'], inplace=True)
-            labels['image_path'] = str(Path(path + disaster))
+            labels.drop(index=labels[labels['class'] == 'un-classified'].index, inplace = True)
+            labels['image_path'] = path + disaster + '/'
             list_labels.append(labels)
         
         self.labels = pd.concat(list_labels)
         self.label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
-        self.num_classes = 4
+        self.num_classes = 3 if merge_classes else 4
         self.merge_classes = merge_classes
         self.transform = transform
     
@@ -102,12 +103,12 @@ def train(epoch: int) -> float:
     for data in train_loader:
         data = data.to(device)
         optimizer.zero_grad()
-        out = model(data.x)
-        loss = F.nll_loss(input=out, target=data.y, weight=class_weights.to(device))
+        out = model(data['x'])
+        loss = F.nll_loss(input=out, target=data['y'], weight=class_weights.to(device))
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
-        pbar.update(data.x.shape[0])
+        pbar.update(data['x'].shape[0])
     pbar.close()
     return total_loss / len(train_loader)
 
@@ -121,11 +122,11 @@ def test(dataloader) -> Tuple[float]:
         total_loss = 0
     for data in dataloader:
         data = data.to(device)
-        out = model(data.x).cpu()
+        out = model(data['x']).cpu()
         y_pred.append(out)
-        y_true.append(data.y.cpu())
+        y_true.append(data['y'].cpu())
         if dataloader is train_loader:
-            loss = F.nll_loss(input=out, target=data.y.cpu(), weight=class_weights)
+            loss = F.nll_loss(input=out, target=data['y'].cpu(), weight=class_weights)
             total_loss += loss.item()
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
@@ -201,7 +202,7 @@ if __name__ == "__main__":
     train_dataset = xBDImages(train_paths, train_disaster, merge_classes)
     test_dataset = xBDImages(['/home/ami31/scratch/datasets/xbd/test_bldgs/'], ['socal-fire'], merge_classes)
 
-    train_loader = DataLoader(train_dataset, batch_size, True)
+    train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
     test_loader = DataLoader(train_dataset, batch_size)
 
     if os.path.isfile(f'weights/class_weights_{name}.pt'):
@@ -213,11 +214,9 @@ if __name__ == "__main__":
         class_weights = torch.Tensor(class_weights)
         torch.save(class_weights, f'weights/class_weights_{name}.pt')
 
-    num_classes = 3 if settings_dict['data']['merge_classes'] else train_disaster.num_classes
-
     model = SiameseNet(
         settings_dict['model']['hidden_units'],
-        num_classes,
+        train_dataset.num_classes,
         settings_dict['model']['dropout_rate'],
         settings_dict['model']['enc_diff']
     )
