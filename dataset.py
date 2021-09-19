@@ -136,11 +136,11 @@ class xBD(Dataset):
 
 if __name__ == "__main__":
 
-    root = "/home/ami31/scratch/datasets/delaunay/socal_train"
+    root = "/home/ami31/scratch/datasets/xbd_graph/socal_train"
     if not os.path.isdir(root):
         os.mkdir(root)
     xBD(root, train_path, 'socal-fire')
-    root = "/home/ami31/scratch/datasets/delaunay/portugal"
+    root = "/home/ami31/scratch/datasets/xbd_graph/portugal"
     if not os.path.isdir(root):
         os.mkdir(root)
     xBD(root, tier3_path, 'portugal-wildfire')

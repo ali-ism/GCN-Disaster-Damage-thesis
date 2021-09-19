@@ -170,8 +170,8 @@ def save_results(hold: bool=False) -> None:
             ['socal-fire'],
             merge_classes
         )
-        hold_dataloader = DataLoader(hold_dataset, batch_size)
-        hold_scores = test(hold_dataloader)
+        hold_loader = DataLoader(hold_dataset, batch_size)
+        hold_scores = test(hold_loader)
         print('\nHold results for last model.')
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
         print(f'Hold macro F1: {hold_scores[1]:.4f}')
@@ -189,7 +189,7 @@ def save_results(hold: bool=False) -> None:
         print(f'Test auc: {test_auc[best_epoch]:.4f}')
         model_path = 'weights/' + name + '_best.pt'
         model.load_state_dict(torch.load(model_path))
-        hold_scores = test(hold_dataloader)
+        hold_scores = test(hold_loader)
         print('\nHold results for best model.')
         print(f'Hold accuracy: {hold_scores[0]:.4f}')
         print(f'Hold macro F1: {hold_scores[1]:.4f}')
