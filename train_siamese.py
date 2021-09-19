@@ -26,7 +26,7 @@ with open('exp_settings.json', 'r') as JSON:
 
 batch_size = settings_dict['data']['batch_size']
 name = settings_dict['model']['name'] + '_SiameseClf_'
-train_disaster = settings_dict['data']['train_disasters']
+train_disasters = settings_dict['data']['train_disasters']
 train_paths = settings_dict['data']['train_paths']
 merge_classes = settings_dict['data']['merge_classes']
 n_epochs = settings_dict['epochs']
@@ -199,20 +199,21 @@ def save_results(hold: bool=False) -> None:
 
 if __name__ == "__main__":
 
-    train_dataset = xBDImages(train_paths, train_disaster, merge_classes)
+    train_dataset = xBDImages(train_paths, train_disasters, merge_classes)
     test_dataset = xBDImages(['/home/ami31/scratch/datasets/xbd/test_bldgs/'], ['socal-fire'], merge_classes)
 
     train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
     test_loader = DataLoader(train_dataset, batch_size)
 
-    if os.path.isfile(f'weights/class_weights_{name}.pt'):
-        class_weights = torch.load(f'weights/class_weights_{name}.pt')
+    cw_name = '_'.join(text.replace('-', '_') for text in train_disasters) + '_siameseclf'
+    if os.path.isfile(f'weights/class_weights_{cw_name}.pt'):
+        class_weights = torch.load(f'weights/class_weights_{cw_name}.pt')
     else:
-        y_all = [data.y for data in train_dataset]
+        y_all = [data['y'] for data in train_dataset]
         y_all = torch.cat(y_all).numpy()
         class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all)
         class_weights = torch.Tensor(class_weights)
-        torch.save(class_weights, f'weights/class_weights_{name}.pt')
+        torch.save(class_weights, f'weights/class_weights_{cw_name}.pt')
 
     model = SiameseNet(
         settings_dict['model']['hidden_units'],
