@@ -79,26 +79,26 @@ def get_edge_features(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[f
     return node_sim.item(), euc_sim
 
 
-def get_class_weights(disasters: List[str], dataset) -> torch.Tensor:
+def get_class_weights(disasters: List[str], dataset: torch_geometric.data.Dataset, num_classes: int) -> torch.Tensor:
     """
         Computes the class weights yo be used in the loss function for mitigating the effect of class imbalance.
 
         Args:
             disasters (List[str]): names of the included datasets.
-            dataset: PyG dataset instance.
+            dataset (torch_geometric.data.Dataset): PyG dataset instance.
+            num_classes (int): number of classes in the dataset.
         
         Returns:
             class_weights (Tensor): class weights tensor of shape (n_classes).
     """
     name = '_'.join(text.replace('-', '_') for text in disasters)
-    if os.path.isfile(f'weights/class_weights_{name}.pt'):
-        return torch.load(f'weights/class_weights_{name}.pt')
+    if os.path.isfile(f'weights/class_weights_{name}_{num_classes}.pt'):
+        return torch.load(f'weights/class_weights_{name}_{num_classes}.pt')
     else:
-        y_all = [data.y for data in dataset]
-        y_all = torch.cat(y_all).numpy()
+        y_all = np.fromiter((data.y for data in dataset), dtype=int)
         class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all)
         class_weights = torch.Tensor(class_weights)
-        torch.save(class_weights, f'weights/class_weights_{name}.pt')
+        torch.save(class_weights, f'weights/class_weights_{name}_{num_classes}.pt')
         return class_weights
 
 

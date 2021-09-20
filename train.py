@@ -196,7 +196,10 @@ if __name__ == "__main__":
     for root, path, disaster in zip(train_roots, train_paths, train_disasters):
         train_dataset.append(xBD(root, train_paths, disaster, transform=transform))
     
-    train_dataset = ConcatDataset(train_dataset)
+    if len(train_dataset) > 1:
+        train_dataset = ConcatDataset(train_dataset)
+    else:
+        train_dataset = train_dataset[0]
     train_loader = DataLoader(train_dataset, shuffle=True)
 
     test_dataset = xBD(
@@ -206,9 +209,8 @@ if __name__ == "__main__":
         transform=transform
     )
 
-    class_weights = get_class_weights(train_disasters, train_dataset)
-
     num_classes = 3 if settings_dict['data']['merge_classes'] else train_dataset.num_classes
+    class_weights = get_class_weights(train_disasters, train_dataset, num_classes)
 
     model = CNNSage(
         settings_dict['model']['hidden_units'],

@@ -206,14 +206,13 @@ if __name__ == "__main__":
     test_loader = DataLoader(train_dataset, batch_size)
 
     cw_name = '_'.join(text.replace('-', '_') for text in train_disasters) + '_siameseclf'
-    if os.path.isfile(f'weights/class_weights_{cw_name}.pt'):
-        class_weights = torch.load(f'weights/class_weights_{cw_name}.pt')
+    if os.path.isfile(f'weights/class_weights_{cw_name}_{train_dataset.num_classes}.pt'):
+        class_weights = torch.load(f'weights/class_weights_{cw_name}_{train_dataset.num_classes}.pt')
     else:
-        y_all = [data['y'] for data in train_dataset]
-        y_all = torch.cat(y_all).numpy()
+        y_all = np.fromiter((data['y'].item() for data in train_dataset), dtype=int)
         class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all)
         class_weights = torch.Tensor(class_weights)
-        torch.save(class_weights, f'weights/class_weights_{cw_name}.pt')
+        torch.save(class_weights, f'weights/class_weights_{cw_name}_{train_dataset.num_classes}.pt')
 
     model = SiameseNet(
         settings_dict['model']['hidden_units'],
