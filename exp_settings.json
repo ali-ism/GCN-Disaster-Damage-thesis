@@ -1,6 +1,6 @@
 {
     "data": {
-        "train_roots": ["/home/ami31/scratch/datasets/xbd_graph/socal_train", "/home/ami31/scratch/datasets/delaunay/portugal"],
+        "train_roots": ["/home/ami31/scratch/datasets/xbd_graph/socal_train", "/home/ami31/scratch/datasets/xbd_graph/portugal"],
         "train_disasters": ["socal-fire", "portugal-wildfire"],
         "train_paths": ["/home/ami31/scratch/datasets/xbd/train_bldgs/", "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"],
         "batch_size": 256,

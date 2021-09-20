@@ -194,7 +194,7 @@ if __name__ == "__main__":
 
     train_dataset = []
     for root, path, disaster in zip(train_roots, train_paths, train_disasters):
-        train_dataset.append(xBD(root, train_paths, disaster, transform=transform))
+        train_dataset.append(xBD(root, path, disaster, transform=transform))
     
     if len(train_dataset) > 1:
         train_dataset = ConcatDataset(train_dataset)

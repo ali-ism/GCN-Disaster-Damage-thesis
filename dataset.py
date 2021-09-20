@@ -36,7 +36,6 @@ class xBD(Dataset):
         root: str,
         data_path: str,
         disaster_name: str,
-        verbose: bool=False,
         transform=None,
         pre_transform=None) -> None:
         
@@ -50,7 +49,6 @@ class xBD(Dataset):
         self.zones = self.labels['zone'].value_counts()[self.labels['zone'].value_counts()>1].index.tolist()
         
         self.num_classes = 4
-        self.verbose=verbose
 
         super().__init__(root, transform, pre_transform)
 
@@ -74,8 +72,7 @@ class xBD(Dataset):
             (self.labels[self.labels['zone'] == zone]['class'] == 'un-classified').all() or \
             (self.labels[self.labels['zone'] == zone]['class'] != 'un-classified').sum() == 1:
                 continue
-            if self.verbose:
-                print(f'Building {zone}...')
+            print(f'Building {zone}...')
             list_pre_images = list(map(str, Path(self.path + self.disaster).glob(f'{zone}_pre_disaster*')))
             list_post_images = list(map(str, Path(self.path + self.disaster).glob(f'{zone}_post_disaster*')))
             x = []
@@ -142,8 +139,8 @@ if __name__ == "__main__":
     root = "/home/ami31/scratch/datasets/xbd_graph/socal_train"
     if not os.path.isdir(root):
         os.mkdir(root)
-    xBD(root, train_path, 'socal-fire', verbose=True)
+    xBD(root, train_path, 'socal-fire')
     root = "/home/ami31/scratch/datasets/xbd_graph/portugal"
     if not os.path.isdir(root):
         os.mkdir(root)
-    xBD(root, tier3_path, 'portugal-wildfire', verbose=True)
+    xBD(root, tier3_path, 'portugal-wildfire')
