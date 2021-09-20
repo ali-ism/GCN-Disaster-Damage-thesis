@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=train
+#SBATCH --job-name=train-siamese
 #SBATCH --partition=gpu
 
 #SBATCH --nodes=1

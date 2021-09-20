@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=dataset-cpu
-#SBATCH --partition=normal
+#SBATCH --job-name=dataset
+#SBATCH --partition=large
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
