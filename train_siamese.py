@@ -101,14 +101,15 @@ def train(epoch: int) -> float:
     pbar.set_description(f'Epoch {epoch:02d}')
     total_loss = 0
     for data in train_loader:
-        data = data.to(device)
+        x = data['x'].to(device)
+        y = data['y'].to(device)
         optimizer.zero_grad()
-        out = model(data['x'])
-        loss = F.nll_loss(input=out, target=data['y'], weight=class_weights.to(device))
+        out = model(x)
+        loss = F.nll_loss(input=out, target=y, weight=class_weights.to(device))
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
-        pbar.update(data['x'].shape[0])
+        pbar.update(x.shape[0])
     pbar.close()
     return total_loss / len(train_loader)
 
@@ -121,12 +122,13 @@ def test(dataloader) -> Tuple[float]:
     if dataloader is train_loader:
         total_loss = 0
     for data in dataloader:
-        data = data.to(device)
-        out = model(data['x']).cpu()
+        x = data['x'].to(device)
+        y = data['y']
+        out = model(x).cpu()
         y_pred.append(out)
-        y_true.append(data['y'].cpu())
+        y_true.append(y)
         if dataloader is train_loader:
-            loss = F.nll_loss(input=out, target=data['y'].cpu(), weight=class_weights)
+            loss = F.nll_loss(input=out, target=y, weight=class_weights)
             total_loss += loss.item()
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)

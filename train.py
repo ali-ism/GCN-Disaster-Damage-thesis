@@ -90,7 +90,7 @@ def test(dataset) -> Tuple[float]:
                     y_pred.append(out)
                 y_true.append(subdata.y.cpu())
                 if dataset is train_loader:
-                    loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights)
+                    loss = F.nll_loss(input=out, target=subdata.y.cpu(), weight=class_weights)
                     total_loss += loss.item() * subdata.num_nodes
                     total_examples += subdata.num_nodes
         else:
@@ -103,7 +103,7 @@ def test(dataset) -> Tuple[float]:
                 y_pred.append(out)
             y_true.append(data.y.cpu())
             if dataset is train_loader:
-                loss = F.nll_loss(input=out, target=data.y, weight=class_weights)
+                loss = F.nll_loss(input=out, target=data.y.cpu(), weight=class_weights)
                 total_loss += loss.item() * data.num_nodes
                 total_examples += data.num_nodes
     y_pred = torch.cat(y_pred)
