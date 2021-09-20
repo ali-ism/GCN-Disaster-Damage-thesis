@@ -95,7 +95,8 @@ def get_class_weights(disasters: List[str], dataset: torch_geometric.data.Datase
     if os.path.isfile(f'weights/class_weights_{name}_{num_classes}.pt'):
         return torch.load(f'weights/class_weights_{name}_{num_classes}.pt')
     else:
-        y_all = np.fromiter((data.y for data in dataset), dtype=int)
+        y_all = [data.y for data in dataset]
+        y_all = torch.cat(y_all).numpy()
         class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all)
         class_weights = torch.Tensor(class_weights)
         torch.save(class_weights, f'weights/class_weights_{name}_{num_classes}.pt')
