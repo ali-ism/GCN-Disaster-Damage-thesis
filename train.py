@@ -155,8 +155,8 @@ def save_results(hold: bool=False) -> None:
         print(f'Test auc: {test_auc[-1]:.4f}')
         hold_dataset = xBD(
             hold_root,
-            ['/home/ami31/scratch/datasets/xbd/hold_bldgs/'],
-            ['socal-fire'],
+            '/home/ami31/scratch/datasets/xbd/hold_bldgs/',
+            'socal-fire',
             transform=transform
         )
         hold_scores = test(hold_dataset)
@@ -204,8 +204,8 @@ if __name__ == "__main__":
 
     test_dataset = xBD(
         test_root,
-        ['/home/ami31/scratch/datasets/xbd/test_bldgs/'],
-        ['socal-fire'],
+        '/home/ami31/scratch/datasets/xbd/test_bldgs/',
+        'socal-fire',
         transform=transform
     )
 
