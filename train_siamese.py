@@ -133,9 +133,8 @@ def test(dataloader) -> Tuple[float]:
         out = model(x).cpu()
         y_pred.append(out)
         y_true.append(y)
-        if dataloader is train_loader:
-            loss = F.nll_loss(input=out, target=y, weight=class_weights)
-            total_loss += loss.item()
+        loss = F.nll_loss(input=out, target=y, weight=class_weights)
+        total_loss += loss.item()
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
@@ -209,7 +208,7 @@ if __name__ == "__main__":
     test_dataset = xBDImages(['/home/ami31/scratch/datasets/xbd/test_bldgs/'], ['socal-fire'], merge_classes)
 
     train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
-    test_loader = DataLoader(train_dataset, batch_size)
+    test_loader = DataLoader(test_dataset, batch_size)
 
     cw_name = '_'.join(text.replace('-', '_') for text in train_disasters) + '_siameseclf'
     if os.path.isfile(f'weights/class_weights_{cw_name}_{train_dataset.num_classes}.pt'):
@@ -271,7 +270,7 @@ if __name__ == "__main__":
             torch.save(model.state_dict(), model_path)
 
         test_loss[epoch-1], test_acc[epoch-1], test_f1_macro[epoch-1],\
-            test_f1_weighted[epoch-1], test_auc[epoch-1] = test(test_dataset)
+            test_f1_weighted[epoch-1], test_auc[epoch-1] = test(test_loader)
         #scheduler.step(test_loss[epoch-1])
 
         if test_auc[epoch-1] > best_test_auc:
