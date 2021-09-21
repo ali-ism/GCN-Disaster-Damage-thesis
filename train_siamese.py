@@ -115,6 +115,8 @@ def train(epoch: int) -> float:
         total_loss += loss.item()
         pbar.update(x.shape[0])
     pbar.close()
+    y_pred = torch.cat(y_pred)
+    y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
     return total_loss / len(train_loader), accuracy, f1_macro, f1_weighted, auc
 

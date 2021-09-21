@@ -37,6 +37,8 @@ def train(epoch: int) -> float:
     pbar = tqdm(total=len(train_dataset))
     pbar.set_description(f'Epoch {epoch:02d}')
     total_loss = total_examples = 0
+    y_true = []
+    y_pred = []
     for data in train_loader:
         if data.num_nodes > batch_size:
             sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
@@ -44,9 +46,11 @@ def train(epoch: int) -> float:
                 subdata = subdata.to(device)
                 optimizer.zero_grad()
                 if edge_features:
-                    out = model(subdata.x, subdata.edge_index, subdata.edge_attr[:,0])
+                    out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
                 else:
                     out = model(subdata.x, subdata.edge_index)
+                y_pred.append(out.cpu())
+                y_true.append(subdata.y.cpu())
                 loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights.to(device))
                 loss.backward()
                 optimizer.step()
@@ -56,9 +60,11 @@ def train(epoch: int) -> float:
             data = data.to(device)
             optimizer.zero_grad()
             if edge_features:
-                out = model(data.x, data.edge_index, data.edge_attr[:,0])
+                out = model(data.x, data.edge_index, data.edge_attr)
             else:
                 out = model(data.x, data.edge_index)
+            y_pred.append(out.cpu())
+            y_true.append(data.y.cpu())
             loss = F.nll_loss(input=out, target=data.y, weight=class_weights.to(device))
             loss.backward()
             optimizer.step()
@@ -66,54 +72,48 @@ def train(epoch: int) -> float:
             total_examples += data.num_nodes
         pbar.update()
     pbar.close()
-    return total_loss / total_examples
+    y_pred = torch.cat(y_pred)
+    y_true = torch.cat(y_true)
+    accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
+    return total_loss / total_examples, accuracy, f1_macro, f1_weighted, auc
 
 
 @torch.no_grad()
 def test(dataset) -> Tuple[float]:
     model.eval()
+    total_loss = total_examples = 0
     y_true = []
     y_pred = []
-    if dataset is train_loader:
-        total_loss = 0
-        total_examples = 0
     for data in dataset:
         if data.num_nodes > batch_size:
             sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
             for subdata in sampler:
                 subdata = subdata.to(device)
                 if edge_features:
-                    out = model(subdata.x, subdata.edge_index, subdata.edge_attr[:,0]).cpu()
-                    y_pred.append(out)
+                    out = model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu()
                 else:
                     out = model(subdata.x, subdata.edge_index).cpu()
-                    y_pred.append(out)
+                y_pred.append(out)
                 y_true.append(subdata.y.cpu())
-                if dataset is train_loader:
-                    loss = F.nll_loss(input=out, target=subdata.y.cpu(), weight=class_weights)
-                    total_loss += loss.item() * subdata.num_nodes
-                    total_examples += subdata.num_nodes
+                loss = F.nll_loss(input=out, target=subdata.y.cpu(), weight=class_weights)
+                total_loss += loss.item() * subdata.num_nodes
+                total_examples += subdata.num_nodes
         else:
             data = data.to(device)
             if edge_features:
-                out = model(data.x, data.edge_index, data.edge_attr[:,0]).cpu()
-                y_pred.append(out)
+                out = model(data.x, data.edge_index, data.edge_attr).cpu()
             else:
                 out = model(data.x, data.edge_index).cpu()
-                y_pred.append(out)
+            y_pred.append(out)
             y_true.append(data.y.cpu())
-            if dataset is train_loader:
-                loss = F.nll_loss(input=out, target=data.y.cpu(), weight=class_weights)
-                total_loss += loss.item() * data.num_nodes
-                total_examples += data.num_nodes
+            loss = F.nll_loss(input=out, target=data.y.cpu(), weight=class_weights)
+            total_loss += loss.item() * data.num_nodes
+            total_examples += data.num_nodes
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
-    if dataset is train_loader:
-        total_loss = total_loss / total_examples
-    else:
-        total_loss = None
-    return accuracy, f1_macro, f1_weighted, auc, total_loss
+    total_loss = total_loss / total_examples
+    return total_loss, accuracy, f1_macro, f1_weighted, auc
 
 
 def make_plot(train: np.ndarray, test: np.ndarray, type: str) -> None:
@@ -255,7 +255,8 @@ if __name__ == "__main__":
 
     for epoch in range(starting_epoch, n_epochs+1):
         
-        train_loss[epoch-1] = train(epoch)
+        train_loss[epoch-1], train_acc[epoch-1], train_f1_macro[epoch-1],\
+            train_f1_weighted[epoch-1], train_auc[epoch-1] = train(epoch)
         print('**********************************************')
         print(f'Epoch {epoch:02d}, Train Loss: {train_loss[epoch-1]:.4f}')
     
@@ -263,10 +264,8 @@ if __name__ == "__main__":
             model_path = 'weights/' + name + '.pt'
             torch.save(model.state_dict(), model_path)
 
-        train_acc[epoch-1], train_f1_macro[epoch-1],\
-            train_f1_weighted[epoch-1], train_auc[epoch-1], _ = test(train_loader)
-        test_acc[epoch-1], test_f1_macro[epoch-1], test_f1_weighted[epoch-1],\
-            test_auc[epoch-1], test_loss[epoch-1] = test(test_dataset)
+        test_loss[epoch-1], test_acc[epoch-1], test_f1_macro[epoch-1],\
+            test_f1_weighted[epoch-1], test_auc[epoch-1] = test(test_dataset)
         #scheduler.step(test_loss[epoch-1])
 
         if test_auc[epoch-1] > best_test_auc:
