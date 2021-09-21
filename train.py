@@ -72,8 +72,8 @@ def train(epoch: int) -> float:
             total_examples += data.num_nodes
         pbar.update()
     pbar.close()
-    y_pred = torch.cat(y_pred)
-    y_true = torch.cat(y_true)
+    y_pred = torch.cat(y_pred).detach()
+    y_true = torch.cat(y_true).detach()
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
     return total_loss / total_examples, accuracy, f1_macro, f1_weighted, auc
 
