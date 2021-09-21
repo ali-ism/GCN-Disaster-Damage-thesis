@@ -126,6 +126,7 @@ def make_plot(train: np.ndarray, test: np.ndarray, type: str) -> None:
     plt.savefig('results/'+name+'_'+type+'.pdf')
     plt.close()
 
+@torch.no_grad()
 def save_results(hold: bool=False) -> None:
     make_plot(train_loss, test_loss, 'loss')
     make_plot(train_acc, test_acc, 'accuracy')

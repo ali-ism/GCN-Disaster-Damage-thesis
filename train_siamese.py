@@ -100,18 +100,23 @@ def train(epoch: int) -> float:
     pbar = tqdm(total=len(train_loader))
     pbar.set_description(f'Epoch {epoch:02d}')
     total_loss = 0
+    y_true = []
+    y_pred = []
     for data in train_loader:
         x = data['x'].to(device)
         y = data['y'].to(device)
         optimizer.zero_grad()
         out = model(x)
+        y_pred.append(out.cpu())
+        y_true.append(y.cpu())
         loss = F.nll_loss(input=out, target=y, weight=class_weights.to(device))
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
         pbar.update(x.shape[0])
     pbar.close()
-    return total_loss / len(train_loader)
+    accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
+    return total_loss / len(train_loader), accuracy, f1_macro, f1_weighted, auc
 
 
 @torch.no_grad()
@@ -119,8 +124,7 @@ def test(dataloader) -> Tuple[float]:
     model.eval()
     y_true = []
     y_pred = []
-    if dataloader is train_loader:
-        total_loss = 0
+    total_loss = 0
     for data in dataloader:
         x = data['x'].to(device)
         y = data['y']
@@ -133,13 +137,11 @@ def test(dataloader) -> Tuple[float]:
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
     accuracy, f1_macro, f1_weighted, auc = score(y_true, y_pred)
-    if dataloader is train_loader:
-        total_loss = total_loss / len(dataloader)
-    else:
-        total_loss = None
-    return accuracy, f1_macro, f1_weighted, auc, total_loss
+    total_loss = total_loss / len(dataloader)
+    return total_loss, accuracy, f1_macro, f1_weighted, auc
 
 
+@torch.no_grad()
 def save_results(hold: bool=False) -> None:
     make_plot(train_loss, test_loss, 'loss')
     make_plot(train_acc, test_acc, 'accuracy')
@@ -257,7 +259,8 @@ if __name__ == "__main__":
 
     for epoch in range(starting_epoch, n_epochs+1):
         
-        train_loss[epoch-1] = train(epoch)
+        train_loss[epoch-1], train_acc[epoch-1], train_f1_macro[epoch-1],\
+            train_f1_weighted[epoch-1], train_auc[epoch-1] = train(epoch)
         print('**********************************************')
         print(f'Epoch {epoch:02d}, Train Loss: {train_loss[epoch-1]:.4f}')
     
@@ -265,10 +268,8 @@ if __name__ == "__main__":
             model_path = 'weights/' + name + '.pt'
             torch.save(model.state_dict(), model_path)
 
-        train_acc[epoch-1], train_f1_macro[epoch-1],\
-            train_f1_weighted[epoch-1], train_auc[epoch-1], _ = test(train_dataset)
-        test_acc[epoch-1], test_f1_macro[epoch-1], test_f1_weighted[epoch-1],\
-            test_auc[epoch-1], test_loss[epoch-1] = test(test_dataset)
+        test_loss[epoch-1], test_acc[epoch-1], test_f1_macro[epoch-1],\
+            test_f1_weighted[epoch-1], test_auc[epoch-1] = test(test_dataset)
         #scheduler.step(test_loss[epoch-1])
 
         if test_auc[epoch-1] > best_test_auc:
