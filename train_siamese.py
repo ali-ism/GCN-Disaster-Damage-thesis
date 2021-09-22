@@ -30,7 +30,7 @@ train_disasters = settings_dict['data']['train_disasters']
 train_paths = settings_dict['data']['train_paths']
 merge_classes = settings_dict['data']['merge_classes']
 n_epochs = settings_dict['epochs']
-starting_epoch = settings_dict['starting_epoch']
+starting_epoch = 6 #settings_dict['starting_epoch']
 
 
 to_tensor = ToTensor()
@@ -144,10 +144,10 @@ def test(dataloader) -> Tuple[float]:
 
 @torch.no_grad()
 def save_results(hold: bool=False) -> None:
-    make_plot(train_loss, test_loss, 'loss')
-    make_plot(train_acc, test_acc, 'accuracy')
-    make_plot(train_f1_macro, test_f1_macro, 'macro_f1')
-    make_plot(train_f1_weighted, test_f1_weighted, 'weighted_f1')
+    make_plot(train_loss, test_loss, 'loss', name)
+    make_plot(train_acc, test_acc, 'accuracy', name)
+    make_plot(train_f1_macro, test_f1_macro, 'macro_f1', name)
+    make_plot(train_f1_weighted, test_f1_weighted, 'weighted_f1', name)
     make_plot(train_auc, test_auc, 'auc')
     np.save('results/'+name+'_loss_train.npy', train_loss)
     np.save('results/'+name+'_loss_test.npy', test_loss)

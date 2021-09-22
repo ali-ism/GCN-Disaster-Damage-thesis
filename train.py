@@ -116,23 +116,23 @@ def test(dataset) -> Tuple[float]:
     return total_loss, accuracy, f1_macro, f1_weighted, auc
 
 
-def make_plot(train: np.ndarray, test: np.ndarray, type: str) -> None:
+def make_plot(train: np.ndarray, test: np.ndarray, type: str, model_name: str) -> None:
     plt.figure()
     plt.plot(train)
     plt.plot(test)
     plt.legend(['train', 'test'])
     plt.xlabel('epochs')
     plt.ylabel(type)
-    plt.savefig('results/'+name+'_'+type+'.pdf')
+    plt.savefig('results/'+model_name+'_'+type+'.pdf')
     plt.close()
 
 @torch.no_grad()
 def save_results(hold: bool=False) -> None:
-    make_plot(train_loss, test_loss, 'loss')
-    make_plot(train_acc, test_acc, 'accuracy')
-    make_plot(train_f1_macro, test_f1_macro, 'macro_f1')
-    make_plot(train_f1_weighted, test_f1_weighted, 'weighted_f1')
-    make_plot(train_auc, test_auc, 'auc')
+    make_plot(train_loss, test_loss, 'loss', name)
+    make_plot(train_acc, test_acc, 'accuracy', name)
+    make_plot(train_f1_macro, test_f1_macro, 'macro_f1', name)
+    make_plot(train_f1_weighted, test_f1_weighted, 'weighted_f1', name)
+    make_plot(train_auc, test_auc, 'auc', name)
     np.save('results/'+name+'_loss_train.npy', train_loss)
     np.save('results/'+name+'_loss_test.npy', test_loss)
     np.save('results/'+name+'_acc_train.npy', train_acc)
