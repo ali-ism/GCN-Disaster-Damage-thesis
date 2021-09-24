@@ -30,7 +30,7 @@ train_disasters = settings_dict['data']['train_disasters']
 train_paths = settings_dict['data']['train_paths']
 merge_classes = settings_dict['data']['merge_classes']
 n_epochs = settings_dict['epochs']
-starting_epoch = 9 #settings_dict['starting_epoch']
+starting_epoch = 10 #settings_dict['starting_epoch']
 
 
 to_tensor = ToTensor()
