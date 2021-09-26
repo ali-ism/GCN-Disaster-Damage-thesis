@@ -15,7 +15,6 @@
         "edge_features": false,
         "enc_diff": true
     },
-    "starting_epoch": 1,
     "epochs": 30,
     "save_best_only": true
 }
