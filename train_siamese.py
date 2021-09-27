@@ -28,6 +28,7 @@ batch_size = settings_dict['data']['batch_size']
 name = settings_dict['model']['name'] + '_SiameseClf_'
 train_disasters = settings_dict['data']['train_disasters']
 train_paths = settings_dict['data']['train_paths']
+assert len(train_disasters) == len(train_paths)
 merge_classes = settings_dict['data']['merge_classes']
 n_epochs = settings_dict['epochs']
 starting_epoch = 0

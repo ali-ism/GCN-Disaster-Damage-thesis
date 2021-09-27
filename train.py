@@ -20,11 +20,12 @@ name = settings_dict['model']['name']
 train_disasters = settings_dict['data']['train_disasters']
 train_paths = settings_dict['data']['train_paths']
 train_roots = settings_dict['data']['train_roots']
+assert len(train_disasters) == len(train_paths) == len(train_roots)
 test_root = "/home/ami31/scratch/datasets/xbd_graph/socal_test"
 hold_root = "/home/ami31/scratch/datasets/xbd_graph/socal_hold"
 edge_features = settings_dict['model']['edge_features']
 n_epochs = settings_dict['epochs']
-starting_epoch = settings_dict['starting_epoch']
+starting_epoch = 0
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(42)
