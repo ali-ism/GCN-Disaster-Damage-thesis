@@ -227,7 +227,7 @@ if __name__ == "__main__":
         settings_dict['model']['enc_diff']
     )
     if starting_epoch != 1:
-        model_path = 'weights/' + name + '_best.pt'
+        model_path = 'weights/' + name + 'best.pt'
         model.load_state_dict(torch.load(model_path))
     model = model.to(device)
 
@@ -277,7 +277,7 @@ if __name__ == "__main__":
         if test_auc[epoch-1] > best_test_auc:
             best_test_auc = test_auc[epoch-1]
             best_epoch = epoch
-            model_path = 'weights/' + name + '_best.pt'
+            model_path = 'weights/' + name + 'best.pt'
             print(f'New best model saved with AUC {best_test_auc} at epoch {best_epoch}.')
             torch.save(model.state_dict(), model_path)
         
