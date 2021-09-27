@@ -31,7 +31,7 @@ train_paths = settings_dict['data']['train_paths']
 assert len(train_disasters) == len(train_paths)
 merge_classes = settings_dict['data']['merge_classes']
 n_epochs = settings_dict['epochs']
-starting_epoch = 0
+starting_epoch = 1
 
 
 to_tensor = ToTensor()
