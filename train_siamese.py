@@ -31,7 +31,7 @@ train_paths = settings_dict['data']['train_paths']
 assert len(train_disasters) == len(train_paths)
 merge_classes = settings_dict['data']['merge_classes']
 n_epochs = settings_dict['epochs']
-starting_epoch = 1
+starting_epoch = 4 #1
 
 
 to_tensor = ToTensor()
@@ -281,8 +281,8 @@ if __name__ == "__main__":
             print(f'New best model saved with AUC {best_test_auc} at epoch {best_epoch}.')
             torch.save(model.state_dict(), model_path)
         
-        if not (epoch % 2):
-            save_results()
+        #if not (epoch % 5):
+        save_results()
     
     print(f'\nBest test AUC {best_test_auc} at epoch {best_epoch}.\n')
     save_results(hold=True)
