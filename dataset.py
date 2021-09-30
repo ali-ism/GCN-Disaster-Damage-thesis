@@ -136,7 +136,11 @@ class xBD(Dataset):
 
 if __name__ == "__main__":
 
-    root = "/home/ami31/scratch/datasets/xbd_graph/nepal"
+    root = "/home/ami31/scratch/datasets/xbd_graph/joplin"
     if not os.path.isdir(root):
         os.mkdir(root)
-    xBD(root, tier3_path, 'nepal-flooding')
+    xBD(root, tier3_path, 'joplin-tornado')
+    root = "/home/ami31/scratch/datasets/xbd_graph/puna"
+    if not os.path.isdir(root):
+        os.mkdir(root)
+    xBD(root, tier3_path, 'puna-volcano')

@@ -26,12 +26,13 @@ with open('exp_settings.json', 'r') as JSON:
 
 batch_size = settings_dict['data']['batch_size']
 name = settings_dict['model']['name'] + '_SiameseClf'
+model_path = 'weights/' + name
 train_disasters = settings_dict['data']['train_disasters']
 train_paths = settings_dict['data']['train_paths']
 assert len(train_disasters) == len(train_paths)
 merge_classes = settings_dict['data']['merge_classes']
 n_epochs = settings_dict['epochs']
-starting_epoch = 4 #1
+starting_epoch = 1
 
 
 to_tensor = ToTensor()
@@ -179,28 +180,27 @@ def save_results(hold: bool=False) -> None:
         hold_loader = DataLoader(hold_dataset, batch_size)
         hold_scores = test(hold_loader)
         print('\nHold results for last model.')
-        print(f'Hold accuracy: {hold_scores[0]:.4f}')
-        print(f'Hold macro F1: {hold_scores[1]:.4f}')
-        print(f'Hold weighted F1: {hold_scores[2]:.4f}')
-        print(f'Hold auc: {hold_scores[3]:.4f}')
+        print(f'Hold accuracy: {hold_scores[1]:.4f}')
+        print(f'Hold macro F1: {hold_scores[2]:.4f}')
+        print(f'Hold weighted F1: {hold_scores[3]:.4f}')
+        print(f'Hold auc: {hold_scores[4]:.4f}')
         print('\n\nTrain results for best model.')
-        print(f'Train accuracy: {train_acc[best_epoch]:.4f}')
-        print(f'Train macro F1: {train_f1_macro[best_epoch]:.4f}')
-        print(f'Train weighted F1: {train_f1_weighted[best_epoch]:.4f}')
-        print(f'Train auc: {train_auc[best_epoch]:.4f}')
+        print(f'Train accuracy: {train_acc[best_epoch-1]:.4f}')
+        print(f'Train macro F1: {train_f1_macro[best_epoch-1]:.4f}')
+        print(f'Train weighted F1: {train_f1_weighted[best_epoch-1]:.4f}')
+        print(f'Train auc: {train_auc[best_epoch-1]:.4f}')
         print('\nTest results for best model.')
-        print(f'Test accuracy: {test_acc[best_epoch]:.4f}')
-        print(f'Test macro F1: {test_f1_macro[best_epoch]:.4f}')
-        print(f'Test weighted F1: {test_f1_weighted[best_epoch]:.4f}')
-        print(f'Test auc: {test_auc[best_epoch]:.4f}')
-        model_path = 'weights/' + name + '_best.pt'
-        model.load_state_dict(torch.load(model_path))
+        print(f'Test accuracy: {test_acc[best_epoch-1]:.4f}')
+        print(f'Test macro F1: {test_f1_macro[best_epoch-1]:.4f}')
+        print(f'Test weighted F1: {test_f1_weighted[best_epoch-1]:.4f}')
+        print(f'Test auc: {test_auc[best_epoch-1]:.4f}')
+        model.load_state_dict(torch.load(model_path+'_best.pt'))
         hold_scores = test(hold_loader)
         print('\nHold results for best model.')
-        print(f'Hold accuracy: {hold_scores[0]:.4f}')
-        print(f'Hold macro F1: {hold_scores[1]:.4f}')
-        print(f'Hold weighted F1: {hold_scores[2]:.4f}')
-        print(f'Hold auc: {hold_scores[3]:.4f}')
+        print(f'Hold accuracy: {hold_scores[1]:.4f}')
+        print(f'Hold macro F1: {hold_scores[2]:.4f}')
+        print(f'Hold weighted F1: {hold_scores[3]:.4f}')
+        print(f'Hold auc: {hold_scores[4]:.4f}')
 
 
 if __name__ == "__main__":
@@ -227,8 +227,10 @@ if __name__ == "__main__":
         settings_dict['model']['enc_diff']
     )
     if starting_epoch != 1:
-        model_path = 'weights/' + name + '_best.pt'
-        model.load_state_dict(torch.load(model_path))
+        try:
+            model.load_state_dict(torch.load(model_path+'_last.pt'))
+        except FileNotFoundError:
+            model.load_state_dict(torch.load(model_path+'_best.pt'))
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
@@ -267,8 +269,7 @@ if __name__ == "__main__":
         print(f'Epoch {epoch:02d}, Train Loss: {train_loss[epoch-1]:.4f}')
     
         if not settings_dict['save_best_only']:
-            model_path = 'weights/' + name + '.pt'
-            torch.save(model.state_dict(), model_path)
+            torch.save(model.state_dict(), model_path+'_last.pt')
 
         test_loss[epoch-1], test_acc[epoch-1], test_f1_macro[epoch-1],\
             test_f1_weighted[epoch-1], test_auc[epoch-1] = test(test_loader)
@@ -277,12 +278,12 @@ if __name__ == "__main__":
         if test_auc[epoch-1] > best_test_auc:
             best_test_auc = test_auc[epoch-1]
             best_epoch = epoch
-            model_path = 'weights/' + name + '_best.pt'
             print(f'New best model saved with AUC {best_test_auc} at epoch {best_epoch}.')
-            torch.save(model.state_dict(), model_path)
+            torch.save(model.state_dict(), model_path+'_best.pt')
         
         #if not (epoch % 5):
         save_results()
     
     print(f'\nBest test AUC {best_test_auc} at epoch {best_epoch}.\n')
+    torch.save(model.state_dict(), model_path+'_last.pt')
     save_results(hold=True)
