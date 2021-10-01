@@ -1,7 +1,6 @@
 import json
 from typing import Tuple
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 #from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -10,7 +9,7 @@ from torch_geometric.data import DataLoader, RandomNodeSampler
 from tqdm import tqdm
 from dataset import xBD
 from model import CNNSage
-from utils import get_class_weights, merge_classes, score
+from utils import get_class_weights, merge_classes, score, make_plot
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
@@ -105,16 +104,6 @@ def test(dataset) -> Tuple[float]:
     return total_loss, accuracy, f1_macro, f1_weighted, auc
 
 
-def make_plot(train: np.ndarray, test: np.ndarray, type: str, model_name: str) -> None:
-    plt.figure()
-    plt.plot(train)
-    plt.plot(test)
-    plt.legend(['train', 'test'])
-    plt.xlabel('epochs')
-    plt.ylabel(type)
-    plt.savefig('results/'+model_name+'_'+type+'.pdf')
-    plt.close()
-
 @torch.no_grad()
 def save_results(hold: bool=False) -> None:
     make_plot(train_loss, test_loss, 'loss', name)
@@ -205,14 +194,10 @@ if __name__ == "__main__":
         settings_dict['model']['hidden_units'],
         num_classes,
         settings_dict['model']['num_layers'],
-        settings_dict['model']['dropout_rate'],
-        settings_dict['model']['enc_diff']
+        settings_dict['model']['dropout_rate']
     )
     if starting_epoch != 1:
-        try:
-            model.load_state_dict(torch.load(model_path+'_last.pt'))
-        except FileNotFoundError:
-            model.load_state_dict(torch.load(model_path+'_best.pt'))
+        model.load_state_dict(torch.load(model_path+'_last.pt'))
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
@@ -250,8 +235,7 @@ if __name__ == "__main__":
         print('**********************************************')
         print(f'Epoch {epoch:02d}, Train Loss: {train_loss[epoch-1]:.4f}')
     
-        if not settings_dict['save_best_only']:
-            torch.save(model.state_dict(), model_path+'_last.pt')
+        torch.save(model.state_dict(), model_path+'_last.pt')
 
         test_loss[epoch-1], test_acc[epoch-1], test_f1_macro[epoch-1],\
             test_f1_weighted[epoch-1], test_auc[epoch-1] = test(test_dataset)
@@ -263,9 +247,7 @@ if __name__ == "__main__":
             print(f'New best model saved with AUC {best_test_auc} at epoch {best_epoch}.')
             torch.save(model.state_dict(), model_path+'_best.pt')
         
-        if not (epoch % 5):
-            save_results()
+        save_results()
     
     print(f'\nBest test AUC {best_test_auc} at epoch {best_epoch}.\n')
-    torch.save(model.state_dict(), model_path+'_last.pt')
     save_results(hold=True)

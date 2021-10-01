@@ -11,9 +11,8 @@ from PIL import Image
 from sklearn.utils.class_weight import compute_class_weight
 from typing import Callable, List, Tuple
 from model import SiameseNet
-from utils import score
+from utils import score, make_plot
 from tqdm import tqdm
-from train import make_plot
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(42)
@@ -223,14 +222,10 @@ if __name__ == "__main__":
     model = SiameseNet(
         settings_dict['model']['hidden_units'],
         train_dataset.num_classes,
-        settings_dict['model']['dropout_rate'],
-        settings_dict['model']['enc_diff']
+        settings_dict['model']['dropout_rate']
     )
     if starting_epoch != 1:
-        try:
-            model.load_state_dict(torch.load(model_path+'_last.pt'))
-        except FileNotFoundError:
-            model.load_state_dict(torch.load(model_path+'_best.pt'))
+        model.load_state_dict(torch.load(model_path+'_last.pt'))
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
@@ -268,8 +263,7 @@ if __name__ == "__main__":
         print('**********************************************')
         print(f'Epoch {epoch:02d}, Train Loss: {train_loss[epoch-1]:.4f}')
     
-        if not settings_dict['save_best_only']:
-            torch.save(model.state_dict(), model_path+'_last.pt')
+        torch.save(model.state_dict(), model_path+'_last.pt')
 
         test_loss[epoch-1], test_acc[epoch-1], test_f1_macro[epoch-1],\
             test_f1_weighted[epoch-1], test_auc[epoch-1] = test(test_loader)
@@ -281,9 +275,7 @@ if __name__ == "__main__":
             print(f'New best model saved with AUC {best_test_auc} at epoch {best_epoch}.')
             torch.save(model.state_dict(), model_path+'_best.pt')
         
-        #if not (epoch % 5):
         save_results()
     
     print(f'\nBest test AUC {best_test_auc} at epoch {best_epoch}.\n')
-    torch.save(model.state_dict(), model_path+'_last.pt')
     save_results(hold=True)

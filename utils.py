@@ -6,6 +6,7 @@ import torch_geometric
 from typing import List, Tuple
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
+import matplotlib.pyplot as plt
 
 
 def build_edge_idx(num_nodes: int) -> torch.Tensor:
@@ -121,3 +122,14 @@ def score(y_true: torch.Tensor, y_pred: torch.Tensor) -> Tuple[float]:
     f1_weighted = f1_score(y_true, y_pred.argmax(dim=1, keepdim=True), average='weighted')
     auc = roc_auc_score(y_true, torch.exp(y_pred), average='macro', multi_class='ovr')
     return accuracy, f1_macro, f1_weighted, auc
+
+
+def make_plot(train: np.ndarray, test: np.ndarray, plot_type: str, model_name: str) -> None:
+    plt.figure()
+    plt.plot(train)
+    plt.plot(test)
+    plt.legend(['train', 'test'])
+    plt.xlabel('epochs')
+    plt.ylabel(plot_type)
+    plt.savefig('results/'+model_name+'_'+plot_type+'.pdf')
+    plt.close()
