@@ -1,13 +1,13 @@
 {
     "data": {
-        "train_roots": ["/home/ami31/scratch/datasets/xbd_graph/nepal", "/home/ami31/scratch/datasets/xbd_graph/joplin", "/home/ami31/scratch/datasets/xbd_graph/puna"],
-        "train_disasters": ["nepal-flooding", "joplin-tornado", "lower-puna-volcano"],
-        "train_paths": ["/home/ami31/scratch/datasets/xbd/tier3_bldgs/", "/home/ami31/scratch/datasets/xbd/tier3_bldgs/", "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"],
+        "train_roots": ["/home/ami31/scratch/datasets/xbd_graph/socal_train", "/home/ami31/scratch/datasets/xbd_graph/portugal"],
+        "train_disasters": ["socal-fire", "portugal-wildfire"],
+        "train_paths": ["/home/ami31/scratch/datasets/xbd/train_bldgs/", "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"],
         "batch_size": 256,
         "merge_classes": true
     },
     "model": {
-        "name": "nepal_joplin_puna_01",
+        "name": "socal_portugal_graphconv_01",
         "hidden_units": 32,
         "num_layers": 2,
         "lr": 0.0003,

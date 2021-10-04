@@ -3,12 +3,11 @@ from typing import Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
-#from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import ConcatDataset
 from torch_geometric.data import DataLoader, RandomNodeSampler
 from tqdm import tqdm
 from dataset import xBD
-from model import CNNSage
+from model import CNNGraph
 from utils import get_class_weights, merge_classes, score, make_plot
 
 with open('exp_settings.json', 'r') as JSON:
@@ -25,6 +24,7 @@ test_root = "/home/ami31/scratch/datasets/xbd_graph/socal_test"
 hold_root = "/home/ami31/scratch/datasets/xbd_graph/socal_hold"
 n_epochs = settings_dict['epochs']
 starting_epoch = 1
+assert starting_epoch > 0
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(42)
@@ -45,7 +45,7 @@ def train(epoch: int) -> float:
             for subdata in sampler:
                 subdata = subdata.to(device)
                 optimizer.zero_grad()
-                out = model(subdata.x, subdata.edge_index)
+                out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
                 y_pred.append(out.cpu())
                 y_true.append(subdata.y.cpu())
                 loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights.to(device))
@@ -56,7 +56,7 @@ def train(epoch: int) -> float:
         else:
             data = data.to(device)
             optimizer.zero_grad()
-            out = model(data.x, data.edge_index)
+            out = model(data.x, data.edge_index, data.edge_attr)
             y_pred.append(out.cpu())
             y_true.append(data.y.cpu())
             loss = F.nll_loss(input=out, target=data.y, weight=class_weights.to(device))
@@ -83,7 +83,7 @@ def test(dataset) -> Tuple[float]:
             sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
             for subdata in sampler:
                 subdata = subdata.to(device)
-                out = model(subdata.x, subdata.edge_index).cpu()
+                out = model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu()
                 y_pred.append(out)
                 y_true.append(subdata.y.cpu())
                 loss = F.nll_loss(input=out, target=subdata.y.cpu(), weight=class_weights)
@@ -91,7 +91,7 @@ def test(dataset) -> Tuple[float]:
                 total_examples += subdata.num_nodes
         else:
             data = data.to(device)
-            out = model(data.x, data.edge_index).cpu()
+            out = model(data.x, data.edge_index, data.edge_attr).cpu()
             y_pred.append(out)
             y_true.append(data.y.cpu())
             loss = F.nll_loss(input=out, target=data.y.cpu(), weight=class_weights)
@@ -190,13 +190,13 @@ if __name__ == "__main__":
     num_classes = 3 if settings_dict['data']['merge_classes'] else train_dataset.num_classes
     class_weights = get_class_weights(train_disasters, train_dataset, num_classes)
 
-    model = CNNSage(
+    model = CNNGraph(
         settings_dict['model']['hidden_units'],
         num_classes,
         settings_dict['model']['num_layers'],
         settings_dict['model']['dropout_rate']
     )
-    if starting_epoch != 1:
+    if starting_epoch > 1:
         model.load_state_dict(torch.load(model_path+'_last.pt'))
     model = model.to(device)
 

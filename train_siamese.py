@@ -32,6 +32,7 @@ assert len(train_disasters) == len(train_paths)
 merge_classes = settings_dict['data']['merge_classes']
 n_epochs = settings_dict['epochs']
 starting_epoch = 1
+assert starting_epoch > 0
 
 
 to_tensor = ToTensor()
@@ -224,7 +225,7 @@ if __name__ == "__main__":
         train_dataset.num_classes,
         settings_dict['model']['dropout_rate']
     )
-    if starting_epoch != 1:
+    if starting_epoch > 1:
         model.load_state_dict(torch.load(model_path+'_last.pt'))
     model = model.to(device)
 
