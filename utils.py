@@ -147,9 +147,9 @@ def stratified_leak(dataset: torch_geometric.data.Dataset, split: float=0.1, num
     size_split = round(split * len(dataset))
     num_negative_split = round(num_negative/len(dataset) * size_split)
     num_positive_split = size_split - num_negative_split
-    idx = np.empty(len(dataset))
+    idx = torch.empty(len(dataset), dtype=bool)
 
-    for i, data in enumerate(dataset.shuffle()):
+    for i, data in enumerate(dataset):
         if data.y.sum() and num_positive_split > 0:
             idx[i] = True
             num_positive_split -= 1
@@ -159,4 +159,4 @@ def stratified_leak(dataset: torch_geometric.data.Dataset, split: float=0.1, num
         else:
             idx[i] = False
     
-    return dataset.index_select(idx), data.index_select(np.invert(idx))
+    return dataset.index_select(idx), dataset.index_select(~idx)

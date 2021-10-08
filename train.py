@@ -20,8 +20,6 @@ train_disasters = settings_dict['data']['train_disasters']
 train_paths = settings_dict['data']['train_paths']
 train_roots = settings_dict['data']['train_roots']
 assert len(train_disasters) == len(train_paths) == len(train_roots)
-test_root = "/home/ami31/scratch/datasets/xbd_graph/socal_test"
-hold_root = "/home/ami31/scratch/datasets/xbd_graph/socal_hold"
 n_epochs = settings_dict['epochs']
 starting_epoch = 1
 assert starting_epoch > 0
@@ -133,7 +131,7 @@ def save_results(hold: bool=False) -> None:
         print(f'Test weighted F1: {test_f1_weighted[-1]:.4f}')
         print(f'Test auc: {test_auc[-1]:.4f}')
         hold_dataset = xBD(
-            hold_root,
+            '/home/ami31/scratch/datasets/xbd_graph/socal_hold',
             '/home/ami31/scratch/datasets/xbd/hold_bldgs/',
             'socal-fire',
             transform=transform
@@ -180,7 +178,7 @@ if __name__ == "__main__":
         train_dataset = train_dataset[0]
 
     test_dataset = xBD(
-        test_root,
+        '/home/ami31/scratch/datasets/xbd_graph/socal_test',
         '/home/ami31/scratch/datasets/xbd/test_bldgs/',
         'socal-fire',
         transform=transform
