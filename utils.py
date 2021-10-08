@@ -3,7 +3,7 @@ from math import sqrt
 import numpy as np
 import torch
 import torch_geometric
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 import matplotlib.pyplot as plt
@@ -80,7 +80,7 @@ def get_edge_features(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[f
     return node_sim.item(), euc_sim
 
 
-def get_class_weights(disasters: List[str], dataset: torch_geometric.data.Dataset, num_classes: int) -> torch.Tensor:
+def get_class_weights(disasters: List[str], dataset: torch_geometric.data.Dataset, num_classes: int, leaked: bool) -> torch.Tensor:
     """
         Computes the class weights yo be used in the loss function for mitigating the effect of class imbalance.
 
@@ -93,6 +93,8 @@ def get_class_weights(disasters: List[str], dataset: torch_geometric.data.Datase
             class_weights (Tensor): class weights tensor of shape (n_classes).
     """
     name = '_'.join(text.replace('-', '_') for text in disasters)
+    if leaked:
+        name = name + '_leaked'
     if os.path.isfile(f'weights/class_weights_{name}_{num_classes}.pt'):
         return torch.load(f'weights/class_weights_{name}_{num_classes}.pt')
     else:
@@ -133,3 +135,28 @@ def make_plot(train: np.ndarray, test: np.ndarray, plot_type: str, model_name: s
     plt.ylabel(plot_type)
     plt.savefig('results/'+model_name+'_'+plot_type+'.pdf')
     plt.close()
+
+
+def stratified_leak(dataset: torch_geometric.data.Dataset, split: float=0.1, num_negative: Optional[int]=None):
+    if not num_negative:
+        num_negative = 0
+        for data in dataset:
+            if not data.y.sum():
+                num_negative += 1
+    
+    size_split = round(split * len(dataset))
+    num_negative_split = round(num_negative/len(dataset) * size_split)
+    num_positive_split = size_split - num_negative_split
+    idx = np.empty(len(dataset))
+
+    for i, data in enumerate(dataset.shuffle()):
+        if data.y.sum() and num_positive_split > 0:
+            idx[i] = True
+            num_positive_split -= 1
+        elif not data.y.sum() and num_negative_split > 0:
+            idx[i] = True
+            num_negative_split -= 1
+        else:
+            idx[i] = False
+    
+    return dataset.index_select(idx), data.index_select(np.invert(idx))

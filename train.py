@@ -7,8 +7,8 @@ from torch.utils.data import ConcatDataset
 from torch_geometric.data import DataLoader, RandomNodeSampler
 from tqdm import tqdm
 from dataset import xBD
-from model import CNNGraph
-from utils import get_class_weights, merge_classes, score, make_plot
+from model import CNNSage
+from utils import get_class_weights, merge_classes, score, make_plot, stratified_leak
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
@@ -45,7 +45,7 @@ def train(epoch: int) -> float:
             for subdata in sampler:
                 subdata = subdata.to(device)
                 optimizer.zero_grad()
-                out = model(subdata.x, subdata.edge_index, subdata.edge_attr)
+                out = model(subdata.x, subdata.edge_index)
                 y_pred.append(out.cpu())
                 y_true.append(subdata.y.cpu())
                 loss = F.nll_loss(input=out, target=subdata.y, weight=class_weights.to(device))
@@ -56,7 +56,7 @@ def train(epoch: int) -> float:
         else:
             data = data.to(device)
             optimizer.zero_grad()
-            out = model(data.x, data.edge_index, data.edge_attr)
+            out = model(data.x, data.edge_index)
             y_pred.append(out.cpu())
             y_true.append(data.y.cpu())
             loss = F.nll_loss(input=out, target=data.y, weight=class_weights.to(device))
@@ -83,7 +83,7 @@ def test(dataset) -> Tuple[float]:
             sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
             for subdata in sampler:
                 subdata = subdata.to(device)
-                out = model(subdata.x, subdata.edge_index, subdata.edge_attr).cpu()
+                out = model(subdata.x, subdata.edge_index).cpu()
                 y_pred.append(out)
                 y_true.append(subdata.y.cpu())
                 loss = F.nll_loss(input=out, target=subdata.y.cpu(), weight=class_weights)
@@ -91,7 +91,7 @@ def test(dataset) -> Tuple[float]:
                 total_examples += subdata.num_nodes
         else:
             data = data.to(device)
-            out = model(data.x, data.edge_index, data.edge_attr).cpu()
+            out = model(data.x, data.edge_index).cpu()
             y_pred.append(out)
             y_true.append(data.y.cpu())
             loss = F.nll_loss(input=out, target=data.y.cpu(), weight=class_weights)
@@ -178,7 +178,6 @@ if __name__ == "__main__":
         train_dataset = ConcatDataset(train_dataset)
     else:
         train_dataset = train_dataset[0]
-    train_loader = DataLoader(train_dataset, shuffle=True)
 
     test_dataset = xBD(
         test_root,
@@ -187,10 +186,16 @@ if __name__ == "__main__":
         transform=transform
     )
 
-    num_classes = 3 if settings_dict['data']['merge_classes'] else train_dataset.num_classes
-    class_weights = get_class_weights(train_disasters, train_dataset, num_classes)
+    if settings_dict['data']['leak']:
+        test_leak, test_dataset = stratified_leak(test_dataset)
+        train_dataset = ConcatDataset([train_dataset, test_leak])
+    
+    train_loader = DataLoader(train_dataset, shuffle=True)
 
-    model = CNNGraph(
+    num_classes = 3 if settings_dict['data']['merge_classes'] else train_dataset.num_classes
+    class_weights = get_class_weights(train_disasters, train_dataset, num_classes, settings_dict['data']['leak'])
+
+    model = CNNSage(
         settings_dict['model']['hidden_units'],
         num_classes,
         settings_dict['model']['num_layers'],
@@ -201,7 +206,6 @@ if __name__ == "__main__":
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
-    #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=0.00001, verbose=True)
 
     best_test_auc = best_epoch = 0
 
