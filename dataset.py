@@ -6,13 +6,8 @@ import torch
 from torchvision.transforms import ToTensor
 from torch_geometric.transforms import Compose, Delaunay, FaceToEdge
 from PIL import Image
-from torch_geometric.data import Data, Dataset
+from torch_geometric.data import Data, Dataset, InMemoryDataset
 
-
-train_path = "/home/ami31/scratch/datasets/xbd/train_bldgs/"
-test_path = "/home/ami31/scratch/datasets/xbd/test_bldgs/"
-hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
-tier3_path = "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"
 
 torch.manual_seed(42)
 
@@ -22,8 +17,9 @@ delaunay = Compose([Delaunay(), FaceToEdge()])
 class xBD(Dataset):
     """
     xBD graph dataset.
+    Every image chip is a graph.
     Every building (pre and post) is a node.
-    Edge are created accoring to the Delaunay triangulation.
+    Edges are created accoring to the Delaunay triangulation.
     Edge features are calculated as a similarity measure between the nodes.
 
     Args:
@@ -41,13 +37,11 @@ class xBD(Dataset):
         
         self.path = data_path
         self.disaster = disaster_name
-
         self.labels = pd.read_csv(list(Path(self.path + self.disaster).glob('*.csv*'))[0], index_col=0)
         self.labels.drop(columns=['long','lat'], inplace=True)
         zone = lambda row: '_'.join(row.name.split('_', 2)[:2])
         self.labels['zone'] = self.labels.apply(zone, axis=1)
         self.zones = self.labels['zone'].value_counts()[self.labels['zone'].value_counts()>1].index.tolist()
-        
         self.num_classes = 4
 
         super().__init__(root, transform, pre_transform)
@@ -84,7 +78,6 @@ class xBD(Dataset):
                 annot = self.labels.loc[os.path.split(post_image_file)[1],'class']
                 if annot == 'un-classified':
                     continue
-                
                 y.append(label_dict[annot])
                 coords.append((self.labels.loc[os.path.split(post_image_file)[1],'xcoord'],
                                 self.labels.loc[os.path.split(post_image_file)[1],'ycoord']))
@@ -107,7 +100,6 @@ class xBD(Dataset):
 
             edge_index = data.edge_index
 
-            #edge features
             edge_attr = torch.empty((edge_index.shape[1],1))
             for i in range(edge_index.shape[1]):
                 node1 = x[edge_index[0,i]]
@@ -116,7 +108,6 @@ class xBD(Dataset):
                 s[s.isnan()] = 1
                 s = 1 - torch.sum(s)/node1.shape[0]
                 edge_attr[i,0] = s.item()
-            
             data.edge_attr = edge_attr
 
             if self.pre_filter is not None and not self.pre_filter(data):
@@ -134,7 +125,99 @@ class xBD(Dataset):
         return data
 
 
+class xBDSingleGraph(InMemoryDataset):
+    def __init__(
+        self,
+        root: str, 
+        data_path: str,
+        disaster_name: str,
+        transform=None,
+        pre_transform=None) -> None:
+
+        self.path = data_path
+        self.disaster = disaster_name
+        self.labels = pd.read_csv(list(Path(self.path + self.disaster).glob('*.csv*'))[0], index_col=0)
+        self.labels.drop(columns=['xcoord','ycoord'], inplace=True)
+        self.num_classes = 4
+
+        super().__init__(root, transform, pre_transform)
+        self.data, self.slices = torch.load(self.processed_paths[0])
+
+    @property
+    def raw_file_names(self) -> List:
+        return []
+
+    @property
+    def processed_file_names(self) -> List[str]:
+        return [os.path.join(self.processed_dir, self.disaster+'_data.pt')]
+    
+    def download(self) -> None:
+        pass
+
+    def process(self) -> None:
+        label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
+        list_pre_images = list(map(str, Path(self.path + self.disaster).glob('*pre_disaster*')))
+        list_post_images = list(map(str, Path(self.path + self.disaster).glob('*post_disaster*')))
+        x = []
+        y = []
+        coords = []
+
+        for pre_image_file, post_image_file in zip(list_pre_images, list_post_images):
+            
+            annot = self.labels.loc[os.path.split(post_image_file)[1],'class']
+            if annot == 'un-classified':
+                continue
+            y.append(label_dict[annot])
+            coords.append((self.labels.loc[os.path.split(post_image_file)[1],'long'],
+                            self.labels.loc[os.path.split(post_image_file)[1],'lat']))
+
+            pre_image = Image.open(pre_image_file)
+            post_image = Image.open(post_image_file)
+            pre_image = pre_image.resize((128, 128))
+            post_image = post_image.resize((128, 128))
+            pre_image = transform(pre_image)
+            post_image = transform(post_image)
+            images = torch.cat((pre_image, post_image),0)
+            x.append(images.flatten())
+
+        x = torch.stack(x)
+        y = torch.tensor(y)
+        coords = torch.tensor(coords)
+
+        data_ = Data(x=x, y=y, pos=coords)
+        data_ = delaunay(data_)
+
+        edge_index = data_.edge_index
+
+        edge_attr = torch.empty((edge_index.shape[1],1))
+        for i in range(edge_index.shape[1]):
+            node1 = x[edge_index[0,i]]
+            node2 = x[edge_index[1,i]]
+            s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
+            s[s.isnan()] = 1
+            s = 1 - torch.sum(s)/node1.shape[0]
+            edge_attr[i,0] = s.item()
+        
+        data_.edge_attr = edge_attr
+
+        data_list = [data_]
+
+        if self.pre_filter is not None:
+            data_list = [data for data in data_list if self.pre_filter(data)]
+
+        if self.pre_transform is not None:
+            data_list = [self.pre_transform(data) for data in data_list]
+        
+        data, slices = self.collate(data_list)
+        torch.save((data, slices), self.processed_paths[0])
+
+
 if __name__ == "__main__":
+
+    train_path = "/home/ami31/scratch/datasets/xbd/train_bldgs/"
+    test_path = "/home/ami31/scratch/datasets/xbd/test_bldgs/"
+    hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
+    tier3_path = "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"
 
     root = "/home/ami31/scratch/datasets/xbd_graph/midwest"
     if not os.path.isdir(root):
