@@ -209,6 +209,8 @@ if __name__ == "__main__":
     train_dataset = xBDImages(train_paths, train_disasters, merge_classes)
     test_dataset = xBDImages(['/home/ami31/scratch/datasets/xbd/test_bldgs/'], ['socal-fire'], merge_classes)
 
+    num_classes = train_dataset.num_classes
+
     if settings_dict['data']['leak']:
         y_all = np.fromiter((data['y'].item() for data in test_dataset), dtype=int)
         test_idx, leak_idx = train_test_split(np.arange(y_all.shape[0]), test_size=0.1, stratify=y_all, random_state=42)
@@ -216,24 +218,23 @@ if __name__ == "__main__":
         test_dataset = Subset(test_dataset, test_idx)
         train_dataset = ConcatDataset([train_dataset, train_leak])
 
-
     train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size)
 
     cw_name = '_'.join(text.replace('-', '_') for text in train_disasters) + '_siameseclf'
     if settings_dict['data']['leak']:
         cw_name = cw_name + '_leaked'
-    if os.path.isfile(f'weights/class_weights_{cw_name}_{train_dataset.num_classes}.pt'):
-        class_weights = torch.load(f'weights/class_weights_{cw_name}_{train_dataset.num_classes}.pt')
+    if os.path.isfile(f'weights/class_weights_{cw_name}_{num_classes}.pt'):
+        class_weights = torch.load(f'weights/class_weights_{cw_name}_{num_classes}.pt')
     else:
         y_all = np.fromiter((data['y'].item() for data in train_dataset), dtype=int)
         class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all)
         class_weights = torch.Tensor(class_weights)
-        torch.save(class_weights, f'weights/class_weights_{cw_name}_{train_dataset.num_classes}.pt')
+        torch.save(class_weights, f'weights/class_weights_{cw_name}_{num_classes}.pt')
 
     model = SiameseNet(
         settings_dict['model']['hidden_units'],
-        train_dataset.num_classes,
+        num_classes,
         settings_dict['model']['dropout_rate']
     )
     if starting_epoch > 1:
