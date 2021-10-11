@@ -137,12 +137,11 @@ def make_plot(train: np.ndarray, test: np.ndarray, plot_type: str, model_name: s
     plt.close()
 
 
-def stratified_leak(dataset: torch_geometric.data.Dataset, split: float=0.1, num_negative: Optional[int]=None):
-    if not num_negative:
-        num_negative = 0
-        for data in dataset:
-            if not data.y.sum():
-                num_negative += 1
+def stratified_leak(dataset: torch_geometric.data.Dataset, split: float=0.1):
+    num_negative = 0
+    for data in dataset:
+        if not data.y.sum():
+            num_negative += 1
     
     size_split = round(split * len(dataset))
     num_negative_split = round(num_negative/len(dataset) * size_split)

@@ -4,11 +4,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset, ConcatDataset
 from torchvision.transforms import ToTensor
 import torch.nn.functional as F
 from PIL import Image
 from sklearn.utils.class_weight import compute_class_weight
+from sklearn.model_selection import train_test_split
 from typing import Callable, List, Tuple
 from model import SiameseNet
 from utils import score, make_plot
@@ -208,10 +209,20 @@ if __name__ == "__main__":
     train_dataset = xBDImages(train_paths, train_disasters, merge_classes)
     test_dataset = xBDImages(['/home/ami31/scratch/datasets/xbd/test_bldgs/'], ['socal-fire'], merge_classes)
 
+    if settings_dict['data']['leak']:
+        y_all = np.fromiter((data['y'].item() for data in test_dataset), dtype=int)
+        test_idx, leak_idx = train_test_split(np.arange(y_all.shape[0]), test_size=0.1, stratify=y_all, random_state=42)
+        train_leak = Subset(test_dataset, leak_idx)
+        test_dataset = Subset(test_dataset, test_idx)
+        train_dataset = ConcatDataset([train_dataset, train_leak])
+
+
     train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size)
 
     cw_name = '_'.join(text.replace('-', '_') for text in train_disasters) + '_siameseclf'
+    if settings_dict['data']['leak']:
+        cw_name = cw_name + '_leaked'
     if os.path.isfile(f'weights/class_weights_{cw_name}_{train_dataset.num_classes}.pt'):
         class_weights = torch.load(f'weights/class_weights_{cw_name}_{train_dataset.num_classes}.pt')
     else:
@@ -230,7 +241,6 @@ if __name__ == "__main__":
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
-    #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=0.00001, verbose=True)
 
     best_test_auc = best_epoch = 0
 
@@ -268,7 +278,6 @@ if __name__ == "__main__":
 
         test_loss[epoch-1], test_acc[epoch-1], test_f1_macro[epoch-1],\
             test_f1_weighted[epoch-1], test_auc[epoch-1] = test(test_loader)
-        #scheduler.step(test_loss[epoch-1])
 
         if test_auc[epoch-1] > best_test_auc:
             best_test_auc = test_auc[epoch-1]
