@@ -1,16 +1,13 @@
 import os
 import json
-from pathlib import Path
 import numpy as np
-import pandas as pd
 import torch
-from torch.utils.data import Dataset, DataLoader, Subset, ConcatDataset
-from torchvision.transforms import ToTensor
+from torch.utils.data import DataLoader, Subset, ConcatDataset
 import torch.nn.functional as F
-from PIL import Image
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.model_selection import train_test_split
-from typing import Callable, List, Tuple
+from typing import Tuple
+from dataset import xBDImages
 from model import SiameseNet
 from utils import score, make_plot
 from tqdm import tqdm
@@ -36,69 +33,7 @@ starting_epoch = 1
 assert starting_epoch > 0
 
 
-to_tensor = ToTensor()
-
-class xBDImages(Dataset):
-    """
-    xBD building image dataset.
-
-    Args:
-        paths (List[str]): paths to the desired data split (train, test, hold or tier3).
-        disasters (List[str]): names of the included disasters.
-    """
-    def __init__(
-        self,
-        paths: List[str],
-        disasters: List[str],
-        merge_classes: bool=False,
-        transform: Callable=None) -> None:
-
-        list_labels = []
-        for disaster, path in zip(disasters, paths):
-            labels = pd.read_csv(list(Path(path + disaster).glob('*.csv*'))[0], index_col=0)
-            labels.drop(columns=['long','lat', 'xcoord', 'ycoord'], inplace=True)
-            labels.drop(index=labels[labels['class'] == 'un-classified'].index, inplace = True)
-            labels['image_path'] = path + disaster + '/'
-            list_labels.append(labels)
-        
-        self.labels = pd.concat(list_labels)
-        self.label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
-        self.num_classes = 3 if merge_classes else 4
-        self.merge_classes = merge_classes
-        self.transform = transform
-    
-    def __len__(self) -> int:
-        return self.labels.shape[0]
-    
-    def __getitem__(self, idx) -> Tuple[torch.Tensor]:
-
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-
-        post_image_file = self.labels['image_path'][idx] + self.labels.index[idx]
-        pre_image_file = post_image_file.replace('post', 'pre')
-        pre_image = Image.open(pre_image_file)
-        post_image = Image.open(post_image_file)
-        pre_image = pre_image.resize((128, 128))
-        post_image = post_image.resize((128, 128))
-        pre_image = to_tensor(pre_image)
-        post_image = to_tensor(post_image)
-        images = torch.cat((pre_image, post_image),0).flatten()
-
-        if self.transform is not None:
-            images = self.transform(images)
-
-        y = torch.tensor(self.label_dict[self.labels['class'][idx]])
-
-        if self.merge_classes:
-            y[y==3] = 2
-        
-        sample = {'x': images, 'y': y}
-
-        return sample
-
-
-def train(epoch: int) -> float:
+def train(epoch: int) -> Tuple[float]:
     model.train()
     pbar = tqdm(total=len(train_loader))
     pbar.set_description(f'Epoch {epoch:02d}')

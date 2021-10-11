@@ -80,7 +80,7 @@ def get_edge_features(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[f
     return node_sim.item(), euc_sim
 
 
-def get_class_weights(disasters: List[str], dataset: torch_geometric.data.Dataset, num_classes: int, leaked: bool) -> torch.Tensor:
+def get_class_weights(disasters: List[str], dataset: torch_geometric.data.Dataset, num_classes: int, leaked: bool=False) -> torch.Tensor:
     """
         Computes the class weights yo be used in the loss function for mitigating the effect of class imbalance.
 
@@ -137,7 +137,7 @@ def make_plot(train: np.ndarray, test: np.ndarray, plot_type: str, model_name: s
     plt.close()
 
 
-def stratified_leak(dataset: torch_geometric.data.Dataset, split: float=0.1):
+def stratified_graph_leak(dataset: torch_geometric.data.Dataset, split: float=0.1):
     num_negative = 0
     for data in dataset:
         if not data.y.sum():
