@@ -12,6 +12,7 @@ from torch_geometric.data import Data, Dataset, InMemoryDataset
 torch.manual_seed(42)
 
 to_tensor = ToTensor()
+
 class xBDImages(Dataset):
     """
     xBD building image dataset.
@@ -72,8 +73,8 @@ class xBDImages(Dataset):
         return sample
 
 
-transform = ToTensor()
 delaunay = Compose([Delaunay(), FaceToEdge()])
+
 class xBDBatch(Dataset):
     """
     xBD graph dataset.
@@ -146,8 +147,8 @@ class xBDBatch(Dataset):
                 post_image = Image.open(post_image_file)
                 pre_image = pre_image.resize((128, 128))
                 post_image = post_image.resize((128, 128))
-                pre_image = transform(pre_image)
-                post_image = transform(post_image)
+                pre_image = to_tensor(pre_image)
+                post_image = to_tensor(post_image)
                 images = torch.cat((pre_image, post_image),0)
                 x.append(images.flatten())
 
@@ -198,7 +199,6 @@ class xBDFull(InMemoryDataset):
         self.disaster = disaster_name
         self.labels = pd.read_csv(list(Path(self.path + self.disaster).glob('*.csv*'))[0], index_col=0)
         self.labels.drop(columns=['xcoord','ycoord'], inplace=True)
-        self.num_classes = 4
 
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
@@ -235,12 +235,13 @@ class xBDFull(InMemoryDataset):
             post_image = Image.open(post_image_file)
             pre_image = pre_image.resize((128, 128))
             post_image = post_image.resize((128, 128))
-            pre_image = transform(pre_image)
-            post_image = transform(post_image)
+            pre_image = to_tensor(pre_image)
+            post_image = to_tensor(post_image)
             images = torch.cat((pre_image, post_image),0)
             x.append(images.flatten())
 
         x = torch.stack(x)
+        print(f'Size of x matrix: {x.element_size()*x.nelement()}')
         y = torch.tensor(y)
         coords = torch.tensor(coords)
 
@@ -279,7 +280,7 @@ if __name__ == "__main__":
     hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
     tier3_path = "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"
 
-    root = "/home/ami31/scratch/datasets/xbd_graph/midwest"
+    root = "/home/ami31/scratch/datasets/xbd_graph/woolsey"
     if not os.path.isdir(root):
         os.mkdir(root)
-    xBDBatch(root, train_path, 'midwest-flooding')
+    xBDFull(root, tier3_path, 'woolsey-fire')
