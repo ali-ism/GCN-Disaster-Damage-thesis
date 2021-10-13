@@ -8,7 +8,7 @@
         "leak": true
     },
     "model": {
-        "name": "nepal_joplin_puna_leak_01",
+        "name": "woolsey_01",
         "hidden_units": 32,
         "num_layers": 2,
         "lr": 0.0003,

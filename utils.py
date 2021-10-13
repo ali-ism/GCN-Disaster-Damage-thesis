@@ -113,7 +113,7 @@ def merge_classes(data: torch_geometric.data.Data):
 
 def score(y_true: torch.Tensor, y_pred: torch.Tensor) -> Tuple[float]:
     """
-    Claculates the accuracy, macro F1 score, weighted F1 score and the ROC AUC score.
+    Calculates the accuracy, macro F1 score, weighted F1 score and the ROC AUC score.
     
     Args:
         y_true (torch.Tensor) of shape (n_samples) containing true labels.
