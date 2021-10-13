@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import pandas as pd
+import utm
 from typing import List, Callable, Tuple
 import torch
 from torchvision.transforms import ToTensor
@@ -200,6 +201,10 @@ class xBDFull(InMemoryDataset):
         self.labels = pd.read_csv(list(Path(self.path + self.disaster).glob('*.csv*'))[0], index_col=0)
         self.labels.drop(columns=['xcoord','ycoord'], inplace=True)
 
+        self.labels['easting'], self.labels['northing'], *_ = utm.from_latlon(
+            self.labels['lat'].values, self.labels['long'].values
+        )
+
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
@@ -228,8 +233,8 @@ class xBDFull(InMemoryDataset):
             if annot == 'un-classified':
                 continue
             y.append(label_dict[annot])
-            coords.append((self.labels.loc[os.path.split(post_image_file)[1],'long'],
-                            self.labels.loc[os.path.split(post_image_file)[1],'lat']))
+            coords.append((self.labels.loc[os.path.split(post_image_file)[1],'easting'],
+                            self.labels.loc[os.path.split(post_image_file)[1],'northing']))
 
             pre_image = Image.open(pre_image_file)
             post_image = Image.open(post_image_file)
@@ -241,7 +246,7 @@ class xBDFull(InMemoryDataset):
             x.append(images.flatten())
 
         x = torch.stack(x)
-        print(f'Size of x matrix: {x.element_size()*x.nelement()}')
+        print(f'Size of x matrix: {x.element_size()*x.nelement()*1e-9:.4f} GB')
         y = torch.tensor(y)
         coords = torch.tensor(coords)
 
