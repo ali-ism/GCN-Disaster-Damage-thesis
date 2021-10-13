@@ -15,9 +15,9 @@ with open('exp_settings.json', 'r') as JSON:
 
 name = settings_dict['model']['name'] + '_gcn'
 model_path = 'weights/' + name
-disaster = settings_dict['data']['train_disasters'][0]
-path = settings_dict['data']['train_paths'][0]
-root = settings_dict['data']['train_roots'][0]
+disaster = 'woolsey-fire'
+path = '/home/ami31/scratch/datasets/xbd/tier3_bldgs/'
+root = '/home/ami31/scratch/datasets/xbd_graph/woolsey'
 n_epochs = settings_dict['epochs']
 starting_epoch = 1
 assert starting_epoch > 0
