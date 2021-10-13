@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#SBATCH --job-name=train
+#SBATCH --job-name=train-semisupervised
 #SBATCH --partition=msfea-ai
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --gres=gpu
-#SBATCH --mem=0
+#SBATCH --mem=32G
 
 module purge
 module load python/3.8.2
