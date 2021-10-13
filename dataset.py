@@ -200,10 +200,19 @@ class xBDFull(InMemoryDataset):
         self.disaster = disaster_name
         self.labels = pd.read_csv(list(Path(self.path + self.disaster).glob('*.csv*'))[0], index_col=0)
         self.labels.drop(columns=['xcoord','ycoord'], inplace=True)
+        zone_func = lambda row: '_'.join(row.name.split('_', 2)[:2])
+        self.labels['zone'] = self.labels.apply(zone_func, axis=1)
+
+        for zone in self.labels['zone'].unique():
+            if (self.labels[self.labels['zone'] == zone]['class'] == 'no-damage').all():
+                self.labels.drop(index=self.labels.loc[self.labels['zone']==zone].index, inplace=True)
+
 
         self.labels['easting'], self.labels['northing'], *_ = utm.from_latlon(
             self.labels['lat'].values, self.labels['long'].values
         )
+
+        self.labels.to_csv(os.path.join(self.processed_dir, self.disaster+'_metadata.csv'))
 
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
@@ -285,7 +294,7 @@ if __name__ == "__main__":
     hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
     tier3_path = "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"
 
-    root = "/home/ami31/scratch/datasets/xbd_graph/woolsey"
+    root = "/home/ami31/scratch/datasets/xbd_graph/woolsey_reduced"
     if not os.path.isdir(root):
         os.mkdir(root)
     xBDFull(root, tier3_path, 'woolsey-fire')
