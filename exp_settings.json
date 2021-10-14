@@ -8,7 +8,7 @@
         "leak": true
     },
     "model": {
-        "name": "woolsey_01",
+        "name": "pinery_01",
         "hidden_units": 32,
         "num_layers": 2,
         "lr": 0.0003,

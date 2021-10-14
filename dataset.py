@@ -291,7 +291,7 @@ if __name__ == "__main__":
     hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
     tier3_path = "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"
 
-    root = "/home/ami31/scratch/datasets/xbd_graph/joplin_full_reduced"
+    root = "/home/ami31/scratch/datasets/xbd_graph/pinery_full_reduced"
     if not os.path.isdir(root):
         os.mkdir(root)
-    xBDFull(root, tier3_path, 'joplin-tornado')
+    xBDFull(root, tier3_path, 'pinery-bushfire')
