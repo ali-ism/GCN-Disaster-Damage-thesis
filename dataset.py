@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import numpy as np
 import pandas as pd
 import utm
 from typing import List, Callable, Tuple
@@ -8,6 +9,7 @@ from torchvision.transforms import ToTensor
 from torch_geometric.transforms import Compose, Delaunay, FaceToEdge
 from PIL import Image
 from torch_geometric.data import Data, Dataset, InMemoryDataset
+from sklearn.model_selection import train_test_split
 
 
 torch.manual_seed(42)
@@ -200,14 +202,22 @@ class xBDFull(InMemoryDataset):
         self.disaster = disaster_name
         self.labels = pd.read_csv(list(Path(self.path + self.disaster).glob('*.csv*'))[0], index_col=0)
         self.labels.drop(columns=['xcoord','ycoord'], inplace=True)
+        self.labels.drop(index=self.labels.loc[self.labels['class']=='un-classified'].index, inplace=True)
         zone_func = lambda row: '_'.join(row.name.split('_', 2)[:2])
         self.labels['zone'] = self.labels.apply(zone_func, axis=1)
 
         for zone in self.labels['zone'].unique():
             if (self.labels[self.labels['zone'] == zone]['class'] == 'no-damage').all():
                 self.labels.drop(index=self.labels.loc[self.labels['zone']==zone].index, inplace=True)
-
-
+        
+        label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
+        self.labels['class_num'] = self.labels['class'].apply(lambda x: label_dict)
+        
+        idx, _ = train_test_split(
+            np.arange(self.labels.shape[0]), test_size=0.3,
+            stratify=self.labels['class_num'].values, random_state=42)
+        
+        self.labels = self.labels.iloc[[idx]]
         self.labels['easting'], self.labels['northing'], *_ = utm.from_latlon(
             self.labels['lat'].values, self.labels['long'].values
         )
@@ -228,17 +238,13 @@ class xBDFull(InMemoryDataset):
         pass
 
     def process(self) -> None:
-        label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
         x = []
         y = []
         coords = []
 
         for post_image_file in self.labels.index.values.tolist():
             
-            annot = self.labels.loc[post_image_file,'class']
-            if annot == 'un-classified':
-                continue
-            y.append(label_dict[annot])
+            y.append(self.labels.loc[post_image_file,'class_num'])
             coords.append((self.labels.loc[post_image_file,'easting'],
                             self.labels.loc[post_image_file,'northing']))
 
