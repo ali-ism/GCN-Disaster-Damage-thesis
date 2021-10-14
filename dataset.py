@@ -229,23 +229,21 @@ class xBDFull(InMemoryDataset):
 
     def process(self) -> None:
         label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
-        list_pre_images = list(map(str, Path(self.path + self.disaster).glob('*pre_disaster*')))
-        list_post_images = list(map(str, Path(self.path + self.disaster).glob('*post_disaster*')))
         x = []
         y = []
         coords = []
 
-        for pre_image_file, post_image_file in zip(list_pre_images, list_post_images):
+        for post_image_file in self.labels.index.values.tolist():
             
-            annot = self.labels.loc[os.path.split(post_image_file)[1],'class']
+            annot = self.labels.loc[post_image_file,'class']
             if annot == 'un-classified':
                 continue
             y.append(label_dict[annot])
-            coords.append((self.labels.loc[os.path.split(post_image_file)[1],'easting'],
-                            self.labels.loc[os.path.split(post_image_file)[1],'northing']))
+            coords.append((self.labels.loc[post_image_file,'easting'],
+                            self.labels.loc[post_image_file,'northing']))
 
-            pre_image = Image.open(pre_image_file)
-            post_image = Image.open(post_image_file)
+            pre_image = Image.open(os.path.join(self.path, self.disaster, post_image_file.replace('post', 'pre')))
+            post_image = Image.open(os.path.join(self.path, self.disaster, post_image_file))
             pre_image = pre_image.resize((128, 128))
             post_image = post_image.resize((128, 128))
             pre_image = to_tensor(pre_image)
