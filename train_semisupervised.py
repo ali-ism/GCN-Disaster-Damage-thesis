@@ -17,7 +17,7 @@ name = settings_dict['model']['name'] + '_gcn'
 model_path = 'weights/' + name
 disaster = 'woolsey-fire'
 path = '/home/ami31/scratch/datasets/xbd/tier3_bldgs/'
-root = '/home/ami31/scratch/datasets/xbd_graph/woolsey'
+root = '/home/ami31/scratch/datasets/xbd_graph/woolsey_reduced'
 n_epochs = settings_dict['epochs']
 starting_epoch = 1
 assert starting_epoch > 0
