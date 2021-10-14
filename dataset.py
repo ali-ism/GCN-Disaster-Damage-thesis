@@ -212,9 +212,8 @@ class xBDFull(InMemoryDataset):
             self.labels['lat'].values, self.labels['long'].values
         )
 
-        self.labels.to_csv(os.path.join(self.processed_dir, self.disaster+'_metadata.csv'))
-
         super().__init__(root, transform, pre_transform)
+        self.labels.to_csv(os.path.join(self.processed_dir, self.disaster+'_metadata.csv'))
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
