@@ -1,12 +1,18 @@
 import os
 from math import sqrt
+from typing import List, Optional, Tuple, Union
+
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch_geometric
-from typing import List, Tuple, Optional
-from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
-import matplotlib.pyplot as plt
+from sklearn.utils.class_weight import compute_class_weight
+from torch import Tensor
+from torch_geometric.data import Data, HeteroData
+from torch_geometric.transforms import BaseTransform
+from torch_geometric.utils import sort_edge_index
+from torch_sparse import SparseTensor
 
 
 def build_edge_idx(num_nodes: int) -> torch.Tensor:
@@ -159,3 +165,72 @@ def stratified_graph_leak(dataset: torch_geometric.data.Dataset, split: float=0.
             idx[i] = False
     
     return dataset.index_select(idx), dataset.index_select(~idx)
+
+
+class ToSparseTensor(BaseTransform):
+    r"""Converts the :obj:`edge_index` attributes of a homogeneous or
+    heterogeneous data object into a (transposed)
+    :class:`torch_sparse.SparseTensor` type with key :obj:`adj_.t`.
+
+    .. note::
+
+        In case of composing multiple transforms, it is best to convert the
+        :obj:`data` object to a :obj:`SparseTensor` as late as possible, since
+        there exist some transforms that are only able to operate on
+        :obj:`data.edge_index` for now.
+
+    Args:
+        attr: (str, optional): The name of the attribute to add as a value to
+            the :class:`~torch_sparse.SparseTensor` object (if present).
+            (default: :obj:`edge_weight`)
+        remove_edge_index (bool, optional): If set to :obj:`False`, the
+            :obj:`edge_index` tensor will not be removed.
+            (default: :obj:`True`)
+        fill_cache (bool, optional): If set to :obj:`False`, will not fill the
+            underlying :obj:`SparseTensor` cache. (default: :obj:`True`)
+    """
+    def __init__(self, attr: Optional[str] = 'edge_weight',
+                 remove_edge_index: bool = True, fill_cache: bool = True):
+        self.attr = attr
+        self.remove_edge_index = remove_edge_index
+        self.fill_cache = fill_cache
+
+    def __call__(self, data: Union[Data, HeteroData]):
+        for store in data.edge_stores:
+            if 'edge_index' not in store:
+                continue
+
+            nnz = store.edge_index.size(1)
+
+            keys, values = [], []
+            for key, value in store.items():
+                if isinstance(value, Tensor) and value.size(0) == nnz:
+                    keys.append(key)
+                    values.append(value)
+
+            store.edge_index, values = sort_edge_index(store.edge_index,
+                                                       values,
+                                                       sort_by_row=False)
+
+            for key, value in zip(keys, values):
+                store[key] = value
+
+            store.adj_t = SparseTensor(
+                row=store.edge_index[1], col=store.edge_index[0],
+                value=None if self.attr is None or self.attr not in store else
+                store[self.attr], sparse_sizes=store.size()[::-1],
+                is_sorted=True)
+
+            if self.remove_edge_index:
+                del store['edge_index']
+                if self.attr is not None and self.attr in store:
+                    del store[self.attr]
+
+            if self.fill_cache:  # Pre-process some important attributes.
+                store.adj_t.storage.rowptr()
+                store.adj_t.storage.csr2csc()
+
+        return data
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}()'

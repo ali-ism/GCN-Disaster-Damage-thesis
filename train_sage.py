@@ -1,14 +1,16 @@
 import json
 from typing import Tuple
+
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.utils.data import ConcatDataset
 from torch_geometric.data import DataLoader, RandomNodeSampler
 from tqdm import tqdm
+
 from dataset import xBDBatch
 from model import CNNSage
-from utils import get_class_weights, merge_classes, score, make_plot, stratified_graph_leak
+from utils import get_class_weights, make_plot, merge_classes, score, stratified_graph_leak
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)

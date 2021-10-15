@@ -1,16 +1,18 @@
-import os
 import json
+import os
+from typing import Tuple
+
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Subset, ConcatDataset
 import torch.nn.functional as F
-from sklearn.utils.class_weight import compute_class_weight
 from sklearn.model_selection import train_test_split
-from typing import Tuple
+from sklearn.utils.class_weight import compute_class_weight
+from torch.utils.data import ConcatDataset, DataLoader, Subset
+from tqdm import tqdm
+
 from dataset import xBDImages
 from model import SiameseNet
-from utils import score, make_plot
-from tqdm import tqdm
+from utils import make_plot, score
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(42)

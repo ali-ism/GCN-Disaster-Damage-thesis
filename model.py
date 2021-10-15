@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
-from torch.nn import Module, ModuleList, Sequential, Linear
+from torch.nn import Linear, Module, ModuleList, Sequential
+from torch_geometric.nn import BatchNorm, GCNConv, GraphConv, LayerNorm, SAGEConv
 from torchvision.models import resnet34
-from torch_geometric.nn import GCNConv, SAGEConv, GraphConv, BatchNorm, LayerNorm
 
 
 class SiameseEncoder(Module):
@@ -71,21 +71,21 @@ class CNNGCN(Module):
         self.node_encoder = SiameseEncoder(diff)
         self.convs = ModuleList()
         self.layer_norms = ModuleList()
-        self.convs.append(GCNConv(self.node_encoder.get_output_shape(), hidden_channels, cached=True))
+        self.convs.append(GCNConv(self.node_encoder.get_output_shape(), hidden_channels, cached=True, normalize=False))
         self.layer_norms.append(LayerNorm(hidden_channels))
         for _ in range(num_layers - 2):
-            self.convs.append(GCNConv(hidden_channels, hidden_channels, cached=True))
+            self.convs.append(GCNConv(hidden_channels, hidden_channels, cached=True, normalize=False))
             self.layer_norms.append(LayerNorm(hidden_channels))
-        self.out = GCNConv(hidden_channels, num_classes, cached=True)
+        self.out = GCNConv(hidden_channels, num_classes, cached=True, normalize=False)
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_weight: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, adj_t) -> torch.Tensor:
         x= self.node_encoder(x)
         for layer_norm, conv in zip(self.layer_norms, self.convs):
-            x = conv(x, edge_index, edge_weight)
+            x = conv(x, adj_t)
             x = layer_norm(x)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout_rate, training=self.training)
-        x = self.out(x, edge_index, edge_weight)
+        x = self.out(x, adj_t)
         return F.log_softmax(x, dim=1)
 
 

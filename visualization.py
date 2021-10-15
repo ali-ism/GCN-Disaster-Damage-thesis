@@ -1,9 +1,10 @@
-import numpy as np
-import pandas as pd
+from typing import Iterable
+
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import plotly.express as px
-from typing import Iterable
 
 
 class CmapString:
@@ -46,9 +47,11 @@ def plot_on_map(labels: pd.DataFrame, mapbox: bool=True) -> None:
 #The following functions are taken from:
 #https://medium.com/analytics-vidhya/xview-2-challenge-part-3-exploring-the-dataset-ec924303b0df
 #################################################################################################
-import json 
+import json
+
 from PIL import Image, ImageDraw
 from shapely import wkt
+
 
 def read_label(label_path):
     with open(label_path) as json_file:

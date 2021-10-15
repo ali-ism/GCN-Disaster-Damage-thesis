@@ -1,16 +1,16 @@
 import os
 from pathlib import Path
+from typing import Callable, List, Tuple
+
 import numpy as np
 import pandas as pd
-import utm
-from typing import List, Callable, Tuple
 import torch
-from torchvision.transforms import ToTensor
-from torch_geometric.transforms import Compose, Delaunay, FaceToEdge
+import utm
 from PIL import Image
-from torch_geometric.data import Data, Dataset, InMemoryDataset
 from sklearn.model_selection import train_test_split
-
+from torch_geometric.data import Data, Dataset, InMemoryDataset
+from torch_geometric.transforms import Compose, Delaunay, FaceToEdge
+from torchvision.transforms import ToTensor
 
 torch.manual_seed(42)
 

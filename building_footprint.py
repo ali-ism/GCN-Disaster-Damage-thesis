@@ -1,14 +1,15 @@
 '''
 Reads the images and labels from the xBD dataset and extracts the buildings.
 '''
-from pathlib import Path
 import json
 import os
 from collections import defaultdict
 from math import ceil
-from shapely import wkt
-import pandas as pd
+from pathlib import Path
+
 import cv2
+import pandas as pd
+from shapely import wkt
 from tqdm import tqdm
 
 subsets = ('datasets/xbd/train/', 'datasets/xbd/tier3/', 'datasets/xbd/hold/', 'datasets/xbd/test/')
