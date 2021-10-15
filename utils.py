@@ -1,15 +1,14 @@
 import os
 from math import sqrt
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch_geometric
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.utils.class_weight import compute_class_weight
 from torch import Tensor
-from torch_geometric.data import Data, HeteroData
+from torch_geometric.data import Data, Dataset
 from torch_geometric.transforms import BaseTransform
 from torch_geometric.utils import sort_edge_index
 from torch_sparse import SparseTensor
@@ -86,7 +85,7 @@ def get_edge_features(node1: torch.Tensor, node2: torch.Tensor, coords1: Tuple[f
     return node_sim.item(), euc_sim
 
 
-def get_class_weights(disasters: List[str], dataset: torch_geometric.data.Dataset, num_classes: int, leaked: bool=False) -> torch.Tensor:
+def get_class_weights(disasters: List[str], dataset: Dataset, num_classes: int, leaked: bool=False) -> torch.Tensor:
     """
         Computes the class weights yo be used in the loss function for mitigating the effect of class imbalance.
 
@@ -112,7 +111,7 @@ def get_class_weights(disasters: List[str], dataset: torch_geometric.data.Datase
         return class_weights
 
 
-def merge_classes(data: torch_geometric.data.Data):
+def merge_classes(data: Data):
     data.y[data.y==3] = 2
     return data
 
@@ -143,7 +142,7 @@ def make_plot(train: np.ndarray, test: np.ndarray, plot_type: str, model_name: s
     plt.close()
 
 
-def stratified_graph_leak(dataset: torch_geometric.data.Dataset, split: float=0.1):
+def stratified_graph_leak(dataset: Dataset, split: float=0.1):
     num_negative = 0
     for data in dataset:
         if not data.y.sum():
@@ -195,7 +194,7 @@ class ToSparseTensor(BaseTransform):
         self.remove_edge_index = remove_edge_index
         self.fill_cache = fill_cache
 
-    def __call__(self, data: Union[Data, HeteroData]):
+    def __call__(self, data: Data):
         for store in data.edge_stores:
             if 'edge_index' not in store:
                 continue
