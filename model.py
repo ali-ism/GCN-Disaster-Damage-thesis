@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from torch import Tensor
+from torch.tensor import Tensor
 from torch.nn import Linear, Module, ModuleList, Sequential
 from torch_geometric.nn import BatchNorm, GCNConv, GraphConv, LayerNorm, SAGEConv
 from torch_sparse import SparseTensor

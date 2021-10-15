@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -96,8 +96,8 @@ class xBDBatch(Dataset):
         root: str,
         data_path: str,
         disaster_name: str,
-        transform=None,
-        pre_transform=None) -> None:
+        transform: Callable=None,
+        pre_transform: Callable=None) -> None:
         
         self.path = data_path
         self.disaster = disaster_name
@@ -195,8 +195,9 @@ class xBDFull(InMemoryDataset):
         root: str, 
         data_path: str,
         disaster_name: str,
-        transform=None,
-        pre_transform=None) -> None:
+        reduced_dataset_size: Union[int,float],
+        transform: Callable=None,
+        pre_transform: Callable=None) -> None:
 
         self.path = data_path
         self.disaster = disaster_name
@@ -214,7 +215,7 @@ class xBDFull(InMemoryDataset):
         self.labels['class_num'] = self.labels['class'].apply(lambda x: label_dict[x])
         
         idx, _ = train_test_split(
-            np.arange(self.labels.shape[0]), train_size=0.8,
+            np.arange(self.labels.shape[0]), train_size=reduced_dataset_size,
             stratify=self.labels['class_num'].values, random_state=42)
         self.labels = self.labels.iloc[idx,:]
 
@@ -288,16 +289,3 @@ class xBDFull(InMemoryDataset):
         
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
-
-
-if __name__ == "__main__":
-
-    train_path = "/home/ami31/scratch/datasets/xbd/train_bldgs/"
-    test_path = "/home/ami31/scratch/datasets/xbd/test_bldgs/"
-    hold_path = "/home/ami31/scratch/datasets/xbd/hold_bldgs/"
-    tier3_path = "/home/ami31/scratch/datasets/xbd/tier3_bldgs/"
-
-    root = "/home/ami31/scratch/datasets/xbd_graph/pinery_full_reduced"
-    if not os.path.isdir(root):
-        os.mkdir(root)
-    xBDFull(root, tier3_path, 'pinery-bushfire')

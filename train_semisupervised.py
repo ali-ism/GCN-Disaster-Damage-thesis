@@ -7,6 +7,7 @@ import torch
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
+from torch.tensor import Tensor
 from torch_geometric.transforms import Compose, GCNNorm, ToSparseTensor
 
 from dataset import xBDFull
@@ -43,7 +44,7 @@ def train() -> Tuple[float]:
 
 
 @torch.no_grad()
-def test(mask) -> Tuple[float]:
+def test(mask: Tensor) -> Tuple[float]:
     model.eval()
     out = model(data.x, data.adj_t)[mask].cpu()
     loss = F.nll_loss(input=out, target=data.y[mask].cpu(), weight=class_weights)
@@ -122,12 +123,12 @@ if __name__ == "__main__":
     else:
         transform = Compose([GCNNorm(), ToSparseTensor()])
 
-    dataset = xBDFull(root, path, disaster, transform=transform)
+    dataset = xBDFull(root, path, disaster, settings_dict['data']['reduced_size'], transform=transform)
 
     data = dataset[0]
 
     train_idx, test_idx = train_test_split(
-        np.arange(data.y.shape[0]), test_size=settings_dict['data']['unlabeled_size'],
+        np.arange(data.y.shape[0]), train_size=settings_dict['data']['labeled_size'],
         stratify=data.y, random_state=42)
     train_mask = torch.zeros(data.y.shape[0]).bool()
     train_mask[train_idx] = True
@@ -211,3 +212,5 @@ if __name__ == "__main__":
     
     print(f'\nBest test AUC {best_test_auc} at epoch {best_epoch}.\n')
     save_results(True)
+    print(f"\nLabeled size: {settings_dict['data']['labeled_size']}")
+    print(f"Reduced dataset size: {settings_dict['data']['reduced_size']}")
