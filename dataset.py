@@ -267,14 +267,14 @@ class xBDFull(InMemoryDataset):
 
         edge_index = data_.edge_index
 
-        edge_attr = torch.empty((edge_index.shape[1],1))
+        edge_attr = torch.empty(edge_index.shape[1])
         for i in range(edge_index.shape[1]):
             node1 = x[edge_index[0,i]]
             node2 = x[edge_index[1,i]]
             s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
             s[s.isnan()] = 1
             s = 1 - torch.sum(s)/node1.shape[0]
-            edge_attr[i,0] = s.item()
+            edge_attr[i] = s.item()
         
         data_.edge_attr = edge_attr
 
