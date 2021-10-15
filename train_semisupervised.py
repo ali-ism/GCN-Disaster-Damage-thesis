@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-from torch_geometric.transforms import Compose, GCNNorm
+from torch_geometric.transforms import Compose, GCNNorm, ToSparseTensor
 
 from dataset import xBDFull
 from model import CNNGCN
@@ -106,9 +106,9 @@ def save_results(hold: bool=False) -> None:
 if __name__ == "__main__":
 
     if settings_dict['data']['merge_classes']:
-        transform = Compose([merge_classes, ToSparseTensor(attr='edge_attr'), GCNNorm()])
+        transform = Compose([merge_classes, ToSparseTensor(), GCNNorm()])
     else:
-        transform = Compose([ToSparseTensor(attr='edge_attr'), GCNNorm()])
+        transform = Compose([ToSparseTensor(), GCNNorm()])
 
     dataset = xBDFull(root, path, disaster, transform=transform)
 
