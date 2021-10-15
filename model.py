@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
+from torch import Tensor
 from torch.nn import Linear, Module, ModuleList, Sequential
 from torch_geometric.nn import BatchNorm, GCNConv, GraphConv, LayerNorm, SAGEConv
-from torch_sparse import SparseTensor
 from torchvision.models import resnet34
 
 
@@ -13,7 +13,7 @@ class SiameseEncoder(Module):
         self.model = resnet34(pretrained=True, progress=False)
         self.model = Sequential(*(list(self.model.children())[:-1]))
     
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor) -> torch.Tensor:
         x = x.reshape((-1, 6, 128, 128))
         x1 = x[:,:3,:,:]
         x2 = x[:,3:,:,:]
@@ -44,7 +44,7 @@ class SiameseNet(Module):
         self.bn2 = BatchNorm(hidden_channels)
         self.out = Linear(hidden_channels, num_classes)
     
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x = self.encoder(x)
         x = self.fc1(x)
         x = self.bn1(x)
@@ -79,14 +79,14 @@ class CNNGCN(Module):
             self.layer_norms.append(LayerNorm(hidden_channels))
         self.out = GCNConv(hidden_channels, num_classes, cached=True)
 
-    def forward(self, x: torch.Tensor, adj_t: SparseTensor) -> torch.Tensor:
+    def forward(self, x: Tensor, edge_index: Tensor, edge_attr: Tensor) -> Tensor:
         x= self.node_encoder(x)
         for layer_norm, conv in zip(self.layer_norms, self.convs):
-            x = conv(x, adj_t)
+            x = conv(x, edge_index, edge_attr)
             x = layer_norm(x)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout_rate, training=self.training)
-        x = self.out(x, adj_t)
+        x = self.out(x, edge_index, edge_attr)
         return F.log_softmax(x, dim=1)
 
 
@@ -111,7 +111,7 @@ class CNNSage(Module):
             self.layer_norms.append(LayerNorm(hidden_channels))
         self.out = SAGEConv(hidden_channels, num_classes)
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
         x= self.node_encoder(x)
         for layer_norm, conv in zip(self.layer_norms, self.convs):
             x = conv(x, edge_index)
@@ -143,7 +143,7 @@ class CNNGraph(Module):
             self.layer_norms.append(LayerNorm(hidden_channels))
         self.out = GraphConv(hidden_channels, num_classes, 'mean')
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor, edge_index: Tensor, edge_attr: Tensor) -> Tensor:
         x= self.node_encoder(x)
         for layer_norm, conv in zip(self.layer_norms, self.convs):
             x = conv(x, edge_index, edge_attr)
