@@ -5,9 +5,9 @@ from typing import Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch_sparse import SparseTensor
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-from torch_geometric.transforms import Compose, ToSparseTensor
 
 from dataset import xBDFull
 from model import CNNGCN
@@ -34,7 +34,7 @@ torch.backends.cudnn.benchmark = False
 def train() -> Tuple[float]:
     model.train()
     optimizer.zero_grad()
-    out = model(data.x, data.adj_t)[train_mask]
+    out = model(data.x, adj.t())[train_mask]
     loss = F.nll_loss(input=out, target=data.y[train_mask], weight=class_weights.to(device))
     loss.backward()
     optimizer.step()
@@ -45,7 +45,7 @@ def train() -> Tuple[float]:
 @torch.no_grad()
 def test(mask) -> Tuple[float]:
     model.eval()
-    out = model(data.x, data.adj_t)[mask].cpu()
+    out = model(data.x, adj.t())[mask].cpu()
     loss = F.nll_loss(input=out, target=data.y[mask].cpu(), weight=class_weights)
     accuracy, f1_macro, f1_weighted, auc = score(data.y[mask].cpu(), out)
     return loss.item(), accuracy, f1_macro, f1_weighted, auc
@@ -106,9 +106,9 @@ def save_results(hold: bool=False) -> None:
 if __name__ == "__main__":
 
     if settings_dict['data']['merge_classes']:
-        transform = Compose([merge_classes, ToSparseTensor()])
+        transform = merge_classes
     else:
-        transform = ToSparseTensor()
+        transform = None
 
     dataset = xBDFull(root, path, disaster, transform=transform)
 
@@ -138,6 +138,10 @@ if __name__ == "__main__":
         torch.save(class_weights, f'weights/class_weights_{disaster}_gcn_{num_classes}.pt')
     
     data = data.to(device)
+    adj = SparseTensor(row=data.edge_index[0], col=data.edge_index[1], value=data.edge_attr)
+    data.edge_index = None
+    data.edge_attr = None
+    data.pos = None
 
     model = CNNGCN(
         settings_dict['model']['hidden_units'],
