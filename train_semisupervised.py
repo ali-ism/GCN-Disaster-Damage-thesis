@@ -106,7 +106,7 @@ def save_results(hold: bool=False) -> None:
 if __name__ == "__main__":
 
     if settings_dict['data']['merge_classes']:
-        transform = Compose([merge_classes(), GCNNorm(), ToSparseTensor(attr='edge_attr')])
+        transform = Compose([merge_classes, GCNNorm(), ToSparseTensor(attr='edge_attr')])
     else:
         transform = Compose([GCNNorm(), ToSparseTensor(attr='edge_attr')])
 
