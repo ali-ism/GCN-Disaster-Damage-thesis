@@ -9,7 +9,6 @@ from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.utils.class_weight import compute_class_weight
 from torch import Tensor
 from torch_geometric.data import Data, Dataset
-from torch_geometric.transforms import BaseTransform
 from torch_geometric.utils import sort_edge_index
 from torch_sparse import SparseTensor
 
@@ -166,7 +165,7 @@ def stratified_graph_leak(dataset: Dataset, split: float=0.1):
     return dataset.index_select(idx), dataset.index_select(~idx)
 
 
-class ToSparseTensor(BaseTransform):
+class ToSparseTensor(object):
     r"""Converts the :obj:`edge_index` attributes of a homogeneous or
     heterogeneous data object into a (transposed)
     :class:`torch_sparse.SparseTensor` type with key :obj:`adj_.t`.
