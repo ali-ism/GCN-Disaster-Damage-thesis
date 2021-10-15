@@ -213,10 +213,10 @@ class xBDFull(InMemoryDataset):
         label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
         self.labels['class_num'] = self.labels['class'].apply(lambda x: label_dict[x])
         
-        #idx, _ = train_test_split(
-        #    np.arange(self.labels.shape[0]), test_size=0.01,
-        #    stratify=self.labels['class_num'].values, random_state=42)
-        #self.labels = self.labels.iloc[idx,:]
+        idx, _ = train_test_split(
+            np.arange(self.labels.shape[0]), test_size=0.3,
+            stratify=self.labels['class_num'].values, random_state=42)
+        self.labels = self.labels.iloc[idx,:]
 
         self.labels['easting'], self.labels['northing'], *_ = utm.from_latlon(
             self.labels['lat'].values, self.labels['long'].values
