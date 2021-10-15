@@ -7,6 +7,7 @@ import torch
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
+from torch_geometric.transforms import Compose, GCNNorm, ToSparseTensor
 
 from dataset import xBDFull
 from model import CNNGCN
@@ -33,7 +34,7 @@ torch.backends.cudnn.benchmark = False
 def train() -> Tuple[float]:
     model.train()
     optimizer.zero_grad()
-    out = model(data.x, data.edge_index, data.edge_attr)[train_mask]
+    out = model(data.x, data.adj_t)[train_mask]
     loss = F.nll_loss(input=out, target=data.y[train_mask], weight=class_weights.to(device))
     loss.backward()
     optimizer.step()
@@ -44,7 +45,7 @@ def train() -> Tuple[float]:
 @torch.no_grad()
 def test(mask) -> Tuple[float]:
     model.eval()
-    out = model(data.x, data.edge_index, data.edge_attr)[mask].cpu()
+    out = model(data.x, data.adj_t)[mask].cpu()
     loss = F.nll_loss(input=out, target=data.y[mask].cpu(), weight=class_weights)
     accuracy, f1_macro, f1_weighted, auc = score(data.y[mask].cpu(), out)
     return loss.item(), accuracy, f1_macro, f1_weighted, auc
@@ -83,6 +84,12 @@ def save_results(hold: bool=False) -> None:
         print(f'Hold macro F1: {hold_scores[2]:.4f}')
         print(f'Hold weighted F1: {hold_scores[3]:.4f}')
         print(f'Hold auc: {hold_scores[4]:.4f}')
+        all_scores = test(torch.ones(data.y.shape[0]).bool())
+        print('\nFull results for last model.')
+        print(f'Full accuracy: {all_scores[1]:.4f}')
+        print(f'Full macro F1: {all_scores[2]:.4f}')
+        print(f'Full weighted F1: {all_scores[3]:.4f}')
+        print(f'Full auc: {all_scores[4]:.4f}')
         print('\n\nTrain results for best model.')
         print(f'Train accuracy: {train_acc[best_epoch-1]:.4f}')
         print(f'Train macro F1: {train_f1_macro[best_epoch-1]:.4f}')
@@ -100,31 +107,38 @@ def save_results(hold: bool=False) -> None:
         print(f'Hold macro F1: {hold_scores[2]:.4f}')
         print(f'Hold weighted F1: {hold_scores[3]:.4f}')
         print(f'Hold auc: {hold_scores[4]:.4f}')
+        all_scores = test(torch.ones(data.y.shape[0]).bool())
+        print('\nFull results for best model.')
+        print(f'Full accuracy: {all_scores[1]:.4f}')
+        print(f'Full macro F1: {all_scores[2]:.4f}')
+        print(f'Full weighted F1: {all_scores[3]:.4f}')
+        print(f'Full auc: {all_scores[4]:.4f}')
 
 
 if __name__ == "__main__":
 
     if settings_dict['data']['merge_classes']:
-        transform = merge_classes
+        transform = Compose([merge_classes, GCNNorm(), ToSparseTensor()])
     else:
-        transform = None
+        transform = Compose([GCNNorm(), ToSparseTensor()])
 
     dataset = xBDFull(root, path, disaster, transform=transform)
 
     data = dataset[0]
 
-    train_idx, test_idx = train_test_split(np.arange(data.y.shape[0]), test_size=0.8, stratify=data.y, random_state=42)
-    train_mask = torch.zeros(data.y.shape[0])
-    train_mask[train_idx] = 1
-    train_mask = train_mask.bool()
+    train_idx, test_idx = train_test_split(
+        np.arange(data.y.shape[0]), test_size=settings_dict['data']['unlabeled_size'],
+        stratify=data.y, random_state=42)
+    train_mask = torch.zeros(data.y.shape[0]).bool()
+    train_mask[train_idx] = True
 
-    test_idx, hold_idx = train_test_split(np.arange(len(test_idx)), test_size=0.2, stratify=data.y[test_idx], random_state=42)
-    test_mask = torch.zeros(data.y.shape[0])
-    test_mask[test_idx] = 1
-    test_mask = test_mask.bool()
-    hold_mask = torch.zeros(data.y.shape[0])
-    hold_mask[hold_idx] = 1
-    hold_mask = hold_mask.bool()
+    test_idx, hold_idx = train_test_split(
+        np.arange(len(test_idx)), test_size=0.2,
+        stratify=data.y[test_idx], random_state=42)
+    test_mask = torch.zeros(data.y.shape[0]).bool()
+    test_mask[test_idx] = True
+    hold_mask = torch.zeros(data.y.shape[0]).bool()
+    hold_mask[hold_idx] = True
 
     num_classes = 3 if settings_dict['data']['merge_classes'] else dataset.num_classes
     

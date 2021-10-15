@@ -214,7 +214,7 @@ class xBDFull(InMemoryDataset):
         self.labels['class_num'] = self.labels['class'].apply(lambda x: label_dict[x])
         
         idx, _ = train_test_split(
-            np.arange(self.labels.shape[0]), test_size=0.4,
+            np.arange(self.labels.shape[0]), train_size=0.8,
             stratify=self.labels['class_num'].values, random_state=42)
         self.labels = self.labels.iloc[idx,:]
 
