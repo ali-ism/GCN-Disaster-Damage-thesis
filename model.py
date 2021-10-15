@@ -72,12 +72,12 @@ class CNNGCN(Module):
         self.node_encoder = SiameseEncoder(diff)
         self.convs = ModuleList()
         self.layer_norms = ModuleList()
-        self.convs.append(GCNConv(self.node_encoder.get_output_shape(), hidden_channels, cached=True, normalize=False))
+        self.convs.append(GCNConv(self.node_encoder.get_output_shape(), hidden_channels, cached=True))
         self.layer_norms.append(LayerNorm(hidden_channels))
         for _ in range(num_layers - 2):
-            self.convs.append(GCNConv(hidden_channels, hidden_channels, cached=True, normalize=False))
+            self.convs.append(GCNConv(hidden_channels, hidden_channels, cached=True))
             self.layer_norms.append(LayerNorm(hidden_channels))
-        self.out = GCNConv(hidden_channels, num_classes, cached=True, normalize=False)
+        self.out = GCNConv(hidden_channels, num_classes, cached=True)
 
     def forward(self, x: torch.Tensor, adj_t: SparseTensor) -> torch.Tensor:
         x= self.node_encoder(x)

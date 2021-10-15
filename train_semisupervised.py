@@ -7,11 +7,11 @@ import torch
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-from torch_geometric.transforms import Compose, GCNNorm, ToSparseTensor
+from torch_geometric.transforms import Compose, ToSparseTensor
 
 from dataset import xBDFull
 from model import CNNGCN
-from utils import ToSparseTensor, make_plot, merge_classes, score
+from utils import make_plot, merge_classes, score
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
@@ -106,9 +106,9 @@ def save_results(hold: bool=False) -> None:
 if __name__ == "__main__":
 
     if settings_dict['data']['merge_classes']:
-        transform = Compose([merge_classes, ToSparseTensor(), GCNNorm()])
+        transform = Compose([merge_classes, ToSparseTensor()])
     else:
-        transform = Compose([ToSparseTensor(), GCNNorm()])
+        transform = ToSparseTensor()
 
     dataset = xBDFull(root, path, disaster, transform=transform)
 
