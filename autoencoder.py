@@ -117,10 +117,11 @@ if __name__ == "__main__":
 
 	labels['class'] = labels['class'].apply(lambda x: label_dict[x])
 
-	idx, _ = train_test_split(
-		np.arange(labels.shape[0]), train_size=settings_dict['data']['reduced_size'],
-		stratify=labels['class_num'].values, random_state=42)
-	labels = labels.iloc[idx,:]
+	if labels.shape[0] > settings_dict['data']['reduced_size']:
+		idx, _ = train_test_split(
+			np.arange(labels.shape[0]), train_size=settings_dict['data']['reduced_size'],
+			stratify=labels['class_num'].values, random_state=42)
+		labels = labels.iloc[idx,:]
 
 	x = []
 	y = []
