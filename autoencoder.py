@@ -7,22 +7,22 @@ from random import randint
 import numpy as np
 import pandas as pd
 from PIL import Image
+from scipy.optimize import linear_sum_assignment
+from sklearn.cluster import KMeans
+from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.cluster import KMeans
 from tensorflow.keras import optimizers
+from tensorflow.keras.callbacks import LearningRateScheduler
 from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.models import Model
-from tensorflow.keras.utils import to_categorical, img_to_array
-from utils import score
+from tensorflow.keras.utils import img_to_array, to_categorical
 
 
-def step_decay(epoch):
+def step_decay(epoch, lr):
 	if epoch < 100:
-		#print "epoch %d learning rate %f" % (epoch, 0.005)
 		return 0.0005
 	else:
-		#print "epoch %d learning rate %f" % (epoch, 0.0001)
 		return 0.0001
 
 
@@ -65,9 +65,10 @@ def learn_SingleReprSS(X_tot, idx_train, y_train):
 	n_hidden2 = randint(n_feat_4, n_feat_2-1)
 		
 	ae, ssae = deepSSAEMulti(n_col, n_hidden1, n_hidden2, n_classes)
+	lr_schedule = LearningRateScheduler(step_decay)
 	for _ in range(200):	
-		ae.fit(X_tot, X_tot, epochs=1, batch_size=16, shuffle=True, verbose=1)
-		ssae.fit(X_train, [X_train, encoded_Y_train], epochs=1, batch_size=8, shuffle=True, verbose=1)			
+		ae.fit(X_tot, X_tot, epochs=1, batch_size=16, shuffle=True, verbose=1, callbacks=[lr_schedule])
+		ssae.fit(X_train, [X_train, encoded_Y_train], epochs=1, batch_size=8, shuffle=True, verbose=1, callbacks=[lr_schedule])			
 	new_train_feat = feature_extraction(ae, X_tot, "low_dim_features")
 	return new_train_feat
 
@@ -84,12 +85,9 @@ def learn_representationSS(X_tot, idx_train, Y_train, ens_size):
 	return intermediate_reprs
 
 
-def clusters_to_classes(labels, clusters):
-	class_map = {}
-	for cluster in np.unique(clusters):
-		class_map[cluster] = np.bincount(labels[clusters == cluster]).argmax()
-	mapper = np.vectorize(lambda x: class_map[x])
-	return mapper(clusters)
+def _make_cost_m(cm):
+		s = np.max(cm)
+		return (- cm + s)
 
 
 if __name__ == "__main__":
@@ -101,7 +99,6 @@ if __name__ == "__main__":
 	model_path = 'weights/' + name
 	disaster = 'pinery-bushfire'
 	path = '/home/ami31/scratch/datasets/xbd/tier3_bldgs/'
-
 
 	labels = pd.read_csv(list(Path(path + disaster).glob('*.csv*'))[0], index_col=0)
 	labels.drop(columns=['xcoord','ycoord', 'long', 'lat'], inplace=True)
@@ -150,10 +147,24 @@ if __name__ == "__main__":
 
 	new_feat_ssae = learn_representationSS(x, train_idx, y_train, 30)
 	clusters = KMeans(n_clusters=len(np.unique(y)), random_state=42).fit_predict(new_feat_ssae)
-	y_pred = clusters_to_classes(y, clusters)
 
-	accuracy, f1_macro, f1_weighted, auc = score(y, y_pred)
-	print(f'\nAccuracy: {accuracy:.4f}')
-	print(f'Macro F1: {f1_macro:.4f}')
-	print(f'Weighted F1: {f1_weighted:.4f}')
-	print(f'Auc: {auc:.4f}')
+	cm = confusion_matrix(y, clusters)
+
+	indexes = linear_sum_assignment(_make_cost_m(cm))
+	js = [e[1] for e in sorted(indexes, key=lambda x: x[0])]
+	cm2 = cm[:, js]
+
+	accuracy = np.trace(cm2) / np.sum(cm2)
+
+	fp = cm2.sum(axis=0) - np.diag(cm2) 
+	fn = cm2.sum(axis=1) - np.diag(cm2)
+	tp = np.diag(cm2)
+	tn = cm2.sum() - (fp + fn + tp)
+	f1 = (2*tp) / (2*tp + fp + fn)
+	f1_macro = np.mean(f1)
+	f1_weighted = (f1 @ cm2.sum(axis=1)) / cm2.sum()
+
+	print('\nFull results.')
+	print(f'accuracy: {accuracy:.4f}')
+	print(f'macro F1: {f1_macro:.4f}')
+	print(f'weighted F1: {f1_weighted:.4f}')
