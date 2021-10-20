@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
     optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
 
-    best_test_auc = best_epoch = 0
+    best_test_f1_macro = best_epoch = 0
 
     if starting_epoch == 1:
         train_loss = np.empty(n_epochs)
@@ -206,15 +206,15 @@ if __name__ == "__main__":
         test_loss[epoch-1], test_acc[epoch-1], test_f1_macro[epoch-1],\
             test_f1_weighted[epoch-1], test_auc[epoch-1] = test(test_mask)
 
-        if test_auc[epoch-1] > best_test_auc:
-            best_test_auc = test_auc[epoch-1]
+        if test_f1_macro[epoch-1] > best_test_f1_macro:
+            best_test_f1_macro = test_f1_macro[epoch-1]
             best_epoch = epoch
-            print(f'New best model saved with AUC {best_test_auc} at epoch {best_epoch}.')
+            print(f'New best model saved with test Macro F1 {best_test_f1_macro} at epoch {best_epoch}.')
             torch.save(model.state_dict(), model_path+'_best.pt')
         
         save_results()
     
-    print(f'\nBest test AUC {best_test_auc} at epoch {best_epoch}.\n')
+    print(f'\nBest test Macro F1 {best_test_f1_macro} at epoch {best_epoch}.\n')
     save_results(True)
     print(f"\nLabeled size: {settings_dict['data']['labeled_size']}")
     print(f"Reduced dataset size: {settings_dict['data']['reduced_size']}")

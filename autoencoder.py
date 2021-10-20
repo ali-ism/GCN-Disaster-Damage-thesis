@@ -1,3 +1,4 @@
+import gc
 import json
 import math
 import os.path as osp
@@ -13,7 +14,8 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras import optimizers
-from tensorflow.keras.callbacks import LearningRateScheduler
+from tensorflow.keras.backend import clear_session
+from tensorflow.keras.callbacks import Callback, LearningRateScheduler
 from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.models import Model
 from tensorflow.keras.preprocessing.image import img_to_array
@@ -57,7 +59,7 @@ def learn_SingleReprSS(X_tot, idx_train, y_train):
 	X_train = X_tot[idx_train]
 	encoded_Y_train = to_categorical(y_train, n_classes)
 	_, n_col = X_tot.shape
-	n_units = round(n_col*1e-2*0.5)
+	n_units = round(n_col*1e-2)
 		
 	n_feat = math.ceil( n_units -1)
 	n_feat_2 = math.ceil( n_units * 0.5)
@@ -68,10 +70,11 @@ def learn_SingleReprSS(X_tot, idx_train, y_train):
 		
 	ae, ssae = deepSSAEMulti(n_col, n_hidden1, n_hidden2, n_classes)
 	lr_schedule = LearningRateScheduler(step_decay)
+	clear_memory = ClearMemory()
 	for epoch in range(200):
 		print(f'Epoch {epoch+1}')	
-		ae.fit(X_tot, X_tot, epochs=1, batch_size=16, shuffle=True, verbose=1, callbacks=[lr_schedule])
-		ssae.fit(X_train, [X_train, encoded_Y_train], epochs=1, batch_size=8, shuffle=True, verbose=1, callbacks=[lr_schedule])			
+		ae.fit(X_tot, X_tot, epochs=1, batch_size=16, shuffle=True, verbose=1, callbacks=[lr_schedule, clear_memory])
+		ssae.fit(X_train, [X_train, encoded_Y_train], epochs=1, batch_size=8, shuffle=True, verbose=1, callbacks=[lr_schedule, clear_memory])			
 	new_train_feat = feature_extraction(ae, X_tot, "low_dim_features")
 	return new_train_feat
 
@@ -91,6 +94,12 @@ def learn_representationSS(X_tot, idx_train, Y_train, ens_size):
 def _make_cost_m(cm):
 	s = np.max(cm)
 	return (- cm + s)
+
+
+class ClearMemory(Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        gc.collect()
+        clear_session()
 
 
 if __name__ == "__main__":
