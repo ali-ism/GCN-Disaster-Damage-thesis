@@ -16,10 +16,11 @@ from tensorflow.keras import optimizers
 from tensorflow.keras.callbacks import LearningRateScheduler
 from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.models import Model
-from tensorflow.keras.utils import img_to_array, to_categorical
+from tensorflow.keras.preprocessing.image import img_to_array
+from tensorflow.keras.utils import to_categorical
 
 
-def step_decay(epoch, lr):
+def step_decay(epoch: int, lr: float):
 	if epoch < 100:
 		return 0.0005
 	else:
