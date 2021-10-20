@@ -7,10 +7,10 @@
         "merge_classes": true,
         "leak": true,
         "reduced_size": 1366,
-        "labeled_size": 0.1
+        "labeled_size": 0.2
     },
     "model": {
-        "name": "pinery_03",
+        "name": "pinery_04",
         "hidden_units": 32,
         "num_layers": 2,
         "lr": 0.0003,

@@ -130,10 +130,11 @@ if __name__ == "__main__":
     
     data = dataset[0]
 
-    nb_per_class = int(settings_dict['data']['labeled_size']*settings_dict['data']['reduced_size'] // num_classes)
+    nb_per_class = int(settings_dict['data']['labeled_size']*data.y.shape[0] // num_classes)
     sampling_strat = {}
+    _, count = torch.unique(data.y, return_counts=True)
     for i in range(num_classes):
-        sampling_strat[i] = nb_per_class
+        sampling_strat[i] = min(nb_per_class, count[i].item())
     rus = RandomUnderSampler(sampling_strategy=sampling_strat, random_state=42)
     train_idx, y_train = rus.fit_resample(np.expand_dims(np.arange(data.y.shape[0]),axis=1), data.y)
     train_idx = np.squeeze(train_idx)
