@@ -7,3 +7,4 @@ thesis.code-workspace
 .ipynb_checkpoints/
 *slurm*
 *.png
+.vscode/

@@ -121,14 +121,14 @@ if __name__ == "__main__":
 	if labels.shape[0] > settings_dict['data']['reduced_size']:
 		idx, _ = train_test_split(
 			np.arange(labels.shape[0]), train_size=settings_dict['data']['reduced_size'],
-			stratify=labels['class_num'].values, random_state=42)
+			stratify=labels['class'].values, random_state=42)
 		labels = labels.iloc[idx,:]
 
 	x = []
 	y = []
 
 	for post_image_file in labels.index.values.tolist():  
-		y.append(labels.loc[post_image_file,'class_num'])
+		y.append(labels.loc[post_image_file,'class'])
 		pre_image = Image.open(osp.join(path, disaster, post_image_file.replace('post', 'pre')))
 		post_image = Image.open(osp.join(path, disaster, post_image_file))
 		pre_image = pre_image.resize((128, 128))
