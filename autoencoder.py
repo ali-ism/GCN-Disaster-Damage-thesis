@@ -57,7 +57,7 @@ def learn_SingleReprSS(X_tot, idx_train, y_train):
 	X_train = X_tot[idx_train]
 	encoded_Y_train = to_categorical(y_train, n_classes)
 	_, n_col = X_tot.shape
-	n_units = round(n_col*1e-2)
+	n_units = round(n_col*1e-3)
 		
 	n_feat = math.ceil( n_units -1)
 	n_feat_2 = math.ceil( n_units * 0.5)
@@ -68,7 +68,8 @@ def learn_SingleReprSS(X_tot, idx_train, y_train):
 		
 	ae, ssae = deepSSAEMulti(n_col, n_hidden1, n_hidden2, n_classes)
 	lr_schedule = LearningRateScheduler(step_decay)
-	for _ in range(200):	
+	for epoch in range(200):
+		print(f'Epoch {epoch}')	
 		ae.fit(X_tot, X_tot, epochs=1, batch_size=16, shuffle=True, verbose=1, callbacks=[lr_schedule])
 		ssae.fit(X_train, [X_train, encoded_Y_train], epochs=1, batch_size=8, shuffle=True, verbose=1, callbacks=[lr_schedule])			
 	new_train_feat = feature_extraction(ae, X_tot, "low_dim_features")
@@ -78,7 +79,7 @@ def learn_SingleReprSS(X_tot, idx_train, y_train):
 def learn_representationSS(X_tot, idx_train, Y_train, ens_size):
 	intermediate_reprs = np.array([])
 	for l in range(ens_size): 
-		print(f'learn representation {l}')
+		print(f'\nLearn representation {l}')
 		embeddings = learn_SingleReprSS(X_tot, idx_train, Y_train)
 		if intermediate_reprs.size == 0:
 			intermediate_reprs = embeddings
