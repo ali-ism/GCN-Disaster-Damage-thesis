@@ -138,7 +138,7 @@ if __name__ == "__main__":
     train_idx, y_train = rus.fit_resample(np.expand_dims(np.arange(data.y.shape[0]),axis=1), data.y)
     train_idx = np.squeeze(train_idx)
     print('\nLabeled sample distribution:')
-    print(torch.unique(y_train, return_counts=True))
+    print(np.unique(y_train, return_counts=True))
     train_mask = torch.zeros(data.y.shape[0]).bool()
     train_mask[train_idx] = True
 
