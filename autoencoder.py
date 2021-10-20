@@ -57,11 +57,11 @@ def learn_SingleReprSS(X_tot, idx_train, y_train):
 	X_train = X_tot[idx_train]
 	encoded_Y_train = to_categorical(y_train, n_classes)
 	_, n_col = X_tot.shape
-	n_col = round(n_col*1e-2)
+	n_units = round(n_col*1e-2)
 		
-	n_feat = math.ceil( n_col -1)
-	n_feat_2 = math.ceil( n_col * 0.5)
-	n_feat_4 = math.ceil( n_col * 0.25)
+	n_feat = math.ceil( n_units -1)
+	n_feat_2 = math.ceil( n_units * 0.5)
+	n_feat_4 = math.ceil( n_units * 0.25)
 	
 	n_hidden1 = randint(n_feat_2, n_feat)
 	n_hidden2 = randint(n_feat_4, n_feat_2-1)
