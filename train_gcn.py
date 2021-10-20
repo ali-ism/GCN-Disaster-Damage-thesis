@@ -130,7 +130,7 @@ if __name__ == "__main__":
     
     data = dataset[0]
 
-    nb_per_class = settings_dict['data']['labeled_size']*settings_dict['data']['reduced_size'] // num_classes
+    nb_per_class = int(settings_dict['data']['labeled_size']*settings_dict['data']['reduced_size'] // num_classes)
     sampling_strat = {}
     for i in range(num_classes):
         sampling_strat[i] = nb_per_class
