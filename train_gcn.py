@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
+from imblearn.under_sampling import RandomUnderSampler
 from sklearn.utils.class_weight import compute_class_weight
 from torch.tensor import Tensor
 from torch_geometric.transforms import Compose, GCNNorm, ToSparseTensor
@@ -124,24 +125,32 @@ if __name__ == "__main__":
         transform = Compose([GCNNorm(), ToSparseTensor()])
 
     dataset = xBDFull(root, path, disaster, settings_dict['data']['reduced_size'], transform=transform)
-
+    
+    num_classes = 3 if settings_dict['data']['merge_classes'] else dataset.num_classes
+    
     data = dataset[0]
 
-    train_idx, test_idx = train_test_split(
-        np.arange(data.y.shape[0]), train_size=settings_dict['data']['labeled_size'],
-        stratify=data.y, random_state=42)
+    nb_per_class = settings_dict['data']['labeled_size']*settings_dict['data']['reduced_size'] // num_classes
+    sampling_strat = {}
+    for i in range(num_classes):
+        sampling_strat[i] = nb_per_class
+    rus = RandomUnderSampler(sampling_strategy=sampling_strat, random_state=42)
+    train_idx, y_train = rus.fit_resample(np.expand_dims(np.arange(data.y.shape[0],1)), data.y)
+    train_idx = np.squeeze(train_idx)
+    print('\nLabeled sample distribution:')
+    print(torch.unique(y_train, return_counts=True))
     train_mask = torch.zeros(data.y.shape[0]).bool()
     train_mask[train_idx] = True
 
     test_idx, hold_idx = train_test_split(
-        np.arange(len(test_idx)), test_size=0.2,
-        stratify=data.y[test_idx], random_state=42)
+        np.delete(np.arange(data.y.shape[0]),train_idx), test_size=0.2,
+        stratify=np.delete(data.y.numpy(),train_idx), random_state=42)
     test_mask = torch.zeros(data.y.shape[0]).bool()
     test_mask[test_idx] = True
     hold_mask = torch.zeros(data.y.shape[0]).bool()
     hold_mask[hold_idx] = True
+    assert train_idx.shape[0] + test_idx.shape[0] + hold_idx.shape[0] == data.y.shape[0]
 
-    num_classes = 3 if settings_dict['data']['merge_classes'] else dataset.num_classes
     
     if os.path.isfile(f'weights/class_weights_{disaster}_gcn_{num_classes}.pt'):
         class_weights = torch.load(f'weights/class_weights_{disaster}_gcn_{num_classes}.pt')
