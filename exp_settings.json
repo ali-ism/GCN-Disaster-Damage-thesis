@@ -7,7 +7,7 @@
         "merge_classes": true,
         "leak": true,
         "reduced_size": 1366,
-        "labeled_size": 0.2
+        "labeled_size": 0.1
     },
     "model": {
         "name": "pinery_03",
