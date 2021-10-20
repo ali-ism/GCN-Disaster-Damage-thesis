@@ -6,7 +6,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
-from imblearn.under_sampling import RandomUnderSampler
 from sklearn.utils.class_weight import compute_class_weight
 from torch.tensor import Tensor
 from torch_geometric.transforms import Compose, GCNNorm, ToSparseTensor
@@ -130,22 +129,17 @@ if __name__ == "__main__":
     
     data = dataset[0]
 
-    nb_per_class = int(settings_dict['data']['labeled_size']*data.y.shape[0] // num_classes)
-    sampling_strat = {}
-    _, count = torch.unique(data.y, return_counts=True)
-    for i in range(num_classes):
-        sampling_strat[i] = min(nb_per_class, count[i].item())
-    rus = RandomUnderSampler(sampling_strategy=sampling_strat, random_state=42)
-    train_idx, y_train = rus.fit_resample(np.expand_dims(np.arange(data.y.shape[0]),axis=1), data.y)
-    train_idx = np.squeeze(train_idx)
-    print('\nLabeled sample distribution:')
-    print(np.unique(y_train, return_counts=True))
+    train_idx, test_idx = train_test_split(
+		np.arange(data.y.shape[0]), train_size=settings_dict['data']['labeled_size'],
+		stratify=data.y, random_state=42)
     train_mask = torch.zeros(data.y.shape[0]).bool()
     train_mask[train_idx] = True
+    print('\nLabeled sample distribution:')
+    print(torch.unique(data.y[train_mask], return_counts=True))
 
     test_idx, hold_idx = train_test_split(
-        np.delete(np.arange(data.y.shape[0]),train_idx), test_size=0.2,
-        stratify=np.delete(data.y.numpy(),train_idx), random_state=42)
+        np.arange(test_idx.shape[0]), test_size=0.2,
+        stratify=data.y[test_idx], random_state=42)
     test_mask = torch.zeros(data.y.shape[0]).bool()
     test_mask[test_idx] = True
     hold_mask = torch.zeros(data.y.shape[0]).bool()

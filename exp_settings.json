@@ -10,7 +10,7 @@
         "labeled_size": 0.2
     },
     "model": {
-        "name": "pinery_04",
+        "name": "pinery_02",
         "hidden_units": 32,
         "num_layers": 2,
         "lr": 0.0003,
