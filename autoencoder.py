@@ -89,8 +89,8 @@ def learn_representationSS(X_tot, idx_train, Y_train, ens_size):
 
 
 def _make_cost_m(cm):
-		s = np.max(cm)
-		return (- cm + s)
+	s = np.max(cm)
+	return (- cm + s)
 
 
 if __name__ == "__main__":
