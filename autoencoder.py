@@ -164,11 +164,9 @@ if __name__ == "__main__":
 	cm = confusion_matrix(y, clusters)
 
 	indexes = linear_sum_assignment(_make_cost_m(cm))
-	js = [e[1] for e in sorted(indexes, key=lambda x: x[0])]
-	cm2 = cm[:, js]
+	cm2 = cm[:, indexes[1]]
 
 	accuracy = np.trace(cm2) / np.sum(cm2)
-
 	fp = cm2.sum(axis=0) - np.diag(cm2) 
 	fn = cm2.sum(axis=1) - np.diag(cm2)
 	tp = np.diag(cm2)
