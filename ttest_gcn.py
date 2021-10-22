@@ -1,5 +1,4 @@
 import json
-import os
 from typing import Tuple
 
 import numpy as np
@@ -44,10 +43,9 @@ def train() -> None:
 def test(mask: Tensor) -> Tuple[float]:
     model.eval()
     out = model(data.x, data.adj_t)[mask].cpu()
-    loss = F.nll_loss(input=out, target=data.y[mask].cpu(), weight=class_weights)
     cm = confusion_matrix(data.y[mask].cpu(), out.argmax(dim=1, keepdims=True))
     accuracy, precision, recall, specificity, f1 = score_cm(cm)
-    return loss.item(), accuracy, precision, recall, specificity, f1
+    return accuracy, precision, recall, specificity, f1
 
 
 if __name__ == "__main__":
@@ -63,6 +61,12 @@ if __name__ == "__main__":
     
     data = dataset[0]
 
+    accuracy = np.empty(100)
+    precision = np.empty(100)
+    recall = np.empty(100)
+    specificity = np.empty(100)
+    f1 = np.empty(100)
+
     for seed in range(100):
 
         #create masks for labeled samples
@@ -74,14 +78,11 @@ if __name__ == "__main__":
         print('\nLabeled sample distribution:')
         print(torch.unique(data.y[train_mask], return_counts=True))
         #split remaining unlabeled samples into test and hold
-        test_idx, hold_idx = train_test_split(
+        test_idx, _ = train_test_split(
             np.arange(test_idx.shape[0]), test_size=0.2,
-            stratify=data.y[test_idx], random_state=seed)
+            stratify=data.y[test_idx], random_state=42)
         test_mask = torch.zeros(data.y.shape[0]).bool()
         test_mask[test_idx] = True
-        hold_mask = torch.zeros(data.y.shape[0]).bool()
-        hold_mask[hold_idx] = True
-        assert train_idx.shape[0] + test_idx.shape[0] + hold_idx.shape[0] == data.y.shape[0]
         
         y_all = data.y.numpy()
         class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all[train_mask])
@@ -99,19 +100,17 @@ if __name__ == "__main__":
 
         optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
 
-        best_test_f1 = best_epoch = 0
-
+        best_test_f1 = 0
         for epoch in range(1, n_epochs+1):
-            
             train()
-
             results = test(test_mask)
-            test_f1 = results[5]
-
+            test_f1 = results[4]
             if test_f1 > best_test_f1:
-                best_test_f1 = test_f1
-                best_epoch = epoch
-                torch.save(model.state_dict(), model_path+'_best.pt')
-    
-    print(f"\nLabeled size: {settings_dict['data']['labeled_size']}")
-    print(f"Reduced dataset size: {settings_dict['data']['reduced_size']}")
+                accuracy[seed], precision[seed], recall[seed],\
+                    specificity[seed], f1[seed] = test(torch.ones(data.y.shape[0]).bool())
+                
+    np.save('results/gcn_acc_ttest.npy', accuracy)
+    np.save('results/gcn_prec_ttest.npy', precision)
+    np.save('results/gcn_rec_ttest.npy', recall)
+    np.save('results/gcn_spec_ttest.npy', specificity)
+    np.save('results/gcn_f1_ttest.npy', f1)
