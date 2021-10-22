@@ -38,7 +38,7 @@ def train() -> Tuple[float]:
     loss = F.nll_loss(input=out, target=data.y[train_mask], weight=class_weights.to(device))
     loss.backward()
     optimizer.step()
-    cm = confusion_matrix(data.y[train_mask].cpu(), out.detach().cpu())
+    cm = confusion_matrix(data.y[train_mask].cpu(), out.detach().cpu().argmax(dim=1, keepdims=True))
     accuracy, precision, recall, specificity, f1 = score_cm(cm)
     return loss.detach().cpu().item(), accuracy, precision, recall, specificity, f1
 
@@ -48,7 +48,7 @@ def test(mask: Tensor) -> Tuple[float]:
     model.eval()
     out = model(data.x, data.adj_t)[mask].cpu()
     loss = F.nll_loss(input=out, target=data.y[mask].cpu(), weight=class_weights)
-    cm = confusion_matrix(data.y[mask].cpu(), out)
+    cm = confusion_matrix(data.y[mask].cpu(), out.argmax(dim=1, keepdims=True))
     accuracy, precision, recall, specificity, f1 = score_cm(cm)
     return loss.item(), accuracy, precision, recall, specificity, f1
 
