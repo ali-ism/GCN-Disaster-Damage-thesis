@@ -24,7 +24,7 @@ with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
 batch_size = settings_dict['data']['batch_size']
-name = settings_dict['model']['name'] + '_SiameseClf'
+name = settings_dict['model']['name'] + '_siamese'
 model_path = 'weights/' + name
 train_disasters = settings_dict['data']['train_disasters']
 train_paths = settings_dict['data']['train_paths']

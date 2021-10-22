@@ -21,6 +21,8 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.utils import to_categorical
 
+from utils import score_cm
+
 
 def step_decay(epoch: int, lr: float):
 	if epoch < 100:
@@ -73,8 +75,8 @@ def learn_SingleReprSS(X_tot, idx_train, y_train):
 	clear_memory = ClearMemory()
 	for epoch in range(200):
 		print(f'Epoch {epoch+1}')	
-		ae.fit(X_tot, X_tot, epochs=1, batch_size=16, shuffle=True, verbose=1, callbacks=[lr_schedule, clear_memory])
-		ssae.fit(X_train, [X_train, encoded_Y_train], epochs=1, batch_size=8, shuffle=True, verbose=1, callbacks=[lr_schedule, clear_memory])			
+		ae.fit(X_tot, X_tot, epochs=1, batch_size=16, shuffle=True, verbose=0, callbacks=[lr_schedule, clear_memory])
+		ssae.fit(X_train, [X_train, encoded_Y_train], epochs=1, batch_size=8, shuffle=True, verbose=0, callbacks=[lr_schedule, clear_memory])			
 	new_train_feat = feature_extraction(ae, X_tot, "low_dim_features")
 	return new_train_feat
 
@@ -128,7 +130,8 @@ if __name__ == "__main__":
 		label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
 
 	labels['class'] = labels['class'].apply(lambda x: label_dict[x])
-
+	
+	#sample dataset so it fits in memory
 	if labels.shape[0] > settings_dict['data']['reduced_size']:
 		idx, _ = train_test_split(
 			np.arange(labels.shape[0]), train_size=settings_dict['data']['reduced_size'],
@@ -153,7 +156,8 @@ if __name__ == "__main__":
 	x = MinMaxScaler().fit_transform(x)
 
 	y = np.array(y)
-	train_idx, test_idx = train_test_split(
+	#select labeled samples
+	train_idx, _ = train_test_split(
 		np.arange(y.shape[0]), train_size=settings_dict['data']['labeled_size'],
 		stratify=y, random_state=42)
 	y_train = y[train_idx]
@@ -162,20 +166,13 @@ if __name__ == "__main__":
 	clusters = KMeans(n_clusters=len(np.unique(y)), random_state=42).fit_predict(new_feat_ssae)
 
 	cm = confusion_matrix(y, clusters)
-
 	indexes = linear_sum_assignment(_make_cost_m(cm))
 	cm2 = cm[:, indexes[1]]
 
-	accuracy = np.trace(cm2) / np.sum(cm2)
-	fp = cm2.sum(axis=0) - np.diag(cm2) 
-	fn = cm2.sum(axis=1) - np.diag(cm2)
-	tp = np.diag(cm2)
-	tn = cm2.sum() - (fp + fn + tp)
-	f1 = (2*tp) / (2*tp + fp + fn)
-	f1_macro = np.mean(f1)
-	f1_weighted = (f1 @ cm2.sum(axis=1)) / cm2.sum()
-
+	accuracy, precision, recall, specificity, f1 = score_cm(cm2)
 	print('\nFull results.')
 	print(f'accuracy: {accuracy:.4f}')
-	print(f'macro F1: {f1_macro:.4f}')
-	print(f'weighted F1: {f1_weighted:.4f}')
+	print(f'precision: {precision:.4f}')
+	print(f'recall: {recall:.4f}')
+	print(f'specificity: {specificity:.4f}')
+	print(f'f1: {f1:.4f}')

@@ -16,7 +16,7 @@ with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
 batch_size = settings_dict['data']['batch_size']
-name = settings_dict['model']['name']
+name = settings_dict['model']['name'] + '_sage'
 model_path = 'weights/' + name
 train_disasters = settings_dict['data']['train_disasters']
 train_paths = settings_dict['data']['train_paths']
@@ -243,7 +243,6 @@ if __name__ == "__main__":
 
         test_loss[epoch-1], test_acc[epoch-1], test_f1_macro[epoch-1],\
             test_f1_weighted[epoch-1], test_auc[epoch-1] = test(test_dataset)
-        #scheduler.step(test_loss[epoch-1])
 
         if test_auc[epoch-1] > best_test_auc:
             best_test_auc = test_auc[epoch-1]
