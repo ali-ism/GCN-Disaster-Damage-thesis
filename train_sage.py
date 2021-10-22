@@ -1,16 +1,18 @@
 import json
-from typing import Tuple
+import os
+from typing import List, Tuple
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+from sklearn.utils.class_weight import compute_class_weight
 from torch.utils.data import ConcatDataset
-from torch_geometric.data import DataLoader, RandomNodeSampler
+from torch_geometric.data import DataLoader, Dataset, RandomNodeSampler
 from tqdm import tqdm
 
 from dataset import xBDBatch
 from model import CNNSage
-from utils import get_class_weights, make_plot, merge_classes, score, stratified_graph_leak
+from utils import make_plot, merge_classes, score
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
@@ -161,6 +163,56 @@ def save_results(hold: bool=False) -> None:
         print(f'Hold macro F1: {hold_scores[2]:.4f}')
         print(f'Hold weighted F1: {hold_scores[3]:.4f}')
         print(f'Hold auc: {hold_scores[4]:.4f}')
+
+
+def get_class_weights(disasters: List[str], dataset: Dataset, num_classes: int, leaked: bool=False) -> torch.Tensor:
+    """
+        Computes the class weights yo be used in the loss function for mitigating the effect of class imbalance.
+
+        Args:
+            disasters (List[str]): names of the included datasets.
+            dataset (torch_geometric.data.Dataset): PyG dataset instance.
+            num_classes (int): number of classes in the dataset.
+        
+        Returns:
+            class_weights (Tensor): class weights tensor of shape (n_classes).
+    """
+    name = '_'.join(text.replace('-', '_') for text in disasters)
+    if leaked:
+        name = name + '_leaked'
+    if os.path.isfile(f'weights/class_weights_{name}_{num_classes}.pt'):
+        return torch.load(f'weights/class_weights_{name}_{num_classes}.pt')
+    else:
+        y_all = [data.y for data in dataset]
+        y_all = torch.cat(y_all).numpy()
+        class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all)
+        class_weights = torch.Tensor(class_weights)
+        torch.save(class_weights, f'weights/class_weights_{name}_{num_classes}.pt')
+        return class_weights
+
+
+def stratified_graph_leak(dataset: Dataset, split: float=0.1):
+    num_negative = 0
+    for data in dataset:
+        if not data.y.sum():
+            num_negative += 1
+    
+    size_split = round(split * len(dataset))
+    num_negative_split = round(num_negative/len(dataset) * size_split)
+    num_positive_split = size_split - num_negative_split
+    idx = torch.empty(len(dataset), dtype=bool)
+
+    for i, data in enumerate(dataset):
+        if data.y.sum() and num_positive_split > 0:
+            idx[i] = True
+            num_positive_split -= 1
+        elif not data.y.sum() and num_negative_split > 0:
+            idx[i] = True
+            num_negative_split -= 1
+        else:
+            idx[i] = False
+    
+    return dataset.index_select(idx), dataset.index_select(~idx)
 
 
 if __name__ == "__main__":
