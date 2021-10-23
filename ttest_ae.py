@@ -10,7 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 import tensorflow
 from tensorflow.keras.preprocessing.image import img_to_array
 
-from autoencoder import learn_representationSS, cluster_embeddings
+from train_autoencoder import learn_representationSS, cluster_embeddings
 
 tensorflow.random.set_seed(42)
 
@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     name = settings_dict['model']['name'] + '_ssae'
     model_path = 'weights/' + name
-    disaster = 'pinery-bushfire'
+    disaster = settings_dict['data_ss']['disaster']
     path = '/home/ami31/scratch/datasets/xbd/tier3_bldgs/'
 
     labels = pd.read_csv(list(Path(path + disaster).glob('*.csv*'))[0], index_col=0)
@@ -75,26 +75,24 @@ if __name__ == "__main__":
     specificity = np.empty(100)
     f1 = np.empty(100)
 
-    for seed in range(100):
-        #split into train and test
-        train_idx, test_idx = train_test_split(
-            np.arange(y.shape[0]), test_size=0.4,
-            stratify=y, random_state=seed
-        )
-        #split test into test and hold
-        test_idx, hold_idx = train_test_split(
-            np.arange(test_idx.shape[0]), test_size=0.5,
-            stratify=y[test_idx], random_state=seed
-        )
-        #select labeled samples
-        labeled_idx, _ = train_test_split(
-            np.arange(train_idx.shape[0]), train_size=settings_dict['data_ss']['labeled_size'],
-            stratify=y[train_idx], random_state=seed
-        )
-        y_labeled = y[labeled_idx]
+    #extract hold set
+    idx, hold_idx = train_test_split(
+        np.arange(y.shape[0]), test_size=0.5,
+        stratify=y, random_state=42
+    )
 
-        embeddings = learn_representationSS(x, train_idx, labeled_idx, y_labeled, 30, verbose=False)
-        accuracy[seed], precision[seed], recall[seed], specificity[seed], f1[seed] = cluster_embeddings(embeddings)
+    n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * y.shape[0])
+
+    for seed in range(100):
+        #select labeled samples
+        train_idx, _ = train_test_split(
+            np.arange(idx.shape[0]), train_size=n_labeled_samples,
+            stratify=y[idx], random_state=seed
+        )
+        y_train = y[train_idx]
+
+        embeddings = learn_representationSS(x, y_train, 30, verbose=False)
+        accuracy[seed], precision[seed], recall[seed], specificity[seed], f1[seed] = cluster_embeddings(embeddings[hold_idx], y[hold_idx])
     
     np.save('results/ae_acc_ttest.npy', accuracy)
     np.save('results/ae_prec_ttest.npy', precision)

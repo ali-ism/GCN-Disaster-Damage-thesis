@@ -64,12 +64,11 @@ def feature_extraction(model, data, layer_name):
 	return feat_extr.predict(data)
 
 
-def learn_SingleReprSS(X_tot, train_idx, labeled_idx, y_labeled, verbose=True):
-	n_classes = len(np.unique(y_labeled))
-	labeled_idx = labeled_idx.astype("int")
+def learn_SingleReprSS(X_tot, train_idx, y_train, verbose=True):
+	n_classes = len(np.unique(y))
+	train_idx = train_idx.astype("int")
 	X_train = X_tot[train_idx]
-	X_labeled = X_tot[labeled_idx]
-	encoded_Y_labeled = to_categorical(y_labeled, n_classes)
+	encoded_Y_train = to_categorical(y_train, n_classes)
 	n_col = X_tot.shape[1]
 	n_units = round(n_col*1e-2)
 		
@@ -86,18 +85,18 @@ def learn_SingleReprSS(X_tot, train_idx, labeled_idx, y_labeled, verbose=True):
 	for epoch in range(200):
 		if verbose:
 			print(f'Epoch {epoch+1}')	
-		ae.fit(X_train, X_train, epochs=1, batch_size=16, shuffle=True, verbose=0, callbacks=[lr_schedule, clear_memory])
-		ssae.fit(X_labeled, [X_labeled, encoded_Y_labeled], epochs=1, batch_size=8, shuffle=True, verbose=0, callbacks=[lr_schedule, clear_memory])			
+		ae.fit(X_tot, X_tot, epochs=1, batch_size=16, shuffle=True, verbose=0, callbacks=[lr_schedule, clear_memory])
+		ssae.fit(X_train, [X_train, encoded_Y_train], epochs=1, batch_size=8, shuffle=True, verbose=0, callbacks=[lr_schedule, clear_memory])			
 	new_train_feat = feature_extraction(ae, X_tot, "low_dim_features")
 	return new_train_feat
 
 
-def learn_representationSS(X_tot, train_idx, labeled_idx, Y_labeled, ens_size, verbose=True):
+def learn_representationSS(X_tot, train_idx, y_train, ens_size, verbose=True):
 	intermediate_reprs = np.array([])
 	for l in range(ens_size):
 		if verbose:
 			print(f'\nLearn representation {l+1}')
-		embeddings = learn_SingleReprSS(X_tot, train_idx, labeled_idx, Y_labeled, verbose)
+		embeddings = learn_SingleReprSS(X_tot, train_idx, y_train, verbose)
 		if intermediate_reprs.size == 0:
 			intermediate_reprs = embeddings
 		else:
@@ -110,9 +109,9 @@ def _make_cost_m(cm):
 	return (- cm + s)
 
 
-def cluster_embeddings(embeddings):
+def cluster_embeddings(embeddings, y_pred):
 	clusters = KMeans(n_clusters=len(np.unique(y)), random_state=42).fit_predict(embeddings)
-	cm = confusion_matrix(y, clusters)
+	cm = confusion_matrix(y_pred, clusters)
 	indexes = linear_sum_assignment(_make_cost_m(cm))
 	cm2 = cm[:, indexes[1]]
 	accuracy, precision, recall, specificity, f1 = score_cm(cm2)
@@ -126,7 +125,7 @@ if __name__ == "__main__":
 
 	name = settings_dict['model']['name'] + '_ssae'
 	model_path = 'weights/' + name
-	disaster = 'pinery-bushfire'
+	disaster = settings_dict['data_ss']['disaster']
 	path = '/home/ami31/scratch/datasets/xbd/tier3_bldgs/'
 
 	labels = pd.read_csv(list(Path(path + disaster).glob('*.csv*'))[0], index_col=0)
@@ -171,29 +170,28 @@ if __name__ == "__main__":
 	x = MinMaxScaler().fit_transform(x)
 
 	y = np.array(y)
-	#split into train and test
-	train_idx, test_idx = train_test_split(
-		np.arange(y.shape[0]), test_size=0.4,
+	#extract hold set
+	idx, hold_idx = train_test_split(
+		np.arange(y.shape[0]), test_size=0.5,
 		stratify=y, random_state=42
 	)
-	#split test into test and hold
-	test_idx, hold_idx = train_test_split(
-		np.arange(test_idx.shape[0]), test_size=0.5,
-		stratify=y[test_idx], random_state=42
-	)
+	n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * y.shape[0])
 	#select labeled samples
-	labeled_idx, _ = train_test_split(
-		np.arange(train_idx.shape[0]), train_size=settings_dict['data_ss']['labeled_size'],
-		stratify=y[train_idx], random_state=42
+	train_idx, test_idx = train_test_split(
+		np.arange(idx.shape[0]), train_size=n_labeled_samples,
+		stratify=y[idx], random_state=42
 	)
-	y_labeled = y[labeled_idx]
+	print(f'Number of labeled samples: {train_idx.shape[0]}')
+	print(f'Number of test samples: {test_idx.shape[0]}')
+	print(f'Number of hold samples: {hold_idx.shape[0]}')
+	y_train = y[train_idx]
 
-	embeddings = learn_representationSS(x, train_idx, labeled_idx, y_labeled, 30)
+	embeddings = learn_representationSS(x, train_idx, y_train, 30)
 
-	train_acc, train_prec, train_rec, train_spec, train_f1 = cluster_embeddings(embeddings[train_idx])
-	test_acc, test_prec, test_rec, test_spec, test_f1 = cluster_embeddings(embeddings[test_idx])
-	hold_acc, hold_prec, hold_rec, hold_spec, hold_f1 = cluster_embeddings(embeddings[hold_idx])
-	full_acc, full_prec, full_rec, full_spec, full_f1 = cluster_embeddings(embeddings)
+	train_acc, train_prec, train_rec, train_spec, train_f1 = cluster_embeddings(embeddings[train_idx], y_train)
+	test_acc, test_prec, test_rec, test_spec, test_f1 = cluster_embeddings(embeddings[test_idx], y[test_idx])
+	hold_acc, hold_prec, hold_rec, hold_spec, hold_f1 = cluster_embeddings(embeddings[hold_idx], y[hold_idx])
+	full_acc, full_prec, full_rec, full_spec, full_f1 = cluster_embeddings(embeddings, y)
 
 	print(f'\nTrain accuracy: {train_acc:.4f}')
 	print(f'Train precision: {train_prec:.4f}')

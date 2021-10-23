@@ -19,9 +19,9 @@ with open('exp_settings.json', 'r') as JSON:
 
 name = settings_dict['model']['name'] + '_gcn'
 model_path = 'weights/' + name
-disaster = 'pinery-bushfire'
+disaster = settings_dict['data_ss']['disaster']
 path = '/home/ami31/scratch/datasets/xbd/tier3_bldgs/'
-root = '/home/ami31/scratch/datasets/xbd_graph/pinery_full_reduced'
+root = settings_dict['data_ss']['root']
 n_epochs = settings_dict['epochs']
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -33,8 +33,8 @@ torch.backends.cudnn.benchmark = False
 def train() -> None:
     model.train()
     optimizer.zero_grad()
-    out = model(data.x, data.adj_t)[labeled_idx]
-    loss = F.nll_loss(input=out, target=data.y[labeled_idx], weight=class_weights.to(device))
+    out = model(data.x, data.adj_t)[train_idx]
+    loss = F.nll_loss(input=out, target=data.y[train_idx], weight=class_weights.to(device))
     loss.backward()
     optimizer.step()
 
@@ -67,24 +67,22 @@ if __name__ == "__main__":
     specificity = np.empty(100)
     f1 = np.empty(100)
 
+    #extract hold set
+    idx, hold_idx = train_test_split(
+        np.arange(data.y.shape[0]), test_size=0.5,
+        stratify=data.y, random_state=42
+    )
+
+    n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * data.y.shape[0])
+
     for seed in range(100):
 
         data = data.cpu()
 
-        #split into train and test
-        train_idx, test_idx = train_test_split(
-            np.arange(data.y.shape[0]), test_size=0.4,
-            stratify=data.y, random_state=seed
-        )
-        #split test into test and hold
-        test_idx, hold_idx = train_test_split(
-            np.arange(test_idx.shape[0]), test_size=0.5,
-            stratify=data.y[test_idx], random_state=seed
-        )
         #select labeled samples
-        labeled_idx, _ = train_test_split(
-            np.arange(train_idx.shape[0]), train_size=settings_dict['data_ss']['labeled_size'],
-            stratify=data.y[train_idx], random_state=seed
+        train_idx, test_idx = train_test_split(
+            np.arange(idx.shape[0]), train_size=n_labeled_samples,
+            stratify=data.y[idx], random_state=seed
         )
 
         class_weights = compute_class_weight(
@@ -109,11 +107,10 @@ if __name__ == "__main__":
         best_test_f1 = 0
         for epoch in range(1, n_epochs+1):
             train()
-            results = test(test_idx)
-            test_f1 = results[4]
+            test_f1 = test(test_idx)[4]
             if test_f1 > best_test_f1:
                 accuracy[seed], precision[seed], recall[seed],\
-                    specificity[seed], f1[seed] = test(torch.ones(data.y.shape[0]).bool())
+                    specificity[seed], f1[seed] = test(hold_idx)
                 
     np.save('results/gcn_acc_ttest.npy', accuracy)
     np.save('results/gcn_prec_ttest.npy', precision)

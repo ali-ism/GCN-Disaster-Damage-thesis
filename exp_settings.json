@@ -7,6 +7,8 @@
         "leak": true
     },
     "data_ss": {
+        "disaster": "pinery-bushfire",
+        "root": "/home/ami31/scratch/datasets/xbd_graph/pinery_full_reduced",
         "reduced_size": 1366,
         "labeled_size": 0.2
     },

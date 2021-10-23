@@ -19,9 +19,9 @@ with open('exp_settings.json', 'r') as JSON:
 
 name = settings_dict['model']['name'] + '_gcn'
 model_path = 'weights/' + name
-disaster = 'pinery-bushfire'
+disaster = settings_dict['data_ss']['disaster']
 path = '/home/ami31/scratch/datasets/xbd/tier3_bldgs/'
-root = '/home/ami31/scratch/datasets/xbd_graph/pinery_full_reduced'
+root = settings_dict['data_ss']['root']
 n_epochs = settings_dict['epochs']
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -33,11 +33,11 @@ torch.backends.cudnn.benchmark = False
 def train() -> Tuple[float]:
     model.train()
     optimizer.zero_grad()
-    out = model(data.x, data.adj_t)[labeled_idx]
-    loss = F.nll_loss(input=out, target=data.y[labeled_idx], weight=class_weights.to(device))
+    out = model(data.x, data.adj_t)[train_idx]
+    loss = F.nll_loss(input=out, target=data.y[train_idx], weight=class_weights.to(device))
     loss.backward()
     optimizer.step()
-    cm = confusion_matrix(data.y[labeled_idx].cpu(), out.detach().cpu().argmax(dim=1, keepdims=True))
+    cm = confusion_matrix(data.y[train_idx].cpu(), out.detach().cpu().argmax(dim=1, keepdims=True))
     accuracy, precision, recall, specificity, f1 = score_cm(cm)
     return loss.detach().cpu().item(), accuracy, precision, recall, specificity, f1
 
@@ -124,21 +124,21 @@ if __name__ == "__main__":
 
     data = dataset[0]
 
-    #split into train and test
-    train_idx, test_idx = train_test_split(
-        np.arange(data.y.shape[0]), test_size=0.4,
+    #extract hold set
+    idx, hold_idx = train_test_split(
+        np.arange(data.y.shape[0]), test_size=0.5,
         stratify=data.y, random_state=42
     )
-    #split test into test and hold
-    test_idx, hold_idx = train_test_split(
-        np.arange(test_idx.shape[0]), test_size=0.5,
-        stratify=data.y[test_idx], random_state=42
-    )
+    n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * data.y.shape[0])
     #select labeled samples
-    labeled_idx, _ = train_test_split(
-        np.arange(train_idx.shape[0]), train_size=settings_dict['data_ss']['labeled_size'],
-        stratify=data.y[train_idx], random_state=42
+    train_idx, test_idx = train_test_split(
+        np.arange(idx.shape[0]), train_size=n_labeled_samples,
+        stratify=data.y[idx], random_state=42
     )
+
+    print(f'Number of labeled samples: {train_idx.shape[0]}')
+    print(f'Number of test samples: {test_idx.shape[0]}')
+    print(f'Number of hold samples: {hold_idx.shape[0]}')
 
     class_weights = compute_class_weight(
         class_weight='balanced',
