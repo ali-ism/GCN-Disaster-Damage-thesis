@@ -7,6 +7,7 @@ from random import randint
 
 import numpy as np
 import pandas as pd
+import tensorflow
 from PIL import Image
 from scipy.optimize import linear_sum_assignment
 from sklearn.cluster import KMeans
@@ -23,12 +24,20 @@ from tensorflow.keras.utils import to_categorical
 
 from utils import score_cm
 
+tensorflow.random.set_seed(42)
+
 
 def step_decay(epoch: int, lr: float):
 	if epoch < 100:
 		return 0.0005
 	else:
 		return 0.0001
+
+
+class ClearMemory(Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        gc.collect()
+        clear_session()
 
 
 def deepSSAEMulti(n_dim, n_hidden1, n_hidden2, n_classes):
@@ -55,12 +64,13 @@ def feature_extraction(model, data, layer_name):
 	return feat_extr.predict(data)
 
 
-def learn_SingleReprSS(X_tot, idx_train, y_train):
-	n_classes = len(np.unique(y_train))
-	idx_train = idx_train.astype("int")
-	X_train = X_tot[idx_train]
-	encoded_Y_train = to_categorical(y_train, n_classes)
-	_, n_col = X_tot.shape
+def learn_SingleReprSS(X_tot, train_idx, labeled_idx, y_labeled, verbose=True):
+	n_classes = len(np.unique(y_labeled))
+	labeled_idx = labeled_idx.astype("int")
+	X_train = X_tot[train_idx]
+	X_labeled = X_tot[labeled_idx]
+	encoded_Y_labeled = to_categorical(y_labeled, n_classes)
+	n_col = X_tot.shape[1]
 	n_units = round(n_col*1e-2)
 		
 	n_feat = math.ceil( n_units -1)
@@ -74,18 +84,20 @@ def learn_SingleReprSS(X_tot, idx_train, y_train):
 	lr_schedule = LearningRateScheduler(step_decay)
 	clear_memory = ClearMemory()
 	for epoch in range(200):
-		print(f'Epoch {epoch+1}')	
-		ae.fit(X_tot, X_tot, epochs=1, batch_size=16, shuffle=True, verbose=0, callbacks=[lr_schedule, clear_memory])
-		ssae.fit(X_train, [X_train, encoded_Y_train], epochs=1, batch_size=8, shuffle=True, verbose=0, callbacks=[lr_schedule, clear_memory])			
+		if verbose:
+			print(f'Epoch {epoch+1}')	
+		ae.fit(X_train, X_train, epochs=1, batch_size=16, shuffle=True, verbose=0, callbacks=[lr_schedule, clear_memory])
+		ssae.fit(X_labeled, [X_labeled, encoded_Y_labeled], epochs=1, batch_size=8, shuffle=True, verbose=0, callbacks=[lr_schedule, clear_memory])			
 	new_train_feat = feature_extraction(ae, X_tot, "low_dim_features")
 	return new_train_feat
 
 
-def learn_representationSS(X_tot, idx_train, Y_train, ens_size):
+def learn_representationSS(X_tot, train_idx, labeled_idx, Y_labeled, ens_size, verbose=True):
 	intermediate_reprs = np.array([])
-	for l in range(ens_size): 
-		print(f'\nLearn representation {l+1}')
-		embeddings = learn_SingleReprSS(X_tot, idx_train, Y_train)
+	for l in range(ens_size):
+		if verbose:
+			print(f'\nLearn representation {l+1}')
+		embeddings = learn_SingleReprSS(X_tot, train_idx, labeled_idx, Y_labeled, verbose)
 		if intermediate_reprs.size == 0:
 			intermediate_reprs = embeddings
 		else:
@@ -98,10 +110,13 @@ def _make_cost_m(cm):
 	return (- cm + s)
 
 
-class ClearMemory(Callback):
-    def on_epoch_end(self, epoch, logs=None):
-        gc.collect()
-        clear_session()
+def cluster_embeddings(embeddings):
+	clusters = KMeans(n_clusters=len(np.unique(y)), random_state=42).fit_predict(embeddings)
+	cm = confusion_matrix(y, clusters)
+	indexes = linear_sum_assignment(_make_cost_m(cm))
+	cm2 = cm[:, indexes[1]]
+	accuracy, precision, recall, specificity, f1 = score_cm(cm2)
+	return accuracy, precision, recall, specificity, f1
 
 
 if __name__ == "__main__":
@@ -124,17 +139,17 @@ if __name__ == "__main__":
 		if (labels[labels['zone'] == zone]['class'] == 'no-damage').all():
 			labels.drop(index=labels.loc[labels['zone']==zone].index, inplace=True)
 
-	if settings_dict['data']['merge_classes']:
+	if settings_dict['merge_classes']:
 		label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':2}
 	else:
 		label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
 
 	labels['class'] = labels['class'].apply(lambda x: label_dict[x])
-	
+
 	#sample dataset so it fits in memory
-	if labels.shape[0] > settings_dict['data']['reduced_size']:
+	if labels.shape[0] > settings_dict['data_ss']['reduced_size']:
 		idx, _ = train_test_split(
-			np.arange(labels.shape[0]), train_size=settings_dict['data']['reduced_size'],
+			np.arange(labels.shape[0]), train_size=settings_dict['data_ss']['reduced_size'],
 			stratify=labels['class'].values, random_state=42)
 		labels = labels.iloc[idx,:]
 
@@ -156,23 +171,50 @@ if __name__ == "__main__":
 	x = MinMaxScaler().fit_transform(x)
 
 	y = np.array(y)
+	#split into train and test
+	train_idx, test_idx = train_test_split(
+		np.arange(y.shape[0]), test_size=0.4,
+		stratify=y, random_state=42
+	)
+	#split test into test and hold
+	test_idx, hold_idx = train_test_split(
+		np.arange(test_idx.shape[0]), test_size=0.5,
+		stratify=y[test_idx], random_state=42
+	)
 	#select labeled samples
-	train_idx, _ = train_test_split(
-		np.arange(y.shape[0]), train_size=settings_dict['data']['labeled_size'],
-		stratify=y, random_state=42)
-	y_train = y[train_idx]
+	labeled_idx, _ = train_test_split(
+		np.arange(train_idx.shape[0]), train_size=settings_dict['data_ss']['labeled_size'],
+		stratify=y[train_idx], random_state=42
+	)
+	y_labeled = y[labeled_idx]
 
-	new_feat_ssae = learn_representationSS(x, train_idx, y_train, 30)
-	clusters = KMeans(n_clusters=len(np.unique(y)), random_state=42).fit_predict(new_feat_ssae)
+	embeddings = learn_representationSS(x, train_idx, labeled_idx, y_labeled, 30)
 
-	cm = confusion_matrix(y, clusters)
-	indexes = linear_sum_assignment(_make_cost_m(cm))
-	cm2 = cm[:, indexes[1]]
+	train_acc, train_prec, train_rec, train_spec, train_f1 = cluster_embeddings(embeddings[train_idx])
+	test_acc, test_prec, test_rec, test_spec, test_f1 = cluster_embeddings(embeddings[test_idx])
+	hold_acc, hold_prec, hold_rec, hold_spec, hold_f1 = cluster_embeddings(embeddings[hold_idx])
+	full_acc, full_prec, full_rec, full_spec, full_f1 = cluster_embeddings(embeddings)
 
-	accuracy, precision, recall, specificity, f1 = score_cm(cm2)
-	print('\nFull results.')
-	print(f'accuracy: {accuracy:.4f}')
-	print(f'precision: {precision:.4f}')
-	print(f'recall: {recall:.4f}')
-	print(f'specificity: {specificity:.4f}')
-	print(f'f1: {f1:.4f}')
+	print(f'\nTrain accuracy: {train_acc:.4f}')
+	print(f'Train precision: {train_prec:.4f}')
+	print(f'Train recall: {train_rec:.4f}')
+	print(f'Train specificity: {train_spec:.4f}')
+	print(f'Train f1: {train_f1:.4f}')
+	print(f'\nTest accuracy: {test_acc:.4f}')
+	print(f'Test precision: {test_prec:.4f}')
+	print(f'Test recall: {test_rec:.4f}')
+	print(f'Test specificity: {test_spec:.4f}')
+	print(f'Test f1: {test_f1:.4f}')
+	print(f'\nHold accuracy: {hold_acc:.4f}')
+	print(f'Hold precision: {hold_prec:.4f}')
+	print(f'Hold recall: {hold_rec:.4f}')
+	print(f'Hold specificity: {hold_spec:.4f}')
+	print(f'Hold f1: {hold_f1:.4f}')
+	print(f'\nFull accuracy: {full_acc:.4f}')
+	print(f'Full precision: {full_prec:.4f}')
+	print(f'Full recall: {full_rec:.4f}')
+	print(f'Full specificity: {full_spec:.4f}')
+	print(f'Full f1: {full_f1:.4f}')
+
+	print(f"\nLabeled size: {settings_dict['data_ss']['labeled_size']}")
+	print(f"Reduced dataset size: {settings_dict['data_ss']['reduced_size']}")

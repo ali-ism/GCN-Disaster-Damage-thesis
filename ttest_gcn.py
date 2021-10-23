@@ -33,8 +33,8 @@ torch.backends.cudnn.benchmark = False
 def train() -> None:
     model.train()
     optimizer.zero_grad()
-    out = model(data.x, data.adj_t)[train_mask]
-    loss = F.nll_loss(input=out, target=data.y[train_mask], weight=class_weights.to(device))
+    out = model(data.x, data.adj_t)[labeled_idx]
+    loss = F.nll_loss(input=out, target=data.y[labeled_idx], weight=class_weights.to(device))
     loss.backward()
     optimizer.step()
 
@@ -69,23 +69,29 @@ if __name__ == "__main__":
 
     for seed in range(100):
 
-        #create masks for labeled samples
+        data = data.cpu()
+
+        #split into train and test
         train_idx, test_idx = train_test_split(
-            np.arange(data.y.shape[0]), train_size=settings_dict['data']['labeled_size'],
-            stratify=data.y, random_state=seed)
-        train_mask = torch.zeros(data.y.shape[0]).bool()
-        train_mask[train_idx] = True
-        print('\nLabeled sample distribution:')
-        print(torch.unique(data.y[train_mask], return_counts=True))
-        #split remaining unlabeled samples into test and hold
-        test_idx, _ = train_test_split(
-            np.arange(test_idx.shape[0]), test_size=0.2,
-            stratify=data.y[test_idx], random_state=42)
-        test_mask = torch.zeros(data.y.shape[0]).bool()
-        test_mask[test_idx] = True
-        
-        y_all = data.y.numpy()
-        class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all[train_mask])
+            np.arange(data.y.shape[0]), test_size=0.4,
+            stratify=data.y, random_state=seed
+        )
+        #split test into test and hold
+        test_idx, hold_idx = train_test_split(
+            np.arange(test_idx.shape[0]), test_size=0.5,
+            stratify=data.y[test_idx], random_state=seed
+        )
+        #select labeled samples
+        labeled_idx, _ = train_test_split(
+            np.arange(train_idx.shape[0]), train_size=settings_dict['data_ss']['labeled_size'],
+            stratify=data.y[train_idx], random_state=seed
+        )
+
+        class_weights = compute_class_weight(
+            class_weight='balanced',
+            classes=np.unique(data.y.numpy()),
+            y=data.y.numpy()[train_idx]
+        )
         class_weights = torch.Tensor(class_weights)
         
         data = data.to(device)
@@ -103,7 +109,7 @@ if __name__ == "__main__":
         best_test_f1 = 0
         for epoch in range(1, n_epochs+1):
             train()
-            results = test(test_mask)
+            results = test(test_idx)
             test_f1 = results[4]
             if test_f1 > best_test_f1:
                 accuracy[seed], precision[seed], recall[seed],\

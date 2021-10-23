@@ -17,12 +17,12 @@ from utils import make_plot, merge_classes, score
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
-batch_size = settings_dict['data']['batch_size']
+batch_size = settings_dict['data_sup']['batch_size']
 name = settings_dict['model']['name'] + '_sage'
 model_path = 'weights/' + name
-train_disasters = settings_dict['data']['train_disasters']
-train_paths = settings_dict['data']['train_paths']
-train_roots = settings_dict['data']['train_roots']
+train_disasters = settings_dict['data_sup']['train_disasters']
+train_paths = settings_dict['data_sup']['train_paths']
+train_roots = settings_dict['data_sup']['train_roots']
 assert len(train_disasters) == len(train_paths) == len(train_roots)
 n_epochs = settings_dict['epochs']
 starting_epoch = 1
@@ -217,7 +217,7 @@ def stratified_graph_leak(dataset: Dataset, split: float=0.1):
 
 if __name__ == "__main__":
 
-    if settings_dict['data']['merge_classes']:
+    if settings_dict['merge_classes']:
         transform = merge_classes
     else:
         transform = None
@@ -238,14 +238,14 @@ if __name__ == "__main__":
         transform=transform
     )
 
-    if settings_dict['data']['leak']:
+    if settings_dict['data_sup']['leak']:
         test_leak, test_dataset = stratified_graph_leak(test_dataset)
         train_dataset = ConcatDataset([train_dataset, test_leak])
     
     train_loader = DataLoader(train_dataset, shuffle=True)
 
-    num_classes = 3 if settings_dict['data']['merge_classes'] else train_dataset.num_classes
-    class_weights = get_class_weights(train_disasters, train_dataset, num_classes, settings_dict['data']['leak'])
+    num_classes = 3 if settings_dict['merge_classes'] else train_dataset.num_classes
+    class_weights = get_class_weights(train_disasters, train_dataset, num_classes, settings_dict['data_sup']['leak'])
 
     model = CNNSage(
         settings_dict['model']['hidden_units'],

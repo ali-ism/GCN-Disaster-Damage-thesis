@@ -23,13 +23,13 @@ torch.backends.cudnn.benchmark = False
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
-batch_size = settings_dict['data']['batch_size']
+batch_size = settings_dict['data_sup']['batch_size']
 name = settings_dict['model']['name'] + '_siamese'
 model_path = 'weights/' + name
-train_disasters = settings_dict['data']['train_disasters']
-train_paths = settings_dict['data']['train_paths']
+train_disasters = settings_dict['data_sup']['train_disasters']
+train_paths = settings_dict['data_sup']['train_paths']
 assert len(train_disasters) == len(train_paths)
-merge_classes = settings_dict['data']['merge_classes']
+merge_classes = settings_dict['merge_classes']
 n_epochs = settings_dict['epochs']
 starting_epoch = 1
 assert starting_epoch > 0
@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
     num_classes = train_dataset.num_classes
 
-    if settings_dict['data']['leak']:
+    if settings_dict['data_sup']['leak']:
         y_all = np.fromiter((data['y'].item() for data in test_dataset), dtype=int)
         test_idx, leak_idx = train_test_split(np.arange(y_all.shape[0]), test_size=0.1, stratify=y_all, random_state=42)
         train_leak = Subset(test_dataset, leak_idx)
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size)
 
     cw_name = '_'.join(text.replace('-', '_') for text in train_disasters) + '_siameseclf'
-    if settings_dict['data']['leak']:
+    if settings_dict['data_sup']['leak']:
         cw_name = cw_name + '_leaked'
     if os.path.isfile(f'weights/class_weights_{cw_name}_{num_classes}.pt'):
         class_weights = torch.load(f'weights/class_weights_{cw_name}_{num_classes}.pt')

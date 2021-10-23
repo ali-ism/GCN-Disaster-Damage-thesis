@@ -1,5 +1,4 @@
 import json
-import os
 from typing import Tuple
 
 import numpy as np
@@ -34,11 +33,11 @@ torch.backends.cudnn.benchmark = False
 def train() -> Tuple[float]:
     model.train()
     optimizer.zero_grad()
-    out = model(data.x, data.adj_t)[train_mask]
-    loss = F.nll_loss(input=out, target=data.y[train_mask], weight=class_weights.to(device))
+    out = model(data.x, data.adj_t)[labeled_idx]
+    loss = F.nll_loss(input=out, target=data.y[labeled_idx], weight=class_weights.to(device))
     loss.backward()
     optimizer.step()
-    cm = confusion_matrix(data.y[train_mask].cpu(), out.detach().cpu().argmax(dim=1, keepdims=True))
+    cm = confusion_matrix(data.y[labeled_idx].cpu(), out.detach().cpu().argmax(dim=1, keepdims=True))
     accuracy, precision, recall, specificity, f1 = score_cm(cm)
     return loss.detach().cpu().item(), accuracy, precision, recall, specificity, f1
 
@@ -72,7 +71,7 @@ def save_results() -> None:
     print(f'Test recall: {test_recall[-1]:.4f}')
     print(f'Test specificity: {test_specificity[-1]:.4f}')
     print(f'Test f1: {test_f1[-1]:.4f}')
-    hold_scores = test(hold_mask)
+    hold_scores = test(hold_idx)
     print('\nHold results for last model.')
     print(f'Hold accuracy: {hold_scores[1]:.4f}')
     print(f'Hold precision: {hold_scores[2]:.4f}')
@@ -98,63 +97,56 @@ def save_results() -> None:
     print(f'Test recall: {test_recall[best_epoch-1]:.4f}')
     print(f'Test specificity: {test_specificity[best_epoch-1]:.4f}')
     print(f'Test f1: {test_f1[best_epoch-1]:.4f}')
-    model.load_state_dict(torch.load(model_path+'_best.pt'))
-    hold_scores = test(hold_mask)
     print('\nHold results for best model.')
-    print(f'Hold accuracy: {hold_scores[1]:.4f}')
-    print(f'Hold precision: {hold_scores[2]:.4f}')
-    print(f'Hold recall: {hold_scores[3]:.4f}')
-    print(f'Hold specificity: {hold_scores[4]:.4f}')
-    print(f'Hold f1: {hold_scores[5]:.4f}')
-    all_scores = test(torch.ones(data.y.shape[0]).bool())
+    print(f'Hold accuracy: {hold_scores_best[1]:.4f}')
+    print(f'Hold precision: {hold_scores_best[2]:.4f}')
+    print(f'Hold recall: {hold_scores_best[3]:.4f}')
+    print(f'Hold specificity: {hold_scores_best[4]:.4f}')
+    print(f'Hold f1: {hold_scores_best[5]:.4f}')
     print('\nFull results for best model.')
-    print(f'Full accuracy: {all_scores[1]:.4f}')
-    print(f'Full precision: {all_scores[2]:.4f}')
-    print(f'Full recall: {all_scores[3]:.4f}')
-    print(f'Full specificity: {all_scores[4]:.4f}')
-    print(f'Full f1: {all_scores[5]:.4f}')
+    print(f'Full accuracy: {all_scores_best[1]:.4f}')
+    print(f'Full precision: {all_scores_best[2]:.4f}')
+    print(f'Full recall: {all_scores_best[3]:.4f}')
+    print(f'Full specificity: {all_scores_best[4]:.4f}')
+    print(f'Full f1: {all_scores_best[5]:.4f}')
 
 
 if __name__ == "__main__":
 
-    if settings_dict['data']['merge_classes']:
+    if settings_dict['merge_classes']:
         transform = Compose([merge_classes, GCNNorm(), ToSparseTensor()])
     else:
         transform = Compose([GCNNorm(), ToSparseTensor()])
 
-    dataset = xBDFull(root, path, disaster, settings_dict['data']['reduced_size'], transform=transform)
-    
-    num_classes = 3 if settings_dict['data']['merge_classes'] else dataset.num_classes
-    
+    dataset = xBDFull(root, path, disaster, settings_dict['data_ss']['reduced_size'], transform=transform)
+
+    num_classes = 3 if settings_dict['merge_classes'] else dataset.num_classes
+
     data = dataset[0]
 
-    #create masks for labeled samples
+    #split into train and test
     train_idx, test_idx = train_test_split(
-		np.arange(data.y.shape[0]), train_size=settings_dict['data']['labeled_size'],
-		stratify=data.y, random_state=42)
-    train_mask = torch.zeros(data.y.shape[0]).bool()
-    train_mask[train_idx] = True
-    print('\nLabeled sample distribution:')
-    print(torch.unique(data.y[train_mask], return_counts=True))
-    #split remaining unlabeled samples into test and hold
+        np.arange(data.y.shape[0]), test_size=0.4,
+        stratify=data.y, random_state=42
+    )
+    #split test into test and hold
     test_idx, hold_idx = train_test_split(
-        np.arange(test_idx.shape[0]), test_size=0.2,
-        stratify=data.y[test_idx], random_state=42)
-    test_mask = torch.zeros(data.y.shape[0]).bool()
-    test_mask[test_idx] = True
-    hold_mask = torch.zeros(data.y.shape[0]).bool()
-    hold_mask[hold_idx] = True
-    assert train_idx.shape[0] + test_idx.shape[0] + hold_idx.shape[0] == data.y.shape[0]
+        np.arange(test_idx.shape[0]), test_size=0.5,
+        stratify=data.y[test_idx], random_state=42
+    )
+    #select labeled samples
+    labeled_idx, _ = train_test_split(
+        np.arange(train_idx.shape[0]), train_size=settings_dict['data_ss']['labeled_size'],
+        stratify=data.y[train_idx], random_state=42
+    )
 
-    
-    if os.path.isfile(f'weights/class_weights_{disaster}_gcn_{num_classes}.pt'):
-        class_weights = torch.load(f'weights/class_weights_{disaster}_gcn_{num_classes}.pt')
-    else:
-        y_all = data.y.numpy()
-        class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_all), y=y_all[train_mask])
-        class_weights = torch.Tensor(class_weights)
-        torch.save(class_weights, f'weights/class_weights_{disaster}_gcn_{num_classes}.pt')
-    
+    class_weights = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(data.y.numpy()),
+        y=data.y.numpy()[train_idx]
+    )
+    class_weights = torch.Tensor(class_weights)
+
     data = data.to(device)
 
     model = CNNGCN(
@@ -170,16 +162,16 @@ if __name__ == "__main__":
     best_test_f1 = best_epoch = 0
 
     train_loss = np.empty(n_epochs)
-    test_loss = np.empty(n_epochs)
     train_acc = np.empty(n_epochs)
-    test_acc = np.empty(n_epochs)
     train_precision = np.empty(n_epochs)
-    test_precision = np.empty(n_epochs)
     train_recall = np.empty(n_epochs)
-    test_recall = np.empty(n_epochs)
     train_specificity = np.empty(n_epochs)
-    test_specificity = np.empty(n_epochs)
     train_f1 = np.empty(n_epochs)
+    test_loss = np.empty(n_epochs)
+    test_acc = np.empty(n_epochs)
+    test_precision = np.empty(n_epochs)
+    test_recall = np.empty(n_epochs)
+    test_specificity = np.empty(n_epochs)
     test_f1 = np.empty(n_epochs)
 
     for epoch in range(1, n_epochs+1):
@@ -194,7 +186,7 @@ if __name__ == "__main__":
         print('**********************************************')
         print(f'Epoch {epoch}, Train Loss: {train_loss[epoch-1]:.4f}')
 
-        results = test(test_mask)
+        results = test(test_idx)
         test_loss[epoch-1] = results[0]
         test_acc[epoch-1] = results[1]
         test_precision[epoch-1] = results[2]
@@ -205,10 +197,10 @@ if __name__ == "__main__":
         if test_f1[epoch-1] > best_test_f1:
             best_test_f1 = test_f1[epoch-1]
             best_epoch = epoch
-            print(f'New best model saved with test F1 {best_test_f1} at epoch {best_epoch}.')
-            torch.save(model.state_dict(), model_path+'_best.pt')
-    
+            hold_scores_best = test(hold_idx)
+            all_scores_best = test(torch.ones(data.y.shape[0]).bool())
+
     print(f'\nBest test F1 {best_test_f1} at epoch {best_epoch}.\n')
     save_results()
-    print(f"\nLabeled size: {settings_dict['data']['labeled_size']}")
-    print(f"Reduced dataset size: {settings_dict['data']['reduced_size']}")
+    print(f"\nLabeled size: {settings_dict['data_ss']['labeled_size']}")
+    print(f"Reduced dataset size: {settings_dict['data_ss']['reduced_size']}")
