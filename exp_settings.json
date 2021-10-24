@@ -7,13 +7,13 @@
         "leak": true
     },
     "data_ss": {
-        "disaster": "joplin-tornado",
-        "root": "/home/ami31/scratch/datasets/xbd_graph/joplin_full_reduced",
+        "disaster": "nepal-flooding",
+        "root": "/home/ami31/scratch/datasets/xbd_graph/nepal_full_reduced",
         "reduced_size": 1366,
         "labeled_size": 0.2
     },
     "model": {
-        "name": "joplin_01",
+        "name": "nepal_01",
         "hidden_units": 32,
         "num_layers": 2,
         "lr": 0.0003,
