@@ -123,8 +123,6 @@ if __name__ == "__main__":
 	with open('exp_settings.json', 'r') as JSON:
 		settings_dict = json.load(JSON)
 
-	name = settings_dict['model']['name'] + '_ssae'
-	model_path = 'weights/' + name
 	disaster = settings_dict['data_ss']['disaster']
 	path = '/home/ami31/scratch/datasets/xbd/tier3_bldgs/'
 
