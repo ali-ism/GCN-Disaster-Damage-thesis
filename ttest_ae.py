@@ -90,7 +90,7 @@ if __name__ == "__main__":
         )
         y_train = y[train_idx]
 
-        embeddings = learn_representationSS(x, y_train, 30, verbose=False)
+        embeddings = learn_representationSS(x, train_idx, y_train, 30, verbose=False)
         accuracy[seed], precision[seed], recall[seed], specificity[seed], f1[seed] = cluster_embeddings(embeddings[hold_idx], y[hold_idx])
     
         np.save('results/ae_acc_ttest.npy', accuracy)
