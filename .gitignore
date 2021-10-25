@@ -8,3 +8,4 @@ thesis.code-workspace
 *slurm*
 *.png
 .vscode/
+playground.ipynb

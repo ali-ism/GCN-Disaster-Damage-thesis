@@ -82,6 +82,7 @@ if __name__ == "__main__":
     n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * y.shape[0])
 
     for seed in range(100):
+        print(f'Run number: {seed+1}')
         #select labeled samples
         train_idx, _ = train_test_split(
             np.arange(idx.shape[0]), train_size=n_labeled_samples,
@@ -92,8 +93,8 @@ if __name__ == "__main__":
         embeddings = learn_representationSS(x, y_train, 30, verbose=False)
         accuracy[seed], precision[seed], recall[seed], specificity[seed], f1[seed] = cluster_embeddings(embeddings[hold_idx], y[hold_idx])
     
-    np.save('results/ae_acc_ttest.npy', accuracy)
-    np.save('results/ae_prec_ttest.npy', precision)
-    np.save('results/ae_rec_ttest.npy', recall)
-    np.save('results/ae_spec_ttest.npy', specificity)
-    np.save('results/ae_f1_ttest.npy', f1)
+        np.save('results/ae_acc_ttest.npy', accuracy)
+        np.save('results/ae_prec_ttest.npy', precision)
+        np.save('results/ae_rec_ttest.npy', recall)
+        np.save('results/ae_spec_ttest.npy', specificity)
+        np.save('results/ae_f1_ttest.npy', f1)

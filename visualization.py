@@ -2,12 +2,12 @@ from typing import Iterable
 
 import matplotlib
 import matplotlib.pyplot as plt
-import networkx as nx
+#import networkx as nx
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import torch
-from torch_geometric.utils import to_networkx
+#from torch_geometric.utils import to_networkx
 
 
 class CmapString:
@@ -30,11 +30,21 @@ def plot_on_map(labels: pd.DataFrame, color:str = 'class') -> None:
         labels['zone'] = labels.apply(zone, axis=1)
         cmap = CmapString(palette='viridis', domain=labels['zone'].values)
         color = cmap.color_list()
+        color_dict = {}
+    elif color == 'class':
+        color_dict = {
+        "no-damage": 'green',
+        "minor-damage": 'blue',
+        "major-damage": 'darkorange',
+        "destroyed": 'red',
+        "un-classified": 'white'
+        }
     fig = px.scatter_mapbox(
         data_frame=labels,
         lat='lat',
         lon='long',
         color=color,
+        color_discrete_map=color_dict,
         mapbox_style='open-street-map',
         hover_name='class',
         zoom=10
@@ -43,14 +53,26 @@ def plot_on_map(labels: pd.DataFrame, color:str = 'class') -> None:
     fig.show()
 
 
-def plot_graph(data_file: str, image_file: str):
-    image = plt.imread(image_file)
+def plot_graph(data_path: str, image_path: str, save_fig=False):
+    image = plt.imread(image_path)
+    fig=plt.figure()
+    fig.set_size_inches(30, 30)
     plt.imshow(image)
-    data = torch.load(data_file)
+    data = torch.load(data_path)
     datax = to_networkx(data)
     pos = dict(enumerate(data.pos.numpy()))
-    pos = {node: (x,-y) for (node, (x,y)) in pos.items()}
-    nx.draw_networkx(datax, pos=pos, arrows=False, with_labels=False, node_size=20, node_color='red')
+    color_dict = {
+        0: (0, 1, 0),
+        1: (0, 0, 1),
+        2: (1, 0.27, 0),
+        3: (1, 0, 0)
+    }
+    colors = [color_dict[y] for y in data.y.numpy()]
+    #pos = {node: (x,y) for (node, (x,y)) in pos.items()}
+    nx.draw_networkx(datax, pos=pos, arrows=False, with_labels=False, node_size=100, node_color=colors)
+    if save_fig:
+        plt.savefig('graph_image.png', dpi=100)
+    plt.show()
 
 
 #################################################################################################
@@ -120,7 +142,7 @@ def display_img(json_path: str, time: str='post', annotated: bool=True):
 
     return img
 
-def plot_image(label: str) -> None:
+def plot_image(label: str, save_fig: bool=False) -> None:
 
     # read images
     img_A = display_img(label, time='pre', annotated=False)
@@ -140,5 +162,6 @@ def plot_image(label: str) -> None:
     ax[1][0].set_title('Pre Diaster Image (Annotated)', fontsize=TITLE_FONT_SIZE)
     ax[1][1].imshow(img_D);
     ax[1][1].set_title('Post Diaster Image (Annotated)', fontsize=TITLE_FONT_SIZE)
-    plt.savefig('split_image.png', dpi = 100)
+    if save_fig:
+        plt.savefig('split_image.png')
     plt.show()
