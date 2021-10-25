@@ -2,9 +2,12 @@ from typing import Iterable
 
 import matplotlib
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import torch
+from torch_geometric.utils import to_networkx
 
 
 class CmapString:
@@ -21,26 +24,33 @@ class CmapString:
         return [self.mpl_cmap(self.hash_table[x], **kwargs) for x in self.domain]
 
 
-def plot_on_map(labels: pd.DataFrame, mapbox: bool=True) -> None:
-    cmap = CmapString(palette='viridis', domain=labels['zone'].values)
-    if mapbox:
-        fig = px.scatter_mapbox(
-            data_frame=labels,
-            lat='lat',
-            lon='long',
-            color=cmap.color_list(),
-            mapbox_style='open-street-map',
-            hover_name='class',
-            zoom=10
-        )
-        fig.layout.update(showlegend=False)
-        fig.show()
-    else:
-        plt.figure(figsize=(12,8))
-        for _, row in labels.iterrows():
-            plt.scatter(row['long'], row['lat'], label=row['zone'], color=cmap.color(row['zone']))
-        plt.axis('off')
-        plt.show()
+def plot_on_map(labels: pd.DataFrame, color:str = 'class') -> None:
+    if color == 'zone':
+        zone = lambda row: '_'.join(row.name.split('_', 2)[:2])
+        labels['zone'] = labels.apply(zone, axis=1)
+        cmap = CmapString(palette='viridis', domain=labels['zone'].values)
+        color = cmap.color_list()
+    fig = px.scatter_mapbox(
+        data_frame=labels,
+        lat='lat',
+        lon='long',
+        color=color,
+        mapbox_style='open-street-map',
+        hover_name='class',
+        zoom=10
+    )
+    fig.layout.update(showlegend=False)
+    fig.show()
+
+
+def plot_graph(data_file: str, image_file: str):
+    image = plt.imread(image_file)
+    plt.imshow(image)
+    data = torch.load(data_file)
+    datax = to_networkx(data)
+    pos = dict(enumerate(data.pos.numpy()))
+    pos = {node: (x,-y) for (node, (x,y)) in pos.items()}
+    nx.draw_networkx(datax, pos=pos, arrows=False, with_labels=False, node_size=20, node_color='red')
 
 
 #################################################################################################
