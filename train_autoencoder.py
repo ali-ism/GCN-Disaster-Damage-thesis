@@ -65,7 +65,7 @@ def feature_extraction(model, data, layer_name):
 
 
 def learn_SingleReprSS(X_tot, train_idx, y_train, verbose=True):
-	n_classes = len(np.unique(y))
+	n_classes = len(np.unique(y_train))
 	train_idx = train_idx.astype("int")
 	X_train = X_tot[train_idx]
 	encoded_Y_train = to_categorical(y_train, n_classes)
