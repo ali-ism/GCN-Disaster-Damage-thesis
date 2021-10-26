@@ -2,12 +2,12 @@ from typing import Iterable
 
 import matplotlib
 import matplotlib.pyplot as plt
-#import networkx as nx
+import networkx as nx
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import torch
-#from torch_geometric.utils import to_networkx
+from torch_geometric.utils import to_networkx
 
 
 class CmapString:

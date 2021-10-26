@@ -110,7 +110,7 @@ def _make_cost_m(cm):
 
 
 def cluster_embeddings(embeddings, y_pred):
-	clusters = KMeans(n_clusters=len(np.unique(y)), random_state=42).fit_predict(embeddings)
+	clusters = KMeans(n_clusters=len(np.unique(y_pred)), random_state=42).fit_predict(embeddings)
 	cm = confusion_matrix(y_pred, clusters)
 	indexes = linear_sum_assignment(_make_cost_m(cm))
 	cm2 = cm[:, indexes[1]]
