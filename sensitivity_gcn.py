@@ -61,11 +61,11 @@ if __name__ == "__main__":
     
     data = dataset[0]
 
-    accuracy = np.empty(100)
-    precision = np.empty(100)
-    recall = np.empty(100)
-    specificity = np.empty(100)
-    f1 = np.empty(100)
+    accuracy = np.empty(4)
+    precision = np.empty(4)
+    recall = np.empty(4)
+    specificity = np.empty(4)
+    f1 = np.empty(4)
 
     #extract hold set
     idx, hold_idx = train_test_split(
@@ -73,16 +73,18 @@ if __name__ == "__main__":
         stratify=data.y, random_state=42
     )
 
-    n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * data.y.shape[0])
+    labeled_sizes = [0.1, 0.2, 0.3, 0.4]
 
-    for seed in range(100):
+    for i, labeled_size in enumerate(labeled_sizes):
 
         data = data.cpu()
+
+        n_labeled_samples = round(labeled_size * data.y.shape[0])
 
         #select labeled samples
         train_idx, test_idx = train_test_split(
             np.arange(idx.shape[0]), train_size=n_labeled_samples,
-            stratify=data.y[idx], random_state=seed
+            stratify=data.y[idx], random_state=42
         )
 
         class_weights = compute_class_weight(
@@ -109,11 +111,10 @@ if __name__ == "__main__":
             train()
             test_f1 = test(test_idx)[4]
             if test_f1 > best_test_f1:
-                accuracy[seed], precision[seed], recall[seed],\
-                    specificity[seed], f1[seed] = test(hold_idx)
+                accuracy[i], precision[i], recall[i], specificity[i], f1[i] = test(hold_idx)
                 
-    np.save('results/gcn_acc_ttest.npy', accuracy)
-    np.save('results/gcn_prec_ttest.npy', precision)
-    np.save('results/gcn_rec_ttest.npy', recall)
-    np.save('results/gcn_spec_ttest.npy', specificity)
-    np.save('results/gcn_f1_ttest.npy', f1)
+    np.save('results/gcn_acc_sens.npy', accuracy)
+    np.save('results/gcn_prec_sens.npy', precision)
+    np.save('results/gcn_rec_sens.npy', recall)
+    np.save('results/gcn_spec_sens.npy', specificity)
+    np.save('results/gcn_f1_sens.npy', f1)

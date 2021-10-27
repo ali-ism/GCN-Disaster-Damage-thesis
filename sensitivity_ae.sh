@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=ttest
+#SBATCH --job-name=sensae
 #SBATCH --partition=msfea-ai
 
 #SBATCH --nodes=1
@@ -13,4 +13,4 @@ module purge
 module load python/tensorflow-2.3.1
 module load cuda
 
-python3 -u ttest_ae.py
+python3 sensitivity_ae.py

@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-from torch.tensor import Tensor
+from torch import Tensor
 from torch_geometric.transforms import Compose, GCNNorm, ToSparseTensor
 
 from dataset import xBDFull
