@@ -1,9 +1,11 @@
 import os
+import os.path as osp
 from pathlib import Path
 from typing import Callable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import torch
 import utm
 from PIL import Image
@@ -244,7 +246,7 @@ class xBDFull(InMemoryDataset):
         y = []
         coords = []
 
-        for post_image_file in self.labels.index.values.tolist():
+        for post_image_file in self.labels.index.tolist():
             
             y.append(self.labels.loc[post_image_file,'class_num'])
             coords.append((self.labels.loc[post_image_file,'easting'],
@@ -252,6 +254,98 @@ class xBDFull(InMemoryDataset):
 
             pre_image = Image.open(os.path.join(self.path, self.disaster, post_image_file.replace('post', 'pre')))
             post_image = Image.open(os.path.join(self.path, self.disaster, post_image_file))
+            pre_image = pre_image.resize((128, 128))
+            post_image = post_image.resize((128, 128))
+            pre_image = to_tensor(pre_image)
+            post_image = to_tensor(post_image)
+            images = torch.cat((pre_image, post_image),0)
+            x.append(images.flatten())
+
+        x = torch.stack(x)
+        print(f'Size of x matrix: {x.element_size()*x.nelement()*1e-9:.4f} GB')
+        y = torch.tensor(y)
+        coords = torch.tensor(coords)
+
+        data_ = Data(x=x, y=y, pos=coords)
+        data_ = delaunay(data_)
+
+        edge_index = data_.edge_index
+
+        edge_attr = torch.empty(edge_index.shape[1])
+        for i in range(edge_index.shape[1]):
+            node1 = x[edge_index[0,i]]
+            node2 = x[edge_index[1,i]]
+            s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
+            s[s.isnan()] = 1
+            s = 1 - torch.sum(s)/node1.shape[0]
+            edge_attr[i] = s.item()
+        
+        data_.edge_attr = edge_attr
+
+        data_list = [data_]
+
+        if self.pre_filter is not None:
+            data_list = [data for data in data_list if self.pre_filter(data)]
+
+        if self.pre_transform is not None:
+            data_list = [self.pre_transform(data) for data in data_list]
+        
+        data, slices = self.collate(data_list)
+        torch.save((data, slices), self.processed_paths[0])
+
+
+class BeirutFull(InMemoryDataset):
+    def __init__(
+        self,
+        data_path: str,
+        reduced_dataset_size: Union[int,float],
+        transform: Callable=None,
+        pre_transform: Callable=None) -> None:
+
+        self.path = data_path
+        self.disaster = 'beirut'
+        self.labels = gpd.read_file(osp.join(self.path, 'buffered_masks.shp'))
+        self.labels = self.labels[['damage_num', 'Longitude', 'Latitude']]
+        
+        if self.labels.shape[0] > reduced_dataset_size:
+            idx, _ = train_test_split(
+                np.arange(self.labels.shape[0]), train_size=reduced_dataset_size,
+                stratify=self.labels['damage_num'].values, random_state=42)
+            self.labels = self.labels.iloc[idx,:]
+
+        self.labels['easting'], self.labels['northing'], *_ = utm.from_latlon(
+            self.labels['Latitude'].values, self.labels['Longitude'].values
+        )
+
+        super().__init__(osp.join(self.path,'beirut_graph'), transform, pre_transform)
+        self.labels.to_csv(osp.join(self.processed_dir, self.disaster+'_metadata.csv'))
+        self.data, self.slices = torch.load(self.processed_paths[0])
+
+    @property
+    def raw_file_names(self) -> List:
+        return []
+
+    @property
+    def processed_file_names(self) -> List[str]:
+        return [osp.join(self.processed_dir, self.disaster+'_data.pt')]
+    
+    def download(self) -> None:
+        pass
+
+    def process(self) -> None:
+        x = []
+        y = []
+        coords = []
+
+        pre_image_files = sorted(os.listdir(osp.join(self.path, 'pre_bldgs')))
+        post_image_files = sorted(os.listdir(osp.join(self.path, 'post_bldgs')))
+
+        for i in self.labels.index.tolist():
+            
+            y.append(self.labels['damage_num'][i])
+            coords.append((self.labels['easting'][i], self.labels['northing'][i]))
+            pre_image = Image.open(osp.join(self.path, pre_image_files[i]))
+            post_image = Image.open(osp.join(self.path, post_image_files[i]))
             pre_image = pre_image.resize((128, 128))
             post_image = post_image.resize((128, 128))
             pre_image = to_tensor(pre_image)

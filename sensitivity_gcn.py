@@ -61,12 +61,6 @@ if __name__ == "__main__":
     
     data = dataset[0]
 
-    accuracy = np.empty(4)
-    precision = np.empty(4)
-    recall = np.empty(4)
-    specificity = np.empty(4)
-    f1 = np.empty(4)
-
     #extract hold set
     idx, hold_idx = train_test_split(
         np.arange(data.y.shape[0]), test_size=0.5,
@@ -74,6 +68,12 @@ if __name__ == "__main__":
     )
 
     labeled_sizes = [0.1, 0.2, 0.3, 0.4]
+
+    accuracy = np.empty(len(labeled_sizes))
+    precision = np.empty(len(labeled_sizes))
+    recall = np.empty(len(labeled_sizes))
+    specificity = np.empty(len(labeled_sizes))
+    f1 = np.empty(len(labeled_sizes))
 
     for i, labeled_size in enumerate(labeled_sizes):
 
