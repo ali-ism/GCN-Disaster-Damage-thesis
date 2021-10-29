@@ -55,7 +55,7 @@ if __name__ == "__main__":
     else:
         transform = Compose([GCNNorm(), ToSparseTensor()])
 
-    dataset = xBDFull(root, path, disaster, settings_dict['data']['reduced_size'], transform=transform)
+    dataset = xBDFull(root, path, disaster, settings_dict['data_ss']['reduced_size'], transform=transform)
     
     num_classes = 3 if settings_dict['data']['merge_classes'] else dataset.num_classes
     
