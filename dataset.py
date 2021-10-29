@@ -5,7 +5,6 @@ from typing import Callable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import geopandas as gpd
 import torch
 import utm
 from PIL import Image
@@ -304,8 +303,7 @@ class BeirutFull(InMemoryDataset):
 
         self.path = data_path
         self.disaster = 'beirut'
-        self.labels = gpd.read_file(osp.join(self.path, 'buffered_masks.shp'))
-        self.labels = self.labels[['damage_num', 'Longitude', 'Latitude']]
+        self.labels = pd.read_csv(osp.join(self.path, 'buffered_masks.csv'), index_col=0)
         
         if self.labels.shape[0] > reduced_dataset_size:
             idx, _ = train_test_split(
