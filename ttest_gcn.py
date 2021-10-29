@@ -50,7 +50,7 @@ def test(mask: Tensor) -> Tuple[float]:
 
 if __name__ == "__main__":
 
-    if settings_dict['data']['merge_classes']:
+    if settings_dict['merge_classes']:
         transform = Compose([merge_classes, GCNNorm(), ToSparseTensor()])
     else:
         transform = Compose([GCNNorm(), ToSparseTensor()])
