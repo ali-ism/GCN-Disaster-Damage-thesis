@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     dataset = xBDFull(root, path, disaster, settings_dict['data_ss']['reduced_size'], transform=transform)
     
-    num_classes = 3 if settings_dict['data']['merge_classes'] else dataset.num_classes
+    num_classes = 3 if settings_dict['merge_classes'] else dataset.num_classes
     
     data = dataset[0]
 
