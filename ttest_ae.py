@@ -67,12 +67,6 @@ if __name__ == "__main__":
 
     y = np.array(y)
 
-    accuracy = np.empty(100)
-    precision = np.empty(100)
-    recall = np.empty(100)
-    specificity = np.empty(100)
-    f1 = np.empty(100)
-
     #extract hold set
     idx, hold_idx = train_test_split(
         np.arange(y.shape[0]), test_size=0.5,
@@ -81,7 +75,22 @@ if __name__ == "__main__":
 
     n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * y.shape[0])
 
-    for seed in range(100):
+    start = 11
+
+    if start == 0:
+        accuracy = []
+        precision = []
+        recall = []
+        specificity = []
+        f1 = []
+    else:
+        accuracy = np.load('results/ae_acc_ttest.npy').tolist()
+        precision = np.load('results/ae_prec_ttest.npy').tolist()
+        recall = np.load('results/ae_rec_ttest.npy').tolist()
+        specificity = np.load('results/ae_spec_ttest.npy').tolist()
+        f1 = np.load('results/ae_f1_ttest.npy').tolist()
+
+    for seed in range(start,30):
         print(f'Run number: {seed+1}')
         #select labeled samples
         train_idx, _ = train_test_split(
@@ -91,10 +100,16 @@ if __name__ == "__main__":
         y_train = y[train_idx]
 
         embeddings = learn_representationSS(x, train_idx, y_train, 30, verbose=False)
-        accuracy[seed], precision[seed], recall[seed], specificity[seed], f1[seed] = cluster_embeddings(embeddings[hold_idx], y[hold_idx])
+        results = cluster_embeddings(embeddings[hold_idx], y[hold_idx])
+        accuracy.append(results[0])
+        precision.append(results[1])
+        recall.append(results[2])
+        specificity.append(results[3])
+        f1.append(results[4])
     
         np.save('results/ae_acc_ttest.npy', accuracy)
         np.save('results/ae_prec_ttest.npy', precision)
         np.save('results/ae_rec_ttest.npy', recall)
         np.save('results/ae_spec_ttest.npy', specificity)
         np.save('results/ae_f1_ttest.npy', f1)
+        print(f'Run number: {seed+1} done')

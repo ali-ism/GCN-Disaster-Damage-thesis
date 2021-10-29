@@ -61,12 +61,6 @@ if __name__ == "__main__":
     
     data = dataset[0]
 
-    accuracy = np.empty(100)
-    precision = np.empty(100)
-    recall = np.empty(100)
-    specificity = np.empty(100)
-    f1 = np.empty(100)
-
     #extract hold set
     idx, hold_idx = train_test_split(
         np.arange(data.y.shape[0]), test_size=0.5,
@@ -75,7 +69,13 @@ if __name__ == "__main__":
 
     n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * data.y.shape[0])
 
-    for seed in range(100):
+    accuracy = np.empty(30)
+    precision = np.empty(30)
+    recall = np.empty(30)
+    specificity = np.empty(30)
+    f1 = np.empty(30)
+
+    for seed in range(30):
 
         data = data.cpu()
 
