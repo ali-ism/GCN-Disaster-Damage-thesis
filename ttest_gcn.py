@@ -76,9 +76,8 @@ if __name__ == "__main__":
     f1 = np.empty(30)
 
     for seed in range(30):
-
+        print(f'Running seed {seed}')
         data = data.cpu()
-
         #select labeled samples
         train_idx, test_idx = train_test_split(
             np.arange(idx.shape[0]), train_size=n_labeled_samples,
@@ -111,6 +110,7 @@ if __name__ == "__main__":
             if test_f1 > best_test_f1:
                 accuracy[seed], precision[seed], recall[seed],\
                     specificity[seed], f1[seed] = test(hold_idx)
+        print(f'Done seed {seed}')
                 
     np.save('results/gcn_acc_ttest.npy', accuracy)
     np.save('results/gcn_prec_ttest.npy', precision)

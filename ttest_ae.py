@@ -91,7 +91,7 @@ if __name__ == "__main__":
         f1 = np.load('results/ae_f1_ttest.npy').tolist()
 
     for seed in range(start,30):
-        print(f'Run number: {seed+1}')
+        print(f'Running seed {seed}')
         #select labeled samples
         train_idx, _ = train_test_split(
             np.arange(idx.shape[0]), train_size=n_labeled_samples,
@@ -112,4 +112,4 @@ if __name__ == "__main__":
         np.save('results/ae_rec_ttest.npy', recall)
         np.save('results/ae_spec_ttest.npy', specificity)
         np.save('results/ae_f1_ttest.npy', f1)
-        print(f'Run number: {seed+1} done')
+        print(f'Done seed {seed}')

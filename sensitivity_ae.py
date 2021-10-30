@@ -83,6 +83,8 @@ if __name__ == "__main__":
 
     for i, labeled_size in enumerate(labeled_sizes):
 
+        print(f'Running label size {labeled_size}')
+
         n_labeled_samples = round(labeled_size * y.shape[0])
 
         #select labeled samples
@@ -94,6 +96,8 @@ if __name__ == "__main__":
 
         embeddings = learn_representationSS(x, train_idx, y_train, 30, verbose=False)
         accuracy[i], precision[i], recall[i], specificity[i], f1[i] = cluster_embeddings(embeddings[hold_idx], y[hold_idx])
+
+        print(f'Done label size {labeled_size}')
     
     np.save('results/ae_acc_sens.npy', accuracy)
     np.save('results/ae_prec_sens.npy', precision)

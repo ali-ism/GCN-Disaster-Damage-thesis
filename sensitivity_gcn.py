@@ -76,9 +76,8 @@ if __name__ == "__main__":
     f1 = np.empty(len(labeled_sizes))
 
     for i, labeled_size in enumerate(labeled_sizes):
-
+        print(f'Running label size {labeled_size}')
         data = data.cpu()
-
         n_labeled_samples = round(labeled_size * data.y.shape[0])
 
         #select labeled samples
@@ -112,6 +111,7 @@ if __name__ == "__main__":
             test_f1 = test(test_idx)[4]
             if test_f1 > best_test_f1:
                 accuracy[i], precision[i], recall[i], specificity[i], f1[i] = test(hold_idx)
+        print(f'Done label size {labeled_size}')
                 
     np.save('results/gcn_acc_sens.npy', accuracy)
     np.save('results/gcn_prec_sens.npy', precision)
