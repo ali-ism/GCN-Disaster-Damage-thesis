@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=ttestgcn
-#SBATCH --partition=gpu
+#SBATCH --partition=msfea-ai
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1

@@ -12,7 +12,7 @@ from tensorflow.keras.preprocessing.image import img_to_array
 
 from train_autoencoder import learn_representationSS, cluster_embeddings
 
-tensorflow.random.set_i(42)
+tensorflow.random.set_seed(42)
 
 
 if __name__ == "__main__":
