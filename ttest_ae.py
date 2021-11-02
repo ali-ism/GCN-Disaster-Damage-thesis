@@ -75,20 +75,20 @@ if __name__ == "__main__":
 
     n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * y.shape[0])
 
-    start = 11
+    start = 22
 
     if start == 0:
-        accuracy = []
-        precision = []
-        recall = []
-        specificity = []
-        f1 = []
+        accuracy = np.empty(30)
+        precision = np.empty(30)
+        recall = np.empty(30)
+        specificity = np.empty(30)
+        f1 = np.empty(30)
     else:
-        accuracy = np.load('results/ae_acc_ttest.npy').tolist()
-        precision = np.load('results/ae_prec_ttest.npy').tolist()
-        recall = np.load('results/ae_rec_ttest.npy').tolist()
-        specificity = np.load('results/ae_spec_ttest.npy').tolist()
-        f1 = np.load('results/ae_f1_ttest.npy').tolist()
+        accuracy = np.load('results/ae_acc_ttest.npy')
+        precision = np.load('results/ae_prec_ttest.npy')
+        recall = np.load('results/ae_rec_ttest.npy')
+        specificity = np.load('results/ae_spec_ttest.npy')
+        f1 = np.load('results/ae_f1_ttest.npy')
 
     for seed in range(start,30):
         print(f'Running seed {seed}')
@@ -101,11 +101,11 @@ if __name__ == "__main__":
 
         embeddings = learn_representationSS(x, train_idx, y_train, 30, verbose=False)
         results = cluster_embeddings(embeddings[hold_idx], y[hold_idx])
-        accuracy.append(results[0])
-        precision.append(results[1])
-        recall.append(results[2])
-        specificity.append(results[3])
-        f1.append(results[4])
+        accuracy[seed] = results[0]
+        precision[seed] = results[1]
+        recall[seed] = results[2]
+        specificity[seed] = results[3]
+        f1[seed] = results[4]
     
         np.save('results/ae_acc_ttest.npy', accuracy)
         np.save('results/ae_prec_ttest.npy', precision)
