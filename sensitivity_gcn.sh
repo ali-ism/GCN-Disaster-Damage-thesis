@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=ttestgcn
+#SBATCH --job-name=sensgcn
 #SBATCH --partition=gpu
 
 #SBATCH --nodes=1

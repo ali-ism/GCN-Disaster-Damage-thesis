@@ -74,6 +74,7 @@ def plot_graph(data_path: str, image_path: str, save_fig=False):
     custom_circles = [Circle((0,0), radius=0.2, color=(0, 1, 0)), Circle((0,0), radius=0.2, color=(0, 0, 1)),
                       Circle((0,0), radius=0.2, color=(1, 0.27, 0)), Circle((0,0), radius=0.2, color=(1, 0, 0))]
     plt.legend(custom_circles, ['no-damage', 'minor-damage', 'major-damage', 'destroyed'])
+    plt.axis('off')
     if save_fig:
         plt.savefig('graph_image.png', dpi=100)
     plt.show()
