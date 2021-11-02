@@ -2,6 +2,7 @@ from typing import Iterable
 
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -70,6 +71,9 @@ def plot_graph(data_path: str, image_path: str, save_fig=False):
     colors = [color_dict[y] for y in data.y.numpy()]
     #pos = {node: (x,y) for (node, (x,y)) in pos.items()}
     nx.draw_networkx(datax, pos=pos, arrows=False, with_labels=False, node_size=100, node_color=colors)
+    custom_circles = [Circle((0,0), radius=0.2, color=(0, 1, 0)), Circle((0,0), radius=0.2, color=(0, 0, 1)),
+                      Circle((0,0), radius=0.2, color=(1, 0.27, 0)), Circle((0,0), radius=0.2, color=(1, 0, 0))]
+    plt.legend(custom_circles, ['no-damage', 'minor-damage', 'major-damage', 'destroyed'])
     if save_fig:
         plt.savefig('graph_image.png', dpi=100)
     plt.show()
