@@ -13,4 +13,4 @@ module purge
 module load python/tensorflow-2.3.1
 module load cuda
 
-python3 ttest_ae.py
+python3 -u ttest_ae.py

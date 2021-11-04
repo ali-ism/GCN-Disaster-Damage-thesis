@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
     n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * data.y.shape[0])
 
-    start = 0
+    start = 21
 
     if start == 0:
         accuracy = np.empty(30)
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         specificity = np.load('results/gcn_spec_ttest.npy')
         f1 = np.load('results/gcn_f1_ttest.npy')
 
-    for seed in range(30):
+    for seed in range(start,30):
         print(f'Running seed {seed}')
         data = data.cpu()
         #select labeled samples
