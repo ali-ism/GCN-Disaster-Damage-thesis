@@ -158,7 +158,7 @@ if __name__ == "__main__":
     train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size)
 
-    cw_name = '_'.join(text.replace('-', '_') for text in train_disasters) + '_siameseclf'
+    cw_name = '_'.join(text.replace('-', '_') for text in train_disasters) + '_siamese'
     if settings_dict['data_sup']['leak']:
         cw_name = cw_name + '_leaked'
     if os.path.isfile(f'weights/class_weights_{cw_name}_{num_classes}.pt'):
