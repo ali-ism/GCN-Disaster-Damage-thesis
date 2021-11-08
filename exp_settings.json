@@ -13,7 +13,7 @@
         "labeled_size": 0.2
     },
     "model": {
-        "name": "joplin_ttest",
+        "name": "nepal_joplin_puna_leak_01",
         "hidden_units": 32,
         "num_layers": 2,
         "lr": 0.0003,
