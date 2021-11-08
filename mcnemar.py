@@ -50,7 +50,7 @@ class xBDImages(Dataset):
             labels['image_path'] = path + disaster + '/'
             zone_func = lambda row: '_'.join(row.name.split('_', 2)[:2])
             labels['zone'] = labels.apply(zone_func, axis=1)
-            zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
+            zones = labels['zone'].value_counts()[labels['zone'].value_counts()<=1].index.tolist()
             for zone in zones:
                 labels.drop(index=labels.loc[labels['zone']==zone].index, inplace=True)
             for zone in labels['zone'].unique():
@@ -194,55 +194,47 @@ if __name__ == "__main__":
     else:
         transform = None
     
-    if osp.isfile('results/y_true_sage.npy') and osp.isfile('results/y_pred_sage.npy'):
-        y_true_sage = np.load('results/y_true_sage.npy')
-        y_pred_sage = np.load('results/y_pred_sage.npy')
-    else:
-        hold_dataset = xBDBatch(
-            '/home/ami31/scratch/datasets/xbd_graph/socal_hold',
-            '/home/ami31/scratch/datasets/xbd/hold_bldgs/',
-            'socal-fire',
-            transform=transform
-        )
-        num_classes = 3 if settings_dict['merge_classes'] else hold_dataset.num_classes
-        model = CNNSage(
-            settings_dict['model']['hidden_units'],
-            num_classes,
-            settings_dict['model']['num_layers'],
-            settings_dict['model']['dropout_rate']
-        )
-        name = settings_dict['model']['name'] + '_sage'
-        model_path = 'weights/' + name
-        model.load_state_dict(torch.load(model_path+'_best.pt'))
-        model.eval()
-        model = model.to(device)
-        y_true_sage, y_pred_sage = infer_sage()
-        np.save('results/y_true_sage.npy', y_true_sage)
-        np.save('results/y_pred_sage.npy', y_pred_sage)
-    
-    if osp.isfile('results/y_true_cnn.npy') and osp.isfile('results/y_pred_cnn.npy'):
-        y_true_cnn = np.load('results/y_true_cnn.npy')
-        y_pred_cnn = np.load('results/y_pred_cnn.npy')
-    else:
-        hold_dataset = xBDImages(
-            ['/home/ami31/scratch/datasets/xbd/hold_bldgs/'],
-            ['socal-fire'],
-            merge_classes
-        )
-        hold_loader = DataLoader(hold_dataset, batch_size)
-        model = SiameseNet(
-            settings_dict['model']['hidden_units'],
-            num_classes,
-            settings_dict['model']['dropout_rate']
-        )
-        name = settings_dict['model']['name'] + '_siamese'
-        model_path = 'weights/' + name
-        model.load_state_dict(torch.load(model_path+'_best.pt'))
-        model.eval()
-        model = model.to(device)
-        y_true_cnn, y_pred_cnn = infer_cnn()
-        np.save('results/y_true_cnn.npy', y_true_cnn)
-        np.save('results/y_pred_cnn.npy', y_pred_cnn)
+    hold_dataset = xBDBatch(
+        '/home/ami31/scratch/datasets/xbd_graph/socal_hold',
+        '/home/ami31/scratch/datasets/xbd/hold_bldgs/',
+        'socal-fire',
+        transform=transform
+    )
+    num_classes = 3 if settings_dict['merge_classes'] else hold_dataset.num_classes
+    model = CNNSage(
+        settings_dict['model']['hidden_units'],
+        num_classes,
+        settings_dict['model']['num_layers'],
+        settings_dict['model']['dropout_rate']
+    )
+    name = settings_dict['model']['name'] + '_sage'
+    model_path = 'weights/' + name
+    model.load_state_dict(torch.load(model_path+'_best.pt'))
+    model.eval()
+    model = model.to(device)
+    y_true_sage, y_pred_sage = infer_sage()
+    np.save('results/y_true_sage.npy', y_true_sage)
+    np.save('results/y_pred_sage.npy', y_pred_sage)
+
+    hold_dataset = xBDImages(
+        ['/home/ami31/scratch/datasets/xbd/hold_bldgs/'],
+        ['socal-fire'],
+        merge_classes
+    )
+    hold_loader = DataLoader(hold_dataset, batch_size)
+    model = SiameseNet(
+        settings_dict['model']['hidden_units'],
+        num_classes,
+        settings_dict['model']['dropout_rate']
+    )
+    name = settings_dict['model']['name'] + '_siamese'
+    model_path = 'weights/' + name
+    model.load_state_dict(torch.load(model_path+'_best.pt'))
+    model.eval()
+    model = model.to(device)
+    y_true_cnn, y_pred_cnn = infer_cnn()
+    np.save('results/y_true_cnn.npy', y_true_cnn)
+    np.save('results/y_pred_cnn.npy', y_pred_cnn)
 
     assert np.array_equal(y_true_sage, y_true_cnn)
 
