@@ -46,6 +46,7 @@ class xBDImages(Dataset):
         for disaster, path in zip(disasters, paths):
             labels = pd.read_csv(list(Path(path + disaster).glob('*.csv*'))[0], index_col=0)
             labels.drop(columns=['long','lat', 'xcoord', 'ycoord'], inplace=True)
+            labels.drop(index=labels[labels['class'] == 'un-classified'].index, inplace = True)
             #labels.drop(index=labels[labels['class'] == 'un-classified'].index, inplace = True)
             labels['image_path'] = path + disaster + '/'
             zone_func = lambda row: '_'.join(row.name.split('_', 2)[:2])
