@@ -6,10 +6,11 @@ from typing import Callable, List, Tuple, Union
 import numpy as np
 import pandas as pd
 import torch
+import torch_geometric
 import utm
 from PIL import Image
 from sklearn.model_selection import train_test_split
-from torch_geometric.data import Data, Dataset, InMemoryDataset
+from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.transforms import Compose, Delaunay, FaceToEdge
 from torchvision.transforms import ToTensor
 
@@ -17,7 +18,7 @@ torch.manual_seed(42)
 
 to_tensor = ToTensor()
 
-class xBDImages(Dataset):
+class xBDImages(torch.utils.data.Dataset):
     """
     xBD building image dataset.
 
@@ -79,7 +80,7 @@ class xBDImages(Dataset):
 
 delaunay = Compose([Delaunay(), FaceToEdge()])
 
-class xBDBatch(Dataset):
+class xBDBatch(torch_geometric.data.Dataset):
     """
     xBD graph dataset.
     Every image chip is a graph.
@@ -104,8 +105,8 @@ class xBDBatch(Dataset):
         self.disaster = disaster_name
         self.labels = pd.read_csv(list(Path(self.path + self.disaster).glob('*.csv*'))[0], index_col=0)
         self.labels.drop(columns=['long','lat'], inplace=True)
-        zone = lambda row: '_'.join(row.name.split('_', 2)[:2])
-        self.labels['zone'] = self.labels.apply(zone, axis=1)
+        zone_func = lambda row: '_'.join(row.name.split('_', 2)[:2])
+        self.labels['zone'] = self.labels.apply(zone_func, axis=1)
         self.zones = self.labels['zone'].value_counts()[self.labels['zone'].value_counts()>1].index.tolist()
         self.num_classes = 4
 

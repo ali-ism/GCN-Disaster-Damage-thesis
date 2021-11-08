@@ -1,17 +1,20 @@
 import json
 import os.path as osp
-from typing import Tuple
+from pathlib import Path
+from typing import Callable, List, Tuple
 
 import numpy as np
+import pandas as pd
 import torch
-from torch.utils.data import DataLoader
+from PIL import Image
+from statsmodels.stats.contingency_tables import mcnemar
+from torch.utils.data import DataLoader, Dataset
 from torch_geometric.data import RandomNodeSampler
+from torchvision.transforms import ToTensor
 
-from dataset import xBDBatch, xBDImages
+from dataset import xBDBatch
 from model import CNNSage, SiameseNet
 from utils import merge_classes
-
-from statsmodels.stats.contingency_tables import mcnemar
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
@@ -22,6 +25,76 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
+
+
+class xBDImages(Dataset):
+    """
+    xBD building image dataset.
+
+    Args:
+        paths (List[str]): paths to the desired data split (train, test, hold or tier3).
+        disasters (List[str]): names of the included disasters.
+    """
+    def __init__(
+        self,
+        paths: List[str],
+        disasters: List[str],
+        merge_classes: bool=False,
+        transform: Callable=None) -> None:
+
+        list_labels = []
+        for disaster, path in zip(disasters, paths):
+            labels = pd.read_csv(list(Path(path + disaster).glob('*.csv*'))[0], index_col=0)
+            labels.drop(columns=['long','lat', 'xcoord', 'ycoord'], inplace=True)
+            #labels.drop(index=labels[labels['class'] == 'un-classified'].index, inplace = True)
+            labels['image_path'] = path + disaster + '/'
+            zone_func = lambda row: '_'.join(row.name.split('_', 2)[:2])
+            labels['zone'] = labels.apply(zone_func, axis=1)
+            zones = labels['zone'].value_counts()[labels['zone'].value_counts()>1].index.tolist()
+            for zone in zones:
+                labels.drop(index=labels.loc[labels['zone']==zone].index, inplace=True)
+            for zone in labels['zone'].unique():
+                if (labels[labels['zone'] == zone]['class'] == 'un-classified').all() or \
+                   (labels[labels['zone'] == zone]['class'] != 'un-classified').sum() == 1:
+                    labels.drop(index=labels.loc[labels['zone']==zone].index, inplace=True)
+            list_labels.append(labels)
+        
+        self.labels = pd.concat(list_labels)
+        self.label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
+        self.num_classes = 3 if merge_classes else 4
+        self.merge_classes = merge_classes
+        self.to_tensor = ToTensor()
+        self.transform = transform
+    
+    def __len__(self) -> int:
+        return self.labels.shape[0]
+    
+    def __getitem__(self, idx) -> Tuple[torch.Tensor]:
+
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        post_image_file = self.labels['image_path'][idx] + self.labels.index[idx]
+        pre_image_file = post_image_file.replace('post', 'pre')
+        pre_image = Image.open(pre_image_file)
+        post_image = Image.open(post_image_file)
+        pre_image = pre_image.resize((128, 128))
+        post_image = post_image.resize((128, 128))
+        pre_image = self.to_tensor(pre_image)
+        post_image = self.to_tensor(post_image)
+        images = torch.cat((pre_image, post_image),0).flatten()
+
+        if self.transform is not None:
+            images = self.transform(images)
+
+        y = torch.tensor(self.label_dict[self.labels['class'][idx]])
+
+        if self.merge_classes:
+            y[y==3] = 2
+        
+        sample = {'x': images, 'y': y}
+
+        return sample
 
 
 @torch.no_grad()
