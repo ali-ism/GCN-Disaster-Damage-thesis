@@ -6,13 +6,14 @@ from typing import Callable, List, Tuple
 import numpy as np
 import pandas as pd
 import torch
+import torch_geometric
 from PIL import Image
 from statsmodels.stats.contingency_tables import mcnemar
 from torch.utils.data import DataLoader, Dataset
-from torch_geometric.data import RandomNodeSampler
+from torch_geometric.data import Data, RandomNodeSampler
+from torch_geometric.transforms import Compose, Delaunay, FaceToEdge
 from torchvision.transforms import ToTensor
 
-from dataset import xBDBatch
 from model import CNNSage, SiameseNet
 from utils import merge_classes
 
@@ -26,6 +27,8 @@ torch.manual_seed(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
+to_tensor = ToTensor()
+delaunay = Compose([Delaunay(), FaceToEdge()])
 
 class xBDImages(Dataset):
     """
@@ -64,7 +67,6 @@ class xBDImages(Dataset):
         self.label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
         self.num_classes = 3 if merge_classes else 4
         self.merge_classes = merge_classes
-        self.to_tensor = ToTensor()
         self.transform = transform
     
     def __len__(self) -> int:
@@ -81,8 +83,8 @@ class xBDImages(Dataset):
         post_image = Image.open(post_image_file)
         pre_image = pre_image.resize((128, 128))
         post_image = post_image.resize((128, 128))
-        pre_image = self.to_tensor(pre_image)
-        post_image = self.to_tensor(post_image)
+        pre_image = to_tensor(pre_image)
+        post_image = to_tensor(post_image)
         images = torch.cat((pre_image, post_image),0).flatten()
 
         if self.transform is not None:
@@ -93,30 +95,147 @@ class xBDImages(Dataset):
         if self.merge_classes:
             y[y==3] = 2
         
-        sample = {'x': images, 'y': y}
+        sample = {'key': self.labels.index[idx], 'x': images, 'y': y}
 
         return sample
 
+
+class xBDBatch(torch_geometric.data.Dataset):
+    """
+    xBD graph dataset.
+    Every image chip is a graph.
+    Every building (pre and post) is a node.
+    Edges are created accoring to the Delaunay triangulation.
+    Edge features are calculated as a similarity measure between the nodes.
+
+    Args:
+        root (str): path where the processed dataset is saved.
+        data_path (str): path to the desired data split (train, test, hold or tier3).
+        disaster_name (str): name of the included disaster.
+    """
+    def __init__(
+        self,
+        root: str,
+        data_path: str,
+        disaster_name: str,
+        transform: Callable=None,
+        pre_transform: Callable=None) -> None:
+        
+        self.path = data_path
+        self.disaster = disaster_name
+        self.labels = pd.read_csv(list(Path(self.path + self.disaster).glob('*.csv*'))[0], index_col=0)
+        self.labels.drop(columns=['long','lat'], inplace=True)
+        zone_func = lambda row: '_'.join(row.name.split('_', 2)[:2])
+        self.labels['zone'] = self.labels.apply(zone_func, axis=1)
+        self.zones = self.labels['zone'].value_counts()[self.labels['zone'].value_counts()>1].index.tolist()
+        self.num_classes = 4
+
+        super().__init__(root, transform, pre_transform)
+
+    @property
+    def raw_file_names(self) -> List:
+        return []
+
+    @property
+    def processed_file_names(self) -> List[str]:
+        processed_files = []
+        for zone in self.zones:
+            if not ((self.labels[self.labels['zone'] == zone]['class'] == 'un-classified').all() or \
+                    (self.labels[self.labels['zone'] == zone]['class'] != 'un-classified').sum() == 1):
+                processed_files.append(osp.join(self.processed_dir, f'{zone}.pt'))
+        return processed_files
+
+    def process(self) -> None:
+        label_dict = {'no-damage':0,'minor-damage':1,'major-damage':2,'destroyed':3}
+        for zone in self.zones:
+            if osp.isfile(osp.join(self.processed_dir, f'{zone}.pt')) or \
+            (self.labels[self.labels['zone'] == zone]['class'] == 'un-classified').all() or \
+            (self.labels[self.labels['zone'] == zone]['class'] != 'un-classified').sum() == 1:
+                continue
+            print(f'Building {zone}...')
+            list_pre_images = list(map(str, Path(self.path + self.disaster).glob(f'{zone}_pre_disaster*')))
+            list_post_images = list(map(str, Path(self.path + self.disaster).glob(f'{zone}_post_disaster*')))
+            x = []
+            y = []
+            key = []
+            coords = []
+
+            for pre_image_file, post_image_file in zip(list_pre_images, list_post_images):
+                
+                annot = self.labels.loc[osp.split(post_image_file)[1],'class']
+                if annot == 'un-classified':
+                    continue
+                key.append(osp.split(post_image_file)[1])
+                y.append(label_dict[annot])
+                coords.append((self.labels.loc[osp.split(post_image_file)[1],'xcoord'],
+                                self.labels.loc[osp.split(post_image_file)[1],'ycoord']))
+
+                pre_image = Image.open(pre_image_file)
+                post_image = Image.open(post_image_file)
+                pre_image = pre_image.resize((128, 128))
+                post_image = post_image.resize((128, 128))
+                pre_image = to_tensor(pre_image)
+                post_image = to_tensor(post_image)
+                images = torch.cat((pre_image, post_image),0)
+                x.append(images.flatten())
+
+            x = torch.stack(x)
+            y = torch.tensor(y)
+            coords = torch.tensor(coords)
+
+            data = Data(x=x, y=y, pos=coords)
+            data = delaunay(data)
+
+            edge_index = data.edge_index
+
+            edge_attr = torch.empty((edge_index.shape[1],1))
+            for i in range(edge_index.shape[1]):
+                node1 = x[edge_index[0,i]]
+                node2 = x[edge_index[1,i]]
+                s = (torch.abs(node1 - node2)) / (torch.abs(node1) + torch.abs(node2))
+                s[s.isnan()] = 1
+                s = 1 - torch.sum(s)/node1.shape[0]
+                edge_attr[i,0] = s.item()
+            data.edge_attr = edge_attr
+
+            data.key = key
+
+            if self.pre_filter is not None and not self.pre_filter(data):
+                continue
+            if self.pre_transform is not None:
+                data = self.pre_transform(data)
+            
+            torch.save(data, osp.join(self.processed_dir, f'{zone}.pt'))
+    
+    def len(self) -> int:
+        return len(self.processed_file_names)
+
+    def get(self, idx: int):
+        data = torch.load(osp.join(self.processed_dir, self.processed_file_names[idx]))
+        return data
 
 @torch.no_grad()
 def infer_cnn() -> Tuple[np.ndarray]:
     y_true = []
     y_pred = []
+    keys = []
     for data in hold_loader:
         x = data['x'].to(device)
         y = data['y']
+        keys.extend(data['key'])
         out = model(x).cpu()
         y_pred.append(out)
         y_true.append(y)
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
-    return y_true.numpy(), y_pred.numpy()
+    return keys, y_true.numpy(), y_pred.numpy()
 
 
 @torch.no_grad()
 def infer_sage() -> Tuple[np.ndarray]:
     y_true = []
     y_pred = []
+    keys = []
     for data in hold_dataset:
         if data.num_nodes > batch_size:
             sampler = RandomNodeSampler(data, num_parts=data.num_nodes//batch_size, num_workers=2)
@@ -125,14 +244,16 @@ def infer_sage() -> Tuple[np.ndarray]:
                 out = model(subdata.x, subdata.edge_index).cpu()
                 y_pred.append(out)
                 y_true.append(subdata.y.cpu())
+                keys.extend(subdata.key.cpu())
         else:
             data = data.to(device)
             out = model(data.x, data.edge_index).cpu()
             y_pred.append(out)
             y_true.append(data.y.cpu())
+            keys.extend(data.key.cpu())
     y_pred = torch.cat(y_pred)
     y_true = torch.cat(y_true)
-    return y_true.numpy(), y_pred.numpy()
+    return keys, y_true.numpy(), y_pred.numpy()
 
 
 def contingency_table(y_target: np.ndarray, y_model1: np.ndarray, y_model2: np.ndarray) -> np.ndarray:
@@ -213,9 +334,11 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(model_path+'_best.pt'))
     model.eval()
     model = model.to(device)
-    y_true_sage, y_pred_sage = infer_sage()
+    keys_sage, y_true_sage, y_pred_sage = infer_sage()
+    np.save('results/keys_sage.npy', keys_sage)
     np.save('results/y_true_sage.npy', y_true_sage)
     np.save('results/y_pred_sage.npy', y_pred_sage)
+    df_sage = pd.DataFrame({'y_true': y_true_sage, 'y_pred': y_pred_sage}, index=keys_sage).sort_index()
 
     hold_dataset = xBDImages(
         ['/home/ami31/scratch/datasets/xbd/hold_bldgs/'],
@@ -233,13 +356,15 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(model_path+'_best.pt'))
     model.eval()
     model = model.to(device)
-    y_true_cnn, y_pred_cnn = infer_cnn()
+    keys_cnn, y_true_cnn, y_pred_cnn = infer_cnn()
+    np.save('results/keys_cnn.npy', keys_cnn)
     np.save('results/y_true_cnn.npy', y_true_cnn)
     np.save('results/y_pred_cnn.npy', y_pred_cnn)
+    df_cnn = pd.DataFrame({'y_true': y_true_cnn, 'y_pred': y_pred_cnn}, index=keys_cnn).sort_index()
 
-    assert np.array_equal(y_true_sage, y_true_cnn)
+    assert np.array_equal(df_cnn['y_true'].values, df_sage['y_true'].values)
 
-    table = contingency_table(y_true_cnn, y_pred_sage, y_pred_cnn)
+    table = contingency_table(df_cnn['y_true'].values, df_sage['y_pred'].values, df_cnn['y_pred'].values)
 
     if table[0,1] + table[1,0] < 25:
         stat, p_value = mcnemar(table, exact=True)
