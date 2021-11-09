@@ -317,7 +317,7 @@ if __name__ == "__main__":
         transform = None
     
     hold_dataset = xBDBatch(
-        '/home/ami31/scratch/datasets/xbd_graph/socal_hold',
+        '/home/ami31/scratch/datasets/xbd_graph/socal_hold_mcnemar',
         '/home/ami31/scratch/datasets/xbd/hold_bldgs/',
         'socal-fire',
         transform=transform
