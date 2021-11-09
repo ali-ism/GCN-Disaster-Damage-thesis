@@ -226,7 +226,7 @@ def infer_cnn() -> Tuple[np.ndarray]:
         out = model(x).cpu()
         y_pred.append(out)
         y_true.append(y)
-    y_pred = torch.cat(y_pred).argmax(dim=1, keepdim=True)
+    y_pred = torch.cat(y_pred).argmax(dim=1)
     y_true = torch.cat(y_true)
     return keys, y_true.numpy(), y_pred.numpy()
 
@@ -251,7 +251,7 @@ def infer_sage() -> Tuple[np.ndarray]:
             y_pred.append(out)
             y_true.append(data.y.cpu())
             keys.extend(data.key)
-    y_pred = torch.cat(y_pred).argmax(dim=1, keepdim=True)
+    y_pred = torch.cat(y_pred).argmax(dim=1)
     y_true = torch.cat(y_true)
     return keys, y_true.numpy(), y_pred.numpy()
 
