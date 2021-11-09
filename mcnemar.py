@@ -367,12 +367,12 @@ if __name__ == "__main__":
     table = contingency_table(df_cnn['y_true'].values, df_sage['y_pred'].values, df_cnn['y_pred'].values)
 
     if table[0,1] + table[1,0] < 25:
-        stat, p_value = mcnemar(table, exact=True)
+        result = mcnemar(table, exact=True)
     else:
-        stat, p_value = mcnemar(table, exact=False, correction=True)
+        result = mcnemar(table, exact=False, correction=True)
     
-    print(f'p value: {p_value}')
-    if p_value <= 0.05:
+    print(f'p value: {result.pvalue}')
+    if result.pvalue <= 0.05:
         print('Null hypothesis rejected')
     else:
         print('Failed to reject null hypothesis')
