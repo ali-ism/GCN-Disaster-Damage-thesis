@@ -1,9 +1,12 @@
 import json
 from typing import Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
+from celluloid import Camera
+from sklearn.manifold import TSNE
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
@@ -33,13 +36,15 @@ torch.backends.cudnn.benchmark = False
 def train() -> Tuple[float]:
     model.train()
     optimizer.zero_grad()
-    out = model(data.x, data.adj_t)[train_idx]
+    out = model(data.x, data.adj_t)
+    z = TSNE(n_components=2).fit_transform(out.detach().cpu().numpy())
+    out = out[train_idx]
     loss = F.nll_loss(input=out, target=data.y[train_idx], weight=class_weights.to(device))
     loss.backward()
     optimizer.step()
     cm = confusion_matrix(data.y[train_idx].cpu(), out.detach().cpu().argmax(dim=1, keepdims=True))
     accuracy, precision, recall, specificity, f1 = score_cm(cm)
-    return loss.detach().cpu().item(), accuracy, precision, recall, specificity, f1
+    return loss.detach().cpu().item(), accuracy, precision, recall, specificity, f1, z
 
 
 @torch.no_grad()
@@ -174,6 +179,11 @@ if __name__ == "__main__":
     test_specificity = np.empty(n_epochs)
     test_f1 = np.empty(n_epochs)
 
+    fig_tsne = plt.figure(figsize=(10,10))
+    camera = Camera(fig_tsne)
+    plt.xticks([])
+    plt.yticks([])
+
     for epoch in range(1, n_epochs+1):
         
         results = train()
@@ -185,6 +195,10 @@ if __name__ == "__main__":
         train_f1[epoch-1] = results[5]
         print('**********************************************')
         print(f'Epoch {epoch}, Train Loss: {train_loss[epoch-1]:.4f}')
+
+        z = results[6]
+        plt.scatter(z[:, 0], z[:, 1], s=70, c=data.y.cpu().numpy(), cmap="Set2")
+        camera.snap()
 
         results = test(test_idx)
         test_loss[epoch-1] = results[0]
@@ -199,6 +213,9 @@ if __name__ == "__main__":
             best_epoch = epoch
             hold_scores_best = test(hold_idx)
             all_scores_best = test(torch.ones(data.y.shape[0]).bool())
+    
+    animation = camera.animate()
+    animation.save('results/'+name+'_tsne.mp4')
 
     print(f'\nBest test F1 {best_test_f1} at epoch {best_epoch}.\n')
     save_results()
