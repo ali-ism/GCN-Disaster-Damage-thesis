@@ -329,7 +329,7 @@ if __name__ == "__main__":
         settings_dict['model']['num_layers'],
         settings_dict['model']['dropout_rate']
     )
-    name = settings_dict['model']['name'] + '_sage'
+    name = 'socal_portugal_02' + '_sage'
     model_path = 'weights/' + name
     model.load_state_dict(torch.load(model_path+'_best.pt'))
     model.eval()
@@ -351,7 +351,7 @@ if __name__ == "__main__":
         num_classes,
         settings_dict['model']['dropout_rate']
     )
-    name = settings_dict['model']['name'] + '_siamese'
+    name = 'socal_portugal_02' + '_siamese'
     model_path = 'weights/' + name
     model.load_state_dict(torch.load(model_path+'_best.pt'))
     model.eval()
