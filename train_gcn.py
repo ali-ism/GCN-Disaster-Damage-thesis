@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from celluloid import Camera
+from matplotlib.animation import PillowWriter
 from sklearn.manifold import TSNE
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
@@ -215,7 +216,7 @@ if __name__ == "__main__":
             all_scores_best = test(torch.ones(data.y.shape[0]).bool())
     
     animation = camera.animate()
-    animation.save('results/'+name+'_tsne.mp4', writer='ffmpeg')
+    animation.save('results/'+name+'_tsne.gif', writer=PillowWriter(fps=30))
 
     print(f'\nBest test F1 {best_test_f1} at epoch {best_epoch}.\n')
     save_results()
