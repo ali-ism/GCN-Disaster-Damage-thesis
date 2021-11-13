@@ -215,7 +215,7 @@ if __name__ == "__main__":
             all_scores_best = test(torch.ones(data.y.shape[0]).bool())
     
     animation = camera.animate()
-    animation.save('results/'+name+'_tsne.mp4')
+    animation.save('results/'+name+'_tsne.mp4', writer='ffmpeg')
 
     print(f'\nBest test F1 {best_test_f1} at epoch {best_epoch}.\n')
     save_results()
