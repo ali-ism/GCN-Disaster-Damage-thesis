@@ -198,7 +198,7 @@ if __name__ == "__main__":
         print(f'Epoch {epoch}, Train Loss: {train_loss[epoch-1]:.4f}')
 
         z = results[6]
-        plt.scatter(z[:, 0], z[:, 1], s=70, c=data.y.cpu().numpy(), cmap="Set2")
+        plt.scatter(z[:, 0], z[:, 1], s=70, c=data.y.cpu().numpy(), cmap="Set1")
         camera.snap()
 
         results = test(test_idx)
@@ -216,7 +216,7 @@ if __name__ == "__main__":
             all_scores_best = test(torch.ones(data.y.shape[0]).bool())
     
     animation = camera.animate()
-    animation.save('results/'+name+'_tsne.gif', writer=PillowWriter(fps=30))
+    animation.save('results/'+name+'_tsne.gif', writer=PillowWriter(fps=2))
 
     print(f'\nBest test F1 {best_test_f1} at epoch {best_epoch}.\n')
     save_results()
