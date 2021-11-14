@@ -1,12 +1,11 @@
 import json
 from typing import Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import plotly.express as px
 import torch
 import torch.nn.functional as F
-from celluloid import Camera
-from matplotlib.animation import FFMpegFileWriter
 from sklearn.manifold import TSNE
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
@@ -180,10 +179,11 @@ if __name__ == "__main__":
     test_specificity = np.empty(n_epochs)
     test_f1 = np.empty(n_epochs)
 
-    fig_tsne = plt.figure(figsize=(10,10))
-    camera = Camera(fig_tsne)
-    plt.xticks([])
-    plt.yticks([])
+    x_scatter = []
+    y_scatter = []
+    c_scatter = []
+    e_scatter = []
+    class_map = {0:'no-damage', 1:'minor-damage', 2:'destroyed'}
 
     for epoch in range(1, n_epochs+1):
         
@@ -198,9 +198,10 @@ if __name__ == "__main__":
         print(f'Epoch {epoch}, Train Loss: {train_loss[epoch-1]:.4f}')
 
         z = results[6]
-        plt.scatter(z[:, 0], z[:, 1], s=70, c=data.y.cpu().numpy(), cmap="Set1", label=data.y.cpu().numpy())
-        plt.legend()
-        camera.snap()
+        x_scatter.extend(z[:,0].tolist())
+        y_scatter.extend(z[:,1].tolist())
+        c_scatter.extend(map(class_map.get, data.y.cpu().numpy().tolist()))
+        e_scatter.extend([epoch]*data.t.shape[0])
 
         results = test(test_idx)
         test_loss[epoch-1] = results[0]
@@ -216,8 +217,12 @@ if __name__ == "__main__":
             hold_scores_best = test(hold_idx)
             all_scores_best = test(torch.ones(data.y.shape[0]).bool())
     
-    animation = camera.animate()
-    animation.save('results/'+name+'_tsne.mp4', writer=FFMpegFileWriter(fps=2))
+    df_scatter = pd.DataFrame({'x':x_scatter,'y':y_scatter,'c':c_scatter,'e':e_scatter})
+    color_dict = {'no-damage': 'green','minor-damage': 'blue','destroyed': 'red'}
+    fig = px.scatter(df_scatter, x='x', y='y', animation_frame='e', color='c', color_discrete_map=color_dict)
+    fig.update_xaxes(visible=False)
+    fig.update_yaxes(visible=False)
+    fig.write_html(f'results/{name}_tsne.html')
 
     print(f'\nBest test F1 {best_test_f1} at epoch {best_epoch}.\n')
     save_results()
