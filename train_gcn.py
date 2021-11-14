@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from celluloid import Camera
-from matplotlib.animation import PillowWriter
+from matplotlib.animation import FFMpegFileWriter
 from sklearn.manifold import TSNE
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
@@ -198,7 +198,8 @@ if __name__ == "__main__":
         print(f'Epoch {epoch}, Train Loss: {train_loss[epoch-1]:.4f}')
 
         z = results[6]
-        plt.scatter(z[:, 0], z[:, 1], s=70, c=data.y.cpu().numpy(), cmap="Set1")
+        plt.scatter(z[:, 0], z[:, 1], s=70, c=data.y.cpu().numpy(), cmap="Set1", label=data.y.cpu().numpy())
+        plt.legend()
         camera.snap()
 
         results = test(test_idx)
@@ -216,7 +217,7 @@ if __name__ == "__main__":
             all_scores_best = test(torch.ones(data.y.shape[0]).bool())
     
     animation = camera.animate()
-    animation.save('results/'+name+'_tsne.gif', writer=PillowWriter(fps=2))
+    animation.save('results/'+name+'_tsne.mp4', writer=FFMpegFileWriter(fps=2))
 
     print(f'\nBest test F1 {best_test_f1} at epoch {best_epoch}.\n')
     save_results()
