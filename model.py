@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
-from torch.tensor import Tensor
+from torch import Tensor
 from torch.nn import Linear, Module, ModuleList, Sequential
-from torch_geometric.nn import BatchNorm, GCNConv, GraphConv, LayerNorm, SAGEConv
+from torch_geometric.nn import BatchNorm, GCNConv, LayerNorm, SAGEConv
 from torch_sparse import SparseTensor
 from torchvision.models import resnet34
 
@@ -120,36 +120,4 @@ class CNNSage(Module):
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout_rate, training=self.training)
         x = self.out(x, edge_index)
-        return F.log_softmax(x, dim=1)
-
-
-class CNNGraph(Module):
-    def __init__(
-        self,
-        hidden_channels: int,
-        num_classes: int,
-        num_layers: int,
-        dropout_rate: float,
-        diff: bool=True) -> None:
-        super().__init__()
-
-        self.dropout_rate = dropout_rate
-        self.node_encoder = SiameseEncoder(diff)
-        self.convs = ModuleList()
-        self.layer_norms = ModuleList()
-        self.convs.append(GraphConv(self.node_encoder.get_output_shape(), hidden_channels, 'mean'))
-        self.layer_norms.append(LayerNorm(hidden_channels))
-        for _ in range(num_layers - 2):
-            self.convs.append(GraphConv(hidden_channels, hidden_channels, 'mean'))
-            self.layer_norms.append(LayerNorm(hidden_channels))
-        self.out = GraphConv(hidden_channels, num_classes, 'mean')
-
-    def forward(self, x: Tensor, edge_index: Tensor, edge_attr: Tensor) -> Tensor:
-        x= self.node_encoder(x)
-        for layer_norm, conv in zip(self.layer_norms, self.convs):
-            x = conv(x, edge_index, edge_attr)
-            x = layer_norm(x)
-            x = F.relu(x)
-            x = F.dropout(x, p=self.dropout_rate, training=self.training)
-        x = self.out(x, edge_index, edge_attr)
         return F.log_softmax(x, dim=1)

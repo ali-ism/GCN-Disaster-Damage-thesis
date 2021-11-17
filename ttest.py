@@ -1,9 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from scipy.stats import ttest_rel, wilcoxon
 
-#with open('exp_settings.json', 'r') as JSON:
-#    settings_dict = json.load(JSON)
 
 gcn_acc = np.load('results/gcn_acc_ttest.npy')
 gcn_prec = np.load('results/gcn_prec_ttest.npy')
@@ -21,10 +20,22 @@ metrics = ['accuracy', 'precision', 'recall', 'specificity', 'f1']
 gcn_scores = [gcn_acc, gcn_prec, gcn_rec, gcn_spec, gcn_f1]
 ae_scores = [ae_acc, ae_prec, ae_rec, ae_spec, ae_f1]
 
-#n = settings_dict['data_ss']['reduced_size']
-#n1 = round(settings_dict['data_ss']['reduced_size'] * settings_dict['data_ss']['labeled_size'])
-#n2 = round(settings_dict['data_ss']['reduced_size'] * 0.5)
-#n = n1 + n2
+
+plt.figure(figsize=(10,7))
+bplot = plt.boxplot(gcn_scores, patch_artist=True, labels=metrics)
+for patch in bplot['boxes']:
+    patch.set_facecolor('orange')
+    patch.set_alpha(0.7)
+bplot = plt.boxplot(ae_scores, patch_artist=True, labels=metrics)
+for patch in bplot['boxes']:
+    patch.set_facecolor('blue')
+    patch.set_alpha(0.7)
+custom_lines = [Line2D([0],[0],color='orange',lw=4), Line2D([0],[0],color='blue',lw=4)]
+leg = plt.legend(custom_lines, ['GCN', 'AE'])
+for lh in leg.legendHandles: 
+    lh.set_alpha(0.7)
+plt.show()
+
 
 fig = plt.figure(figsize=(10,7))
 for i, (metric, gcn_score, ae_score) in enumerate(zip(metrics, gcn_scores, ae_scores)):
@@ -33,12 +44,6 @@ for i, (metric, gcn_score, ae_score) in enumerate(zip(metrics, gcn_scores, ae_sc
     plt.hist(ae_score, alpha=0.7, label='ae')
     plt.legend()
     plt.title(metric)
-    #d = gcn_score - ae_score
-    #mean = np.mean(d)
-    #var = np.var(d)
-    #var_mod = var + (1/n + n2/n1)
-    #t_stat =  mean / np.sqrt(var_mod)
-    #p_value = ((1 - t.cdf(t_stat, n-1))*200)
     t_stat, p_value = ttest_rel(gcn_score, ae_score)
     print(f'\n************{metric}************')
     print('Paired t-test:')

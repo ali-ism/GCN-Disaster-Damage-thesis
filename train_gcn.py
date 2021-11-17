@@ -21,10 +21,6 @@ with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
 name = settings_dict['model']['name'] + '_gcn'
-model_path = 'weights/' + name
-disaster = settings_dict['data_ss']['disaster']
-path = '/home/ami31/scratch/datasets/xbd/tier3_bldgs/'
-root = settings_dict['data_ss']['root']
 n_epochs = settings_dict['epochs']
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -123,7 +119,13 @@ if __name__ == "__main__":
     else:
         transform = Compose([GCNNorm(), ToSparseTensor()])
 
-    dataset = xBDFull(root, path, disaster, settings_dict['data_ss']['reduced_size'], transform=transform)
+    dataset = xBDFull(
+        settings_dict['data_ss']['root'],
+        '/home/ami31/scratch/datasets/xbd/tier3_bldgs/',
+        settings_dict['data_ss']['disaster'],
+        settings_dict['data_ss']['reduced_size'],
+        transform=transform
+    )
 
     num_classes = 3 if settings_dict['merge_classes'] else dataset.num_classes
 
@@ -183,7 +185,10 @@ if __name__ == "__main__":
     y_scatter = []
     c_scatter = []
     e_scatter = []
-    class_map = {0:'no-damage', 1:'minor-damage', 2:'destroyed'}
+    if settings_dict['merge_classes']:
+        class_map = {0:'no-damage', 1:'minor-damage', 2:'destroyed'}
+    else:
+        class_map = {0:'no-damage', 1:'minor-damage', 2:'major-damage', 3:'destroyed'}
 
     for epoch in range(1, n_epochs+1):
         
@@ -201,7 +206,7 @@ if __name__ == "__main__":
         x_scatter.extend(z[:,0].tolist())
         y_scatter.extend(z[:,1].tolist())
         c_scatter.extend(map(class_map.get, data.y.cpu().numpy().tolist()))
-        e_scatter.extend([epoch]*data.t.shape[0])
+        e_scatter.extend([epoch]*data.y.shape[0])
 
         results = test(test_idx)
         test_loss[epoch-1] = results[0]

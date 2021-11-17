@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Iterable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,7 +34,7 @@ def score(y_true, y_pred) -> Tuple[float]:
     return accuracy, f1_macro, f1_weighted, auc
 
 
-def score_cm(cm) -> Tuple[float]:
+def score_cm(cm: np.ndarray) -> Tuple[float]:
     """
     Calculates the accuracy, precision, recall, specificity and F1 score.
     
@@ -46,7 +46,6 @@ def score_cm(cm) -> Tuple[float]:
     fn = cm.sum(axis=1) - np.diag(cm)
     tp = np.diag(cm)
     tn = cm.sum() - (fp + fn + tp)
-
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
     specificity = tn / (tn + fp)
@@ -54,7 +53,7 @@ def score_cm(cm) -> Tuple[float]:
     return accuracy, precision.mean(), recall.mean(), specificity.mean(), f1.mean()
 
 
-def make_plot(train, test, plot_type: str, model_name: str) -> None:
+def make_plot(train: Iterable, test: Iterable, plot_type: str, model_name: str) -> None:
     plt.figure()
     plt.plot(train)
     plt.plot(test)

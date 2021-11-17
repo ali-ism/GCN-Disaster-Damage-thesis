@@ -2,8 +2,11 @@ import json
 from typing import Tuple
 
 import numpy as np
+import pandas as pd
+import plotly.express as px
 import torch
 import torch.nn.functional as F
+from sklearn.manifold import TSNE
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
@@ -12,16 +15,12 @@ from torch_geometric.transforms import Compose, GCNNorm, ToSparseTensor
 
 from dataset import BeirutFull
 from model import CNNGCN
-from utils import make_plot, merge_classes, score_cm
+from utils import make_plot, score_cm
 
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
 name = 'beirut_gcn'
-model_path = 'weights/' + name
-disaster = 'beirut'
-path = '/home/ami31/scratch/datasets/beirut_bldgs'
-root = settings_dict['data_ss']['root']
 n_epochs = settings_dict['epochs']
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -33,13 +32,15 @@ torch.backends.cudnn.benchmark = False
 def train() -> Tuple[float]:
     model.train()
     optimizer.zero_grad()
-    out = model(data.x, data.adj_t)[train_idx]
+    out = model(data.x, data.adj_t)
+    z = TSNE(n_components=2).fit_transform(out.detach().cpu().numpy())
+    out = out[train_idx]
     loss = F.nll_loss(input=out, target=data.y[train_idx], weight=class_weights.to(device))
     loss.backward()
     optimizer.step()
     cm = confusion_matrix(data.y[train_idx].cpu(), out.detach().cpu().argmax(dim=1, keepdims=True))
     accuracy, precision, recall, specificity, f1 = score_cm(cm)
-    return loss.detach().cpu().item(), accuracy, precision, recall, specificity, f1
+    return loss.detach().cpu().item(), accuracy, precision, recall, specificity, f1, z
 
 
 @torch.no_grad()
@@ -50,6 +51,20 @@ def test(mask: Tensor) -> Tuple[float]:
     cm = confusion_matrix(data.y[mask].cpu(), out.argmax(dim=1, keepdims=True))
     accuracy, precision, recall, specificity, f1 = score_cm(cm)
     return loss.item(), accuracy, precision, recall, specificity, f1
+
+
+def merge_classes(data):
+    """
+    Merges the first two classes into a single class.
+    
+    Args:
+        data: torch_geometric.data.Data object.
+
+    Returns:
+        data: transformed torch_geometric.data.Data object.
+    """
+    data.y[data.y==1] = 0
+    return data
 
 
 def save_results() -> None:
@@ -118,7 +133,11 @@ if __name__ == "__main__":
     else:
         transform = Compose([GCNNorm(), ToSparseTensor()])
 
-    dataset = BeirutFull(path, settings_dict['data_ss']['reduced_size'], transform=transform)
+    dataset = BeirutFull(
+        '/home/ami31/scratch/datasets/beirut_bldgs',
+        settings_dict['data_ss']['reduced_size'],
+        transform=transform
+    )
 
     num_classes = 3 if settings_dict['merge_classes'] else dataset.num_classes
 
@@ -174,6 +193,16 @@ if __name__ == "__main__":
     test_specificity = np.empty(n_epochs)
     test_f1 = np.empty(n_epochs)
 
+
+    x_scatter = []
+    y_scatter = []
+    c_scatter = []
+    e_scatter = []
+    if settings_dict['merge_classes']:
+        class_map = {0:'minor-damage', 1:'major-damage', 2:'destroyed'}
+    else:
+        class_map = {0:'minor-damage', 1:'moderate-damage', 2:'major-damage', 3:'severe-damage'}
+    
     for epoch in range(1, n_epochs+1):
         
         results = train()
@@ -185,6 +214,12 @@ if __name__ == "__main__":
         train_f1[epoch-1] = results[5]
         print('**********************************************')
         print(f'Epoch {epoch}, Train Loss: {train_loss[epoch-1]:.4f}')
+
+        z = results[6]
+        x_scatter.extend(z[:,0].tolist())
+        y_scatter.extend(z[:,1].tolist())
+        c_scatter.extend(map(class_map.get, data.y.cpu().numpy().tolist()))
+        e_scatter.extend([epoch]*data.y.shape[0])
 
         results = test(test_idx)
         test_loss[epoch-1] = results[0]
@@ -199,6 +234,13 @@ if __name__ == "__main__":
             best_epoch = epoch
             hold_scores_best = test(hold_idx)
             all_scores_best = test(torch.ones(data.y.shape[0]).bool())
+
+    df_scatter = pd.DataFrame({'x':x_scatter,'y':y_scatter,'c':c_scatter,'e':e_scatter})
+    color_dict = {'minor-damage': 'green','moderate-damage': 'blue','severe-damage': 'red'}
+    fig = px.scatter(df_scatter, x='x', y='y', animation_frame='e', color='c', color_discrete_map=color_dict)
+    fig.update_xaxes(visible=False)
+    fig.update_yaxes(visible=False)
+    fig.write_html(f'results/{name}_tsne.html')
 
     print(f'\nBest test F1 {best_test_f1} at epoch {best_epoch}.\n')
     save_results()
