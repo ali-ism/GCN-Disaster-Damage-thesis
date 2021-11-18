@@ -197,7 +197,7 @@ class xBDFull(InMemoryDataset):
         root: str, 
         data_path: str,
         disaster_name: str,
-        reduced_dataset_size: Union[int,float],
+        reduced_dataset_size: int,
         transform: Callable=None,
         pre_transform: Callable=None) -> None:
 
@@ -298,13 +298,13 @@ class BeirutFull(InMemoryDataset):
     def __init__(
         self,
         data_path: str,
-        reduced_dataset_size: Union[int,float],
+        reduced_dataset_size: int,
         transform: Callable=None,
         pre_transform: Callable=None) -> None:
 
         self.path = data_path
-        self.disaster = 'beirut'
-        self.labels = pd.read_csv(osp.join(self.path, 'buffered_masks.csv'), index_col=0)
+        cols = ['built_year', 'heritage', 'damage_num', 'long', 'lat']
+        self.labels = pd.read_csv(osp.join(self.path, 'buffered_masks.csv'), usecols=cols)
         
         if self.labels.shape[0] > reduced_dataset_size:
             idx, _ = train_test_split(
@@ -313,11 +313,11 @@ class BeirutFull(InMemoryDataset):
             self.labels = self.labels.iloc[idx,:]
 
         self.labels['easting'], self.labels['northing'], *_ = utm.from_latlon(
-            self.labels['Latitude'].values, self.labels['Longitude'].values
+            self.labels['lat'].values, self.labels['long'].values
         )
 
         super().__init__(osp.join(self.path,'beirut_graph'), transform, pre_transform)
-        self.labels.to_csv(osp.join(self.processed_dir, self.disaster+'_metadata.csv'))
+        self.labels.to_csv(osp.join(self.processed_dir, 'beirut_metadata.csv'))
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
@@ -326,7 +326,7 @@ class BeirutFull(InMemoryDataset):
 
     @property
     def processed_file_names(self) -> List[str]:
-        return [osp.join(self.processed_dir, self.disaster+'_data.pt')]
+        return ['beirut_data.pt']
     
     def download(self) -> None:
         pass
@@ -340,11 +340,10 @@ class BeirutFull(InMemoryDataset):
         post_image_files = sorted(os.listdir(osp.join(self.path, 'post_bldgs')))
 
         for i in self.labels.index.tolist():
-            
             y.append(self.labels['damage_num'][i])
             coords.append((self.labels['easting'][i], self.labels['northing'][i]))
-            pre_image = Image.open(osp.join(self.path, pre_image_files[i]))
-            post_image = Image.open(osp.join(self.path, post_image_files[i]))
+            pre_image = Image.open(osp.join(self.path, 'pre_bldgs', pre_image_files[i]))
+            post_image = Image.open(osp.join(self.path, 'post_bldgs', post_image_files[i]))
             pre_image = pre_image.resize((128, 128))
             post_image = post_image.resize((128, 128))
             pre_image = to_tensor(pre_image)
@@ -383,3 +382,7 @@ class BeirutFull(InMemoryDataset):
         
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
+
+
+if __name__ == "__main__":
+    dataset = BeirutFull('datasets/beirut_bldgs', 1366)

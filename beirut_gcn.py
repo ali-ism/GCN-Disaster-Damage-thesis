@@ -193,7 +193,6 @@ if __name__ == "__main__":
     test_specificity = np.empty(n_epochs)
     test_f1 = np.empty(n_epochs)
 
-
     x_scatter = []
     y_scatter = []
     c_scatter = []
