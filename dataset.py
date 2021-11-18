@@ -316,7 +316,7 @@ class BeirutFull(InMemoryDataset):
             self.labels['lat'].values, self.labels['long'].values
         )
 
-        super().__init__(osp.join(self.path,'beirut_graph'), transform, pre_transform)
+        super(BeirutFull, self).__init__(osp.join(self.path,'beirut_graph'), transform, pre_transform)
         self.labels.to_csv(osp.join(self.processed_dir, 'beirut_metadata.csv'))
         self.data, self.slices = torch.load(self.processed_paths[0])
 
@@ -347,7 +347,9 @@ class BeirutFull(InMemoryDataset):
             pre_image = pre_image.resize((128, 128))
             post_image = post_image.resize((128, 128))
             pre_image = to_tensor(pre_image)
+            pre_image = pre_image[:3,:,:]
             post_image = to_tensor(post_image)
+            post_image = post_image[:3,:,:]
             images = torch.cat((pre_image, post_image),0)
             x.append(images.flatten())
 
