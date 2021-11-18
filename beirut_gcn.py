@@ -63,7 +63,7 @@ def merge_classes(data):
     Returns:
         data: transformed torch_geometric.data.Data object.
     """
-    data.y[data.y==1] = 0
+    data.y[data.y>0] -= 1
     return data
 
 
