@@ -300,6 +300,7 @@ class xBDFullGraph(InMemoryDataset):
 class BeirutFullGraph(InMemoryDataset):
     def __init__(
         self,
+        root: str,
         data_path: str,
         reduced_dataset_size: int,
         meta_features: bool=False,
@@ -321,7 +322,7 @@ class BeirutFullGraph(InMemoryDataset):
             self.labels['lat'].values, self.labels['long'].values
         )
 
-        super().__init__(osp.join(self.path,'beirut_graph'), transform, pre_transform)
+        super().__init__(root, transform, pre_transform)
         self.labels.to_csv(osp.join(self.processed_dir, 'beirut_metadata.csv'))
         self.data, self.slices = torch.load(self.processed_paths[0])
 
