@@ -18,8 +18,6 @@ class SiameseEncoder(Module):
         x = x.reshape((-1, 6, 128, 128))
         x1 = x[:,:3,:,:]
         x2 = x[:,3:,:,:]
-        print(f'x1: {x1.dtype}')
-        print(f'x2: {x2.dtype}')
         x1 = self.model(x1)
         x2 = self.model(x2)
         if self.diff:
@@ -91,7 +89,7 @@ class CNNGCN(Module):
         if self.num_meta_features:
             x = torch.cat([self.node_encoder(x[:,:-2]), x[:,-2:]], dim=1)
         else:
-            x  = self.node_encoder(x)
+            x = self.node_encoder(x)
         for layer_norm, conv in zip(self.layer_norms, self.convs):
             x = conv(x, adj_t)
             x = layer_norm(x)
@@ -123,7 +121,7 @@ class CNNSage(Module):
         self.out = SAGEConv(hidden_channels, num_classes)
 
     def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
-        x= self.node_encoder(x)
+        x = self.node_encoder(x)
         for layer_norm, conv in zip(self.layer_norms, self.convs):
             x = conv(x, edge_index)
             x = layer_norm(x)

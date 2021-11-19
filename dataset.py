@@ -366,7 +366,7 @@ class BeirutFullGraph(InMemoryDataset):
             year = torch.from_numpy(year / year.max()).unsqueeze(1)
             heritage = self.labels['heritage'].apply(lambda x: 1 if x=='Yes' else 0).values
             heritage = torch.from_numpy(heritage).unsqueeze(1)
-            x = torch.cat([x, year, heritage], dim=1)
+            x = torch.cat([x, year, heritage], dim=1).float()
         print(f'Size of x matrix: {x.element_size()*x.nelement()*1e-9:.4f} GB')
         y = torch.tensor(y)
         coords = torch.tensor(coords)
