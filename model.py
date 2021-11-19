@@ -87,6 +87,8 @@ class CNNGCN(Module):
 
     def forward(self, x: Tensor, adj_t: SparseTensor) -> Tensor:
         if self.num_meta_features:
+            print(f'x: {x.dtype}')
+            print(f'x img: {x[:,:-2].dtype}')
             x = torch.cat([self.node_encoder(x[:,:-2]), x[:,-2:]], dim=1)
         else:
             x  = self.node_encoder(x)
