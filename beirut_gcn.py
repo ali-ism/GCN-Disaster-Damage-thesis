@@ -13,7 +13,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from torch import Tensor
 from torch_geometric.transforms import Compose, GCNNorm, ToSparseTensor
 
-from dataset import BeirutFull
+from dataset import BeirutFullGraph
 from model import CNNGCN
 from utils import make_plot, score_cm
 
@@ -21,6 +21,9 @@ with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
 name = 'beirut_gcn'
+num_meta_features = 2
+if num_meta_features:
+    name = name + '_meta'
 n_epochs = settings_dict['epochs']
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -133,9 +136,10 @@ if __name__ == "__main__":
     else:
         transform = Compose([GCNNorm(), ToSparseTensor()])
 
-    dataset = BeirutFull(
+    dataset = BeirutFullGraph(
         '/home/ami31/scratch/datasets/beirut_bldgs',
         settings_dict['data_ss']['reduced_size'],
+        meta_features=bool(num_meta_features),
         transform=transform
     )
 
@@ -172,7 +176,8 @@ if __name__ == "__main__":
         settings_dict['model']['hidden_units'],
         num_classes,
         settings_dict['model']['num_layers'],
-        settings_dict['model']['dropout_rate']
+        settings_dict['model']['dropout_rate'],
+        num_meta_features=num_meta_features
     )
     model = model.to(device)
 
@@ -235,7 +240,10 @@ if __name__ == "__main__":
             all_scores_best = test(torch.ones(data.y.shape[0]).bool())
 
     df_scatter = pd.DataFrame({'x':x_scatter,'y':y_scatter,'c':c_scatter,'e':e_scatter})
-    color_dict = {'minor-damage': 'green','moderate-damage': 'blue','severe-damage': 'red'}
+    if settings_dict['merge_classes']:
+        color_dict = {'minor-damage': 'green','major-damage': 'blue','severe-damage': 'red'}
+    else:
+        color_dict = {'minor-damage': 'green', 'moderate-damage': 'blue', 'major-damage': 'darkorange','severe-damage': 'red'}
     fig = px.scatter(df_scatter, x='x', y='y', animation_frame='e', color='c', color_discrete_map=color_dict)
     fig.update_xaxes(visible=False)
     fig.update_yaxes(visible=False)

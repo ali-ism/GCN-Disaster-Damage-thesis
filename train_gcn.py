@@ -13,7 +13,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from torch import Tensor
 from torch_geometric.transforms import Compose, GCNNorm, ToSparseTensor
 
-from dataset import xBDFull
+from dataset import xBDFullGraph
 from model import CNNGCN
 from utils import make_plot, merge_classes, score_cm
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     else:
         transform = Compose([GCNNorm(), ToSparseTensor()])
 
-    dataset = xBDFull(
+    dataset = xBDFullGraph(
         settings_dict['data_ss']['root'],
         '/home/ami31/scratch/datasets/xbd/tier3_bldgs/',
         settings_dict['data_ss']['disaster'],

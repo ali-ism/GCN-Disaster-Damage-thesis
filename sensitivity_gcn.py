@@ -10,7 +10,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from torch import Tensor
 from torch_geometric.transforms import Compose, GCNNorm, ToSparseTensor
 
-from dataset import xBDFull
+from dataset import xBDFullGraph
 from model import CNNGCN
 from utils import merge_classes, score_cm
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     else:
         transform = Compose([GCNNorm(), ToSparseTensor()])
 
-    dataset = xBDFull(root, path, disaster, settings_dict['data_ss']['reduced_size'], transform=transform)
+    dataset = xBDFullGraph(root, path, disaster, settings_dict['data_ss']['reduced_size'], transform=transform)
     
     num_classes = 3 if settings_dict['merge_classes'] else dataset.num_classes
     

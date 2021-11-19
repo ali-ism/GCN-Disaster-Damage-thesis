@@ -30,7 +30,7 @@ torch.backends.cudnn.benchmark = False
 to_tensor = ToTensor()
 delaunay = Compose([Delaunay(), FaceToEdge()])
 
-class xBDImages(Dataset):
+class xBDImagesMcnemar(Dataset):
     """
     xBD building image dataset.
 
@@ -100,7 +100,7 @@ class xBDImages(Dataset):
         return sample
 
 
-class xBDBatch(torch_geometric.data.Dataset):
+class xBDMiniGraphsMcnemar(torch_geometric.data.Dataset):
     """
     xBD graph dataset.
     Every image chip is a graph.
@@ -316,7 +316,7 @@ if __name__ == "__main__":
     else:
         transform = None
     
-    hold_dataset = xBDBatch(
+    hold_dataset = xBDMiniGraphsMcnemar(
         '/home/ami31/scratch/datasets/xbd_graph/socal_hold_mcnemar',
         '/home/ami31/scratch/datasets/xbd/hold_bldgs/',
         'socal-fire',
@@ -340,7 +340,7 @@ if __name__ == "__main__":
     np.save('results/y_pred_sage.npy', y_pred_sage)
     df_sage = pd.DataFrame({'y_true': y_true_sage, 'y_pred': y_pred_sage}, index=keys_sage).sort_index()
 
-    hold_dataset = xBDImages(
+    hold_dataset = xBDImagesMcnemar(
         ['/home/ami31/scratch/datasets/xbd/hold_bldgs/'],
         ['socal-fire'],
         merge_classes

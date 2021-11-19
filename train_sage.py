@@ -10,7 +10,7 @@ from torch.utils.data import ConcatDataset
 from torch_geometric.data import DataLoader, Dataset, RandomNodeSampler
 from tqdm import tqdm
 
-from dataset import xBDBatch
+from dataset import xBDMiniGraphs
 from model import CNNSage
 from utils import make_plot, merge_classes, score
 
@@ -134,7 +134,7 @@ def save_results(hold: bool=False) -> None:
         print(f'Test macro F1: {test_f1_macro[-1]:.4f}')
         print(f'Test weighted F1: {test_f1_weighted[-1]:.4f}')
         print(f'Test auc: {test_auc[-1]:.4f}')
-        hold_dataset = xBDBatch(
+        hold_dataset = xBDMiniGraphs(
             '/home/ami31/scratch/datasets/xbd_graph/socal_hold',
             '/home/ami31/scratch/datasets/xbd/hold_bldgs/',
             'socal-fire',
@@ -224,14 +224,14 @@ if __name__ == "__main__":
 
     train_dataset = []
     for root, path, disaster in zip(train_roots, train_paths, train_disasters):
-        train_dataset.append(xBDBatch(root, path, disaster, transform=transform))
+        train_dataset.append(xBDMiniGraphs(root, path, disaster, transform=transform))
     
     if len(train_dataset) > 1:
         train_dataset = ConcatDataset(train_dataset)
     else:
         train_dataset = train_dataset[0]
 
-    test_dataset = xBDBatch(
+    test_dataset = xBDMiniGraphs(
         '/home/ami31/scratch/datasets/xbd_graph/socal_test',
         '/home/ami31/scratch/datasets/xbd/test_bldgs/',
         'socal-fire',

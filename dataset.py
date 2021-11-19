@@ -1,7 +1,7 @@
 import os
 import os.path as osp
 from pathlib import Path
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -63,6 +63,7 @@ class xBDImages(torch.utils.data.Dataset):
         post_image = post_image.resize((128, 128))
         pre_image = to_tensor(pre_image)
         post_image = to_tensor(post_image)
+        assert pre_image.shape == post_image.shape == (3,128,128)
         images = torch.cat((pre_image, post_image),0).flatten()
 
         if self.transform is not None:
@@ -80,7 +81,7 @@ class xBDImages(torch.utils.data.Dataset):
 
 delaunay = Compose([Delaunay(), FaceToEdge()])
 
-class xBDBatch(torch_geometric.data.Dataset):
+class xBDMiniGraphs(torch_geometric.data.Dataset):
     """
     xBD graph dataset.
     Every image chip is a graph.
@@ -154,6 +155,7 @@ class xBDBatch(torch_geometric.data.Dataset):
                 post_image = post_image.resize((128, 128))
                 pre_image = to_tensor(pre_image)
                 post_image = to_tensor(post_image)
+                assert pre_image.shape == post_image.shape == (3,128,128)
                 images = torch.cat((pre_image, post_image),0)
                 x.append(images.flatten())
 
@@ -191,7 +193,7 @@ class xBDBatch(torch_geometric.data.Dataset):
         return data
 
 
-class xBDFull(InMemoryDataset):
+class xBDFullGraph(InMemoryDataset):
     def __init__(
         self,
         root: str, 
@@ -258,6 +260,7 @@ class xBDFull(InMemoryDataset):
             post_image = post_image.resize((128, 128))
             pre_image = to_tensor(pre_image)
             post_image = to_tensor(post_image)
+            assert pre_image.shape == post_image.shape == (3,128,128)
             images = torch.cat((pre_image, post_image),0)
             x.append(images.flatten())
 
@@ -294,14 +297,16 @@ class xBDFull(InMemoryDataset):
         torch.save((data, slices), self.processed_paths[0])
 
 
-class BeirutFull(InMemoryDataset):
+class BeirutFullGraph(InMemoryDataset):
     def __init__(
         self,
         data_path: str,
         reduced_dataset_size: int,
+        meta_features: bool=False,
         transform: Callable=None,
         pre_transform: Callable=None) -> None:
 
+        self.meta_features = meta_features
         self.path = data_path
         cols = ['built_year', 'heritage', 'damage_num', 'long', 'lat']
         self.labels = pd.read_csv(osp.join(self.path, 'buffered_masks.csv'), usecols=cols)
@@ -350,10 +355,16 @@ class BeirutFull(InMemoryDataset):
             pre_image = pre_image[:3,:,:]
             post_image = to_tensor(post_image)
             post_image = post_image[:3,:,:]
+            assert pre_image.shape == post_image.shape == (3,128,128)
             images = torch.cat((pre_image, post_image),0)
             x.append(images.flatten())
 
         x = torch.stack(x)
+        if self.meta_features:
+            year = self.labels['built_year'].values
+            year = torch.from_numpy(year / year.max())
+            heritage = torch.from_numpy(self.labels['heritage'].apply(lambda x: 1 if x=='Yes' else 0).values)
+            x = torch.cat([x, year, heritage], dim=1)
         print(f'Size of x matrix: {x.element_size()*x.nelement()*1e-9:.4f} GB')
         y = torch.tensor(y)
         coords = torch.tensor(coords)
@@ -384,7 +395,3 @@ class BeirutFull(InMemoryDataset):
         
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
-
-
-if __name__ == "__main__":
-    dataset = BeirutFull('datasets/beirut_bldgs', 1366)
