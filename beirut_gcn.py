@@ -137,7 +137,7 @@ if __name__ == "__main__":
         transform = Compose([GCNNorm(), ToSparseTensor()])
 
     dataset = BeirutFullGraph(
-        '/home/ami31/scratch/datasets/beirut_bldgs',
+        '/home/ami31/scratch/datasets/beirut_bldgs_meta',
         settings_dict['data_ss']['reduced_size'],
         meta_features=bool(num_meta_features),
         transform=transform
