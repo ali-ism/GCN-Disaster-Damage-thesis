@@ -18,6 +18,8 @@ class SiameseEncoder(Module):
         x = x.reshape((-1, 6, 128, 128))
         x1 = x[:,:3,:,:]
         x2 = x[:,3:,:,:]
+        print(f'x1: {x1.dtype}')
+        print(f'x2: {x2.dtype}')
         x1 = self.model(x1)
         x2 = self.model(x2)
         if self.diff:
@@ -87,8 +89,6 @@ class CNNGCN(Module):
 
     def forward(self, x: Tensor, adj_t: SparseTensor) -> Tensor:
         if self.num_meta_features:
-            print(f'x: {x.dtype}')
-            print(f'x img: {x[:,:-2].dtype}')
             x = torch.cat([self.node_encoder(x[:,:-2]), x[:,-2:]], dim=1)
         else:
             x  = self.node_encoder(x)
