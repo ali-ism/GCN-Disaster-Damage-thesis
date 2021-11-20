@@ -22,7 +22,7 @@ with open('exp_settings.json', 'r') as JSON:
 
 name = 'beirut_gcn'
 root = '/home/ami31/scratch/datasets/beirut_bldgs/beirut_graph'
-num_meta_features = 2
+num_meta_features = 0
 if num_meta_features:
     root = root + '_meta'
     name = name + '_meta'
