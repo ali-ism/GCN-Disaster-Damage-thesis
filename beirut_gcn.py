@@ -206,7 +206,7 @@ if __name__ == "__main__":
     c_scatter = []
     e_scatter = []
     if settings_dict['merge_classes']:
-        class_map = {0:'minor-damage', 1:'major-damage', 2:'destroyed'}
+        class_map = {0:'minor-damage', 1:'major-damage', 2:'severe-damage'}
     else:
         class_map = {0:'minor-damage', 1:'moderate-damage', 2:'major-damage', 3:'severe-damage'}
     
