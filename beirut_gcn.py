@@ -38,7 +38,7 @@ def train() -> Tuple[float]:
     model.train()
     optimizer.zero_grad()
     out = model(data.x, data.adj_t)
-    z = TSNE(n_components=2).fit_transform(out.detach().cpu().numpy())
+    z = TSNE(n_components=2, random_state=42).fit_transform(out.detach().cpu().numpy())
     out = out[train_idx]
     loss = F.nll_loss(input=out, target=data.y[train_idx], weight=class_weights.to(device))
     loss.backward()
