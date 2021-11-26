@@ -22,8 +22,8 @@ with open('exp_settings.json', 'r') as JSON:
 
 name = 'beirut_gcn'
 root = '/home/ami31/scratch/datasets/beirut_bldgs/beirut_graph'
-num_meta_features = 0
-if num_meta_features:
+meta_features = True
+if meta_features:
     root = root + '_meta'
     name = name + '_meta'
 n_epochs = settings_dict['epochs']
@@ -83,7 +83,7 @@ if __name__ == "__main__":
         root,
         '/home/ami31/scratch/datasets/beirut_bldgs',
         settings_dict['data_ss']['reduced_size'],
-        meta_features=bool(num_meta_features),
+        meta_features=meta_features,
         transform=transform
     )
 
@@ -121,7 +121,7 @@ if __name__ == "__main__":
         num_classes,
         settings_dict['model']['num_layers'],
         settings_dict['model']['dropout_rate'],
-        num_meta_features=num_meta_features
+        num_meta_features=dataset.num_meta_features
     )
     model = model.to(device)
 

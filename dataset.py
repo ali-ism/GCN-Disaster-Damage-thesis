@@ -309,8 +309,16 @@ class BeirutFullGraph(InMemoryDataset):
 
         self.meta_features = meta_features
         self.path = data_path
-        cols = ['built_year', 'heritage', 'damage_num', 'long', 'lat']
-        self.labels = pd.read_csv(osp.join(self.path, 'buffered_masks.csv'), usecols=cols)
+
+        cols = ['OID_', 'damage', 'Type', 'MIN_BLDG_N', 'MAX_BLDG_N', 'SUM_N_KWH', 'Shape_Leng', 'ORIG_FID', 'BUFF_DIST', 'ORIG_FID_1', 'Shape_Length', 'Shape_Area', 'Floors_fin', 'NbreEtages', 'Era_all', 'era_usj', 'Era_fin', 'era_usj_1']
+        self.labels = pd.read_csv('datasets/beirut_bldgs/buffered_masks.csv').drop(columns=cols)
+        self.labels['built_year_final'] = self.labels.apply(lambda row: row['built_year'] if row['built_year'] else row['Annee'] , axis = 1)
+        self.labels['Floors_final'] = self.labels.apply(lambda row: row['Floors'] if row['Floors'] else row['Estim_Etag'] , axis = 1)
+        self.labels.drop(columns=['built_year', 'Annee', 'Estim_Etag', 'Floors'], inplace=True)
+        self.labels.replace(r'\s+', np.nan, regex=True, inplace=True)
+        self.labels['Const_Year'].fillna(0, inplace=True)
+        self.labels['Fonction'].fillna('Autre', inplace=True)
+        self.labels = pd.get_dummies(self.labels, drop_first=True)
         
         if self.labels.shape[0] > reduced_dataset_size:
             idx, _ = train_test_split(
@@ -318,9 +326,14 @@ class BeirutFullGraph(InMemoryDataset):
                 stratify=self.labels['damage_num'].values, random_state=42)
             self.labels = self.labels.iloc[idx,:]
 
-        self.labels['easting'], self.labels['northing'], *_ = utm.from_latlon(
-            self.labels['lat'].values, self.labels['long'].values
+        self.labels['Easting'], self.labels['Northing'], *_ = utm.from_latlon(
+            self.labels['Latitude'].values, self.labels['Longitude'].values
         )
+
+        self.labels.drop(columns=['Latitude', 'Longitude'], inplace=True)
+        num_cols = ['NbreAppts', 'MEAN_DSM_O', 'MEAN_Blg_H', 'Area', 'perimeter', 'era_final', 'built_year_final']
+        self.labels[num_cols] = self.labels[num_cols]/self.labels[num_cols].max()
+        self.num_meta_features = self.labels.drop(columns=['Easting', 'Northing', 'damage_num']).shape[1]
 
         super().__init__(root, transform, pre_transform)
         self.labels.to_csv(osp.join(self.processed_dir, 'beirut_metadata.csv'))
@@ -347,7 +360,7 @@ class BeirutFullGraph(InMemoryDataset):
 
         for i in self.labels.index.tolist():
             y.append(self.labels['damage_num'][i])
-            coords.append((self.labels['easting'][i], self.labels['northing'][i]))
+            coords.append((self.labels['Easting'][i], self.labels['Northing'][i]))
             pre_image = Image.open(osp.join(self.path, 'pre_bldgs', pre_image_files[i]))
             post_image = Image.open(osp.join(self.path, 'post_bldgs', post_image_files[i]))
             pre_image = pre_image.resize((128, 128))
@@ -362,11 +375,8 @@ class BeirutFullGraph(InMemoryDataset):
 
         x = torch.stack(x)
         if self.meta_features:
-            year = self.labels['built_year'].values
-            year = torch.from_numpy(year / year.max()).unsqueeze(1)
-            heritage = self.labels['heritage'].apply(lambda x: 1 if x=='Yes' else 0).values
-            heritage = torch.from_numpy(heritage).unsqueeze(1)
-            x = torch.cat([x, year, heritage], dim=1).float()
+            meta = torch.from_numpy(self.labels.drop(columns=['Easting', 'Northing', 'damage_num']).values)
+            x = torch.cat([x, meta], dim=1).float()
         print(f'Size of x matrix: {x.element_size()*x.nelement()*1e-9:.4f} GB')
         y = torch.tensor(y)
         coords = torch.tensor(coords)
