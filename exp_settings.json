@@ -10,7 +10,8 @@
         "disaster": "joplin-tornado",
         "root": "/home/ami31/scratch/datasets/xbd_graph/joplin_full_reduced",
         "reduced_size": 1366,
-        "labeled_size": 0.2
+        "labeled_size": 0.2,
+        "beirut_meta": true
     },
     "model": {
         "name": "joplin",
