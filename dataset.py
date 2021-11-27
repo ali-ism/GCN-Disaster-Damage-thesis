@@ -311,7 +311,7 @@ class BeirutFullGraph(InMemoryDataset):
         self.path = data_path
 
         cols = ['OID_', 'damage', 'Type', 'MIN_BLDG_N', 'MAX_BLDG_N', 'SUM_N_KWH', 'Shape_Leng', 'ORIG_FID', 'BUFF_DIST', 'ORIG_FID_1', 'Shape_Length', 'Shape_Area', 'Floors_fin', 'NbreEtages', 'Era_all', 'era_usj', 'Era_fin', 'era_usj_1']
-        self.labels = pd.read_csv('datasets/beirut_bldgs/buffered_masks.csv').drop(columns=cols)
+        self.labels = pd.read_csv(osp.join(self.path, 'buffered_masks.csv')).drop(columns=cols)
         self.labels['built_year_final'] = self.labels.apply(lambda row: row['built_year'] if row['built_year'] else row['Annee'] , axis = 1)
         self.labels['Floors_final'] = self.labels.apply(lambda row: row['Floors'] if row['Floors'] else row['Estim_Etag'] , axis = 1)
         self.labels.drop(columns=['built_year', 'Annee', 'Estim_Etag', 'Floors'], inplace=True)
