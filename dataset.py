@@ -333,7 +333,10 @@ class BeirutFullGraph(InMemoryDataset):
         self.labels.drop(columns=['Latitude', 'Longitude'], inplace=True)
         num_cols = ['NbreAppts', 'MEAN_DSM_O', 'MEAN_Blg_H', 'Area', 'perimeter', 'era_final', 'built_year_final']
         self.labels[num_cols] = self.labels[num_cols]/self.labels[num_cols].max()
-        self.num_meta_features = self.labels.drop(columns=['Easting', 'Northing', 'damage_num']).shape[1]
+        if self.meta_features:
+            self.num_meta_features = self.labels.drop(columns=['Easting', 'Northing', 'damage_num']).shape[1]
+        else:
+            self.num_meta_features = 0
 
         super().__init__(root, transform, pre_transform)
         self.labels.to_csv(osp.join(self.processed_dir, 'beirut_metadata.csv'))
