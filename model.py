@@ -87,7 +87,7 @@ class CNNGCN(Module):
 
     def forward(self, x: Tensor, adj_t: SparseTensor) -> Tensor:
         if self.num_meta_features:
-            x = torch.cat([self.node_encoder(x[:,:-2]), x[:,-2:]], dim=1)
+            x = torch.cat([self.node_encoder(x[:,:-self.num_meta_features]), x[:,-self.num_meta_features:]], dim=1)
         else:
             x = self.node_encoder(x)
         for layer_norm, conv in zip(self.layer_norms, self.convs):
