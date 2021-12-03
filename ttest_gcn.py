@@ -69,22 +69,13 @@ if __name__ == "__main__":
 
     n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * data.y.shape[0])
 
-    start = 21
+    accuracy = np.empty(30)
+    precision = np.empty(30)
+    recall = np.empty(30)
+    specificity = np.empty(30)
+    f1 = np.empty(30)
 
-    if start == 0:
-        accuracy = np.empty(30)
-        precision = np.empty(30)
-        recall = np.empty(30)
-        specificity = np.empty(30)
-        f1 = np.empty(30)
-    else:
-        accuracy = np.load('results/gcn_acc_ttest.npy')
-        precision = np.load('results/gcn_prec_ttest.npy')
-        recall = np.load('results/gcn_rec_ttest.npy')
-        specificity = np.load('results/gcn_spec_ttest.npy')
-        f1 = np.load('results/gcn_f1_ttest.npy')
-
-    for seed in range(start,30):
+    for seed in range(30):
         print(f'Running seed {seed}')
         data = data.cpu()
         #select labeled samples
@@ -123,10 +114,10 @@ if __name__ == "__main__":
                 recall[seed] = results[2]
                 specificity[seed] = results[3]
                 f1[seed] = results[4]
-                
-        np.save('results/gcn_acc_ttest.npy', accuracy)
-        np.save('results/gcn_prec_ttest.npy', precision)
-        np.save('results/gcn_rec_ttest.npy', recall)
-        np.save('results/gcn_spec_ttest.npy', specificity)
-        np.save('results/gcn_f1_ttest.npy', f1)
         print(f'Done seed {seed}')
+    
+    np.save('results/gcn_acc_ttest.npy', accuracy)
+    np.save('results/gcn_prec_ttest.npy', precision)
+    np.save('results/gcn_rec_ttest.npy', recall)
+    np.save('results/gcn_spec_ttest.npy', specificity)
+    np.save('results/gcn_f1_ttest.npy', f1)
