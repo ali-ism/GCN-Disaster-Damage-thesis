@@ -4,17 +4,17 @@ from matplotlib.lines import Line2D
 from scipy.stats import ttest_rel, wilcoxon
 
 
-gcn_acc = np.load('results/gcn_acc_ttest.npy')
-gcn_prec = np.load('results/gcn_prec_ttest.npy')
-gcn_rec = np.load('results/gcn_rec_ttest.npy')
-gcn_spec = np.load('results/gcn_spec_ttest.npy')
-gcn_f1 = np.load('results/gcn_f1_ttest.npy')
+gcn_acc = np.load('results/T-test GCN AE/gcn_acc_ttest.npy')
+gcn_prec = np.load('results/T-test GCN AE/gcn_prec_ttest.npy')
+gcn_rec = np.load('results/T-test GCN AE/gcn_rec_ttest.npy')
+gcn_spec = np.load('results/T-test GCN AE/gcn_spec_ttest.npy')
+gcn_f1 = np.load('results/T-test GCN AE/gcn_f1_ttest.npy')
 
-ae_acc = np.load('results/ae_acc_ttest.npy')
-ae_prec = np.load('results/ae_prec_ttest.npy')
-ae_rec = np.load('results/ae_rec_ttest.npy')
-ae_spec = np.load('results/ae_spec_ttest.npy')
-ae_f1 = np.load('results/ae_f1_ttest.npy')
+ae_acc = np.load('results/T-test GCN AE/ae_acc_ttest.npy')
+ae_prec = np.load('results/T-test GCN AE/ae_prec_ttest.npy')
+ae_rec = np.load('results/T-test GCN AE/ae_rec_ttest.npy')
+ae_spec = np.load('results/T-test GCN AE/ae_spec_ttest.npy')
+ae_f1 = np.load('results/T-test GCN AE/ae_f1_ttest.npy')
 
 metrics = ['accuracy', 'precision', 'recall', 'specificity', 'f1']
 gcn_scores = [gcn_acc, gcn_prec, gcn_rec, gcn_spec, gcn_f1]

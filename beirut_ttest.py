@@ -58,9 +58,9 @@ if __name__ == "__main__":
 
     dataset = BeirutFullGraph(
         root,
-        '/home/ami31/scratch/datasets/beirut_bldgs',
+        '/home/ami31/scratch/datasets/beirut_meta_bldgs',
         settings_dict['data_ss']['reduced_size'],
-        meta_features=False,
+        meta_features=True,
         transform=transform
     )
     num_classes = 3 if settings_dict['merge_classes'] else dataset.num_classes
@@ -122,8 +122,8 @@ if __name__ == "__main__":
                 f1[seed] = results[4]
         print(f'Done seed {seed}')
     
-    np.save('results/beirut_acc_ttest.npy', accuracy)
-    np.save('results/beirut_prec_ttest.npy', precision)
-    np.save('results/beirut_rec_ttest.npy', recall)
-    np.save('results/beirut_spec_ttest.npy', specificity)
-    np.save('results/beirut_f1_ttest.npy', f1)
+    np.save('results/beirut_meta_acc_ttest.npy', accuracy)
+    np.save('results/beirut_meta_prec_ttest.npy', precision)
+    np.save('results/beirut_meta_rec_ttest.npy', recall)
+    np.save('results/beirut_meta_spec_ttest.npy', specificity)
+    np.save('results/beirut_meta_f1_ttest.npy', f1)
