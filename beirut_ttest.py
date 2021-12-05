@@ -74,13 +74,13 @@ if __name__ == "__main__":
 
     n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * data.y.shape[0])
 
-    accuracy = np.empty(23)
-    precision = np.empty(23)
-    recall = np.empty(23)
-    specificity = np.empty(23)
-    f1 = np.empty(23)
+    accuracy = np.empty(20)
+    precision = np.empty(20)
+    recall = np.empty(20)
+    specificity = np.empty(20)
+    f1 = np.empty(20)
 
-    for seed in range(23):
+    for seed in range(20):
         print(f'Running seed {seed}')
         data = data.cpu()
         #select labeled samples
