@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     dataset = BeirutFullGraph(
         root,
-        '/home/ami31/scratch/datasets/beirut_meta_bldgs',
+        '/home/ami31/scratch/datasets/beirut_bldgs',
         settings_dict['data_ss']['reduced_size'],
         meta_features=True,
         transform=transform
