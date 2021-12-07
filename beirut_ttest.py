@@ -20,7 +20,7 @@ with open('exp_settings.json', 'r') as JSON:
 
 name = 'beirut'
 root = '/home/ami31/scratch/datasets/beirut_bldgs/beirut_graph'
-meta_features = settings_dict['data_ss']['{name}']
+meta_features = settings_dict['data_ss']['beirut_meta']
 if meta_features:
     root = root + '_meta'
     name = name + '_meta'
