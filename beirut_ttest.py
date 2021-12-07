@@ -18,11 +18,12 @@ from utils import score_cm
 with open('exp_settings.json', 'r') as JSON:
     settings_dict = json.load(JSON)
 
-name = settings_dict['model']['name'] + '_gcn'
-model_path = 'weights/' + name
-disaster = settings_dict['data_ss']['disaster']
-path = '/home/ami31/scratch/datasets/xbd/tier3_bldgs/'
-root = settings_dict['data_ss']['root']
+name = 'beirut'
+root = '/home/ami31/scratch/datasets/beirut_bldgs/beirut_graph'
+meta_features = settings_dict['data_ss']['{name}']
+if meta_features:
+    root = root + '_meta'
+    name = name + '_meta'
 n_epochs = settings_dict['epochs']
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -60,7 +61,7 @@ if __name__ == "__main__":
         root,
         '/home/ami31/scratch/datasets/beirut_bldgs',
         settings_dict['data_ss']['reduced_size'],
-        meta_features=True,
+        meta_features=meta_features,
         transform=transform
     )
     num_classes = 3 if settings_dict['merge_classes'] else dataset.num_classes
@@ -122,8 +123,8 @@ if __name__ == "__main__":
                 f1[seed] = results[4]
         print(f'Done seed {seed}')
     
-    np.save('results/beirut_meta_acc_ttest.npy', accuracy)
-    np.save('results/beirut_meta_prec_ttest.npy', precision)
-    np.save('results/beirut_meta_rec_ttest.npy', recall)
-    np.save('results/beirut_meta_spec_ttest.npy', specificity)
-    np.save('results/beirut_meta_f1_ttest.npy', f1)
+    np.save(f'results/{name}_acc_ttest.npy', accuracy)
+    np.save(f'results/{name}_prec_ttest.npy', precision)
+    np.save(f'results/{name}_rec_ttest.npy', recall)
+    np.save(f'results/{name}_spec_ttest.npy', specificity)
+    np.save(f'results/{name}_f1_ttest.npy', f1)
