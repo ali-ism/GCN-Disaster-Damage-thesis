@@ -38,13 +38,13 @@ plt.show()
 
 
 fig = plt.figure(figsize=(10,7))
-for i, (metric, gcn_score, ae_score) in enumerate(zip(metrics, scores, meta_scores)):
+for i, (metric, score, meta_score) in enumerate(zip(metrics, scores, meta_scores)):
     fig.add_subplot(2, 3, i+1)
-    plt.hist(gcn_score, alpha=0.7, label='gcn')
-    plt.hist(ae_score, alpha=0.7, label='ae')
+    plt.hist(score, alpha=0.7, label='No meta')
+    plt.hist(meta_score, alpha=0.7, label='With meta')
     plt.legend()
     plt.title(metric)
-    t_stat, p_value = ttest_rel(gcn_score, ae_score)
+    t_stat, p_value = ttest_rel(score, meta_score)
     print(f'\n************{metric}************')
     print('Paired t-test:')
     print(f'p value: {p_value}')
@@ -53,7 +53,7 @@ for i, (metric, gcn_score, ae_score) in enumerate(zip(metrics, scores, meta_scor
     else:
         print('Failed to reject null hypothesis')
     print('\nWilcoxon signed rank test:')
-    t_stat, p_value = wilcoxon(gcn_score, ae_score)
+    t_stat, p_value = wilcoxon(score, meta_score)
     print(f'p value: {p_value}')
     if p_value <= 0.05:
         print('Null hypothesis rejected')

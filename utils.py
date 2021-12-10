@@ -62,3 +62,10 @@ def make_plot(train: Iterable, test: Iterable, plot_type: str, model_name: str) 
     plt.ylabel(plot_type)
     plt.savefig('results/'+model_name+'_'+plot_type+'.pdf')
     plt.close()
+
+
+def shannon_equitability(c: np.ndarray):
+    n = c.sum()
+    h = (c/n) * np.log(c/n)
+    h = - h.sum()
+    return h/np.log(len(c))
