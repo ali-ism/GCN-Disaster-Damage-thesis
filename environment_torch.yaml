@@ -1,0 +1,25 @@
+name: 3.8.2
+channels:
+  - defaults
+dependencies:
+  - matplotlib=3.3.4=py38h06a4308_0
+  - numpy=1.20.2=py38h2d18471_0
+  - pandas=1.2.4=py38h2531618_0
+  - pillow=8.2.0=py38he98fc37_0
+  - pip=20.0.2=py38_1
+  - plotly=5.4.0=pyhd8ed1ab_0
+  - python=3.8.2=hcf32534_0
+  - scikit-learn=0.24.2=py38ha9443f7_0
+  - scipy=1.6.2=py38had2a1c9_1
+  - shapely=1.8.0=py38hd784ac2_4
+  - statsmodels=0.12.2=py38h27cfd23_0
+  - utm=0.7.0=pyhd8ed1ab_0
+  - pip:
+    - torch==1.7.0a0
+    - torch-cluster==1.5.9
+    - torch-geometric==1.7.0
+    - torch-scatter==2.0.6
+    - torch-sparse==0.6.9
+    - torch-spline-conv==1.2.1
+    - torchvision==0.9.1
+prefix: /apps/sw/miniconda/envs/3.8.2
