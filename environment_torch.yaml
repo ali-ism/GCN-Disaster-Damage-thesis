@@ -12,7 +12,6 @@ dependencies:
   - scikit-learn=0.24.2=py38ha9443f7_0
   - scipy=1.6.2=py38had2a1c9_1
   - shapely=1.8.0=py38hd784ac2_4
-  - statsmodels=0.12.2=py38h27cfd23_0
   - utm=0.7.0=pyhd8ed1ab_0
   - pip:
     - torch==1.7.0a0
