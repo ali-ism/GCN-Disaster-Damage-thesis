@@ -90,7 +90,7 @@ if __name__ == "__main__":
         #select labeled samples
         train_idx, _ = train_test_split(
             np.arange(idx.shape[0]), train_size=n_labeled_samples,
-            stratify=y[idx], random_state=42
+            stratify=y[idx], random_state=49
         )
         y_train = y[train_idx]
 

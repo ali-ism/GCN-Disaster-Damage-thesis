@@ -83,7 +83,7 @@ if __name__ == "__main__":
         #select labeled samples
         train_idx, test_idx = train_test_split(
             np.arange(idx.shape[0]), train_size=n_labeled_samples,
-            stratify=data.y[idx], random_state=42
+            stratify=data.y[idx], random_state=49
         )
 
         class_weights = compute_class_weight(
