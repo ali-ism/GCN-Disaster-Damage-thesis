@@ -73,7 +73,7 @@ if __name__ == "__main__":
         stratify=y, random_state=42
     )
 
-    labeled_sizes = [0.3]#[0.1, 0.2, 0.3, 0.4]
+    labeled_sizes = [0.1, 0.2, 0.3, 0.4]
 
     accuracy = np.empty(len(labeled_sizes))
     precision = np.empty(len(labeled_sizes))
