@@ -31,7 +31,7 @@ for patch in bplot['boxes']:
     patch.set_facecolor('blue')
     patch.set_alpha(0.7)
 custom_lines = [Line2D([0],[0],color='orange',lw=4), Line2D([0],[0],color='blue',lw=4)]
-leg = plt.legend(custom_lines, ['GCN', 'AE'])
+leg = plt.legend(custom_lines, ['BLDNet', 'AE'])
 for lh in leg.legendHandles: 
     lh.set_alpha(0.7)
 plt.show()
