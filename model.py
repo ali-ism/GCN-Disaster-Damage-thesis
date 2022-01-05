@@ -32,7 +32,8 @@ class SiameseEncoder(Module):
         x = self.forward(x)
         return x.shape[1]
 
-class SiameseNet(Module):
+
+class SiameseCNN(Module):
     def __init__(self, hidden_channels: int, num_classes: int, dropout_rate: float, diff: bool=True) -> None:
         super().__init__()
         

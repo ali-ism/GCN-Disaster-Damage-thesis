@@ -168,12 +168,10 @@ def save_results(hold: bool=False) -> None:
 def get_class_weights(disasters: List[str], dataset: Dataset, num_classes: int, leaked: bool=False) -> torch.Tensor:
     """
         Computes the class weights yo be used in the loss function for mitigating the effect of class imbalance.
-
         Args:
             disasters (List[str]): names of the included datasets.
             dataset (torch_geometric.data.Dataset): PyG dataset instance.
             num_classes (int): number of classes in the dataset.
-        
         Returns:
             class_weights (Tensor): class weights tensor of shape (n_classes).
     """

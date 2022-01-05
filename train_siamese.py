@@ -11,7 +11,7 @@ from torch.utils.data import ConcatDataset, DataLoader, Subset
 from tqdm import tqdm
 
 from dataset import xBDImages
-from model import SiameseNet
+from model import SiameseCNN
 from utils import make_plot, score
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -169,7 +169,7 @@ if __name__ == "__main__":
         class_weights = torch.Tensor(class_weights)
         torch.save(class_weights, f'weights/class_weights_{cw_name}_{num_classes}.pt')
 
-    model = SiameseNet(
+    model = SiameseCNN(
         settings_dict['model']['hidden_units'],
         num_classes,
         settings_dict['model']['dropout_rate']

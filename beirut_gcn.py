@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 import torch
 import torch.nn.functional as F
+import torch_geometric
 from sklearn.manifold import TSNE
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
@@ -58,13 +59,11 @@ def test(mask: Tensor) -> Tuple[float]:
     return loss.item(), accuracy, precision, recall, specificity, f1
 
 
-def merge_classes(data):
+def merge_classes(data: torch_geometric.data.Data):
     """
     Merges the first two classes into a single class.
-    
     Args:
         data: torch_geometric.data.Data object.
-
     Returns:
         data: transformed torch_geometric.data.Data object.
     """

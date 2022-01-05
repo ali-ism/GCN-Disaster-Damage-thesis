@@ -21,7 +21,6 @@ to_tensor = ToTensor()
 class xBDImages(torch.utils.data.Dataset):
     """
     xBD building image dataset.
-
     Args:
         paths (List[str]): paths to the desired data split (train, test, hold or tier3).
         disasters (List[str]): names of the included disasters.
@@ -88,7 +87,7 @@ class xBDMiniGraphs(torch_geometric.data.Dataset):
     Every building (pre and post) is a node.
     Edges are created accoring to the Delaunay triangulation.
     Edge features are calculated as a similarity measure between the nodes.
-
+    
     Args:
         root (str): path where the processed dataset is saved.
         data_path (str): path to the desired data split (train, test, hold or tier3).
@@ -194,6 +193,19 @@ class xBDMiniGraphs(torch_geometric.data.Dataset):
 
 
 class xBDFullGraph(InMemoryDataset):
+    """
+    xBD graph dataset.
+    Every xBD region/subset is a graph.
+    Every building (pre and post) is a node.
+    Edges are created accoring to the Delaunay triangulation.
+    Edge features are calculated as a similarity measure between the nodes.
+
+    Args:
+        root (str): path where the processed dataset is saved.
+        data_path (str): path to the desired data split (train, test, hold or tier3).
+        disaster_name (str): name of the included disaster.
+        reduced_dataset_size (int): maximum number of nodes possible (for memry constraints).
+    """
     def __init__(
         self,
         root: str, 
@@ -298,6 +310,18 @@ class xBDFullGraph(InMemoryDataset):
 
 
 class BeirutFullGraph(InMemoryDataset):
+    """
+    Beirut Port graph dataset.
+    Every building (pre and post) is a node.
+    Edges are created accoring to the Delaunay triangulation.
+    Edge features are calculated as a similarity measure between the nodes.
+
+    Args:
+        root (str): path where the processed dataset is saved.
+        data_path (str): path to the desired data split (train, test, hold or tier3).
+        reduced_dataset_size (int): maximum number of nodes possible (for memory constraints).
+        meta_features (bool): whether the graph includes meta-features or not.
+    """
     def __init__(
         self,
         root: str,

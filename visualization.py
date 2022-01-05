@@ -40,6 +40,8 @@ def plot_on_map(labels: pd.DataFrame, color:str = 'class') -> None:
         "destroyed": 'red',
         "un-classified": 'white'
         }
+    else:
+        raise ValueError("'Color' argument can either be 'zone' or 'class'.")
     fig = px.scatter_mapbox(
         data_frame=labels,
         lat='lat',
