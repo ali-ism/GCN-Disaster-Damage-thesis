@@ -318,7 +318,7 @@ class BeirutFullGraph(InMemoryDataset):
 
     Args:
         root (str): path where the processed dataset is saved.
-        data_path (str): path to the desired data split (train, test, hold or tier3).
+        data_path (str): path to the images and annotation files.
         reduced_dataset_size (int): maximum number of nodes possible (for memory constraints).
         meta_features (bool): whether the graph includes meta-features or not.
     """

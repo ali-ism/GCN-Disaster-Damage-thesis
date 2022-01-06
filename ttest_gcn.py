@@ -48,76 +48,74 @@ def test(mask: Tensor) -> Tuple[float]:
     return accuracy, precision, recall, specificity, f1
 
 
-if __name__ == "__main__":
+if settings_dict['merge_classes']:
+    transform = Compose([merge_classes, GCNNorm(), ToSparseTensor()])
+else:
+    transform = Compose([GCNNorm(), ToSparseTensor()])
 
-    if settings_dict['merge_classes']:
-        transform = Compose([merge_classes, GCNNorm(), ToSparseTensor()])
-    else:
-        transform = Compose([GCNNorm(), ToSparseTensor()])
+dataset = xBDFullGraph(root, path, disaster, settings_dict['data_ss']['reduced_size'], transform=transform)
 
-    dataset = xBDFullGraph(root, path, disaster, settings_dict['data_ss']['reduced_size'], transform=transform)
-    
-    num_classes = 3 if settings_dict['merge_classes'] else dataset.num_classes
-    
-    data = dataset[0]
+num_classes = 3 if settings_dict['merge_classes'] else dataset.num_classes
 
-    #extract hold set
-    idx, hold_idx = train_test_split(
-        np.arange(data.y.shape[0]), test_size=0.5,
-        stratify=data.y, random_state=42
+data = dataset[0]
+
+#extract hold set
+idx, hold_idx = train_test_split(
+    np.arange(data.y.shape[0]), test_size=0.5,
+    stratify=data.y, random_state=42
+)
+
+n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * data.y.shape[0])
+
+accuracy = np.empty(30)
+precision = np.empty(30)
+recall = np.empty(30)
+specificity = np.empty(30)
+f1 = np.empty(30)
+
+for seed in range(30):
+    print(f'Running seed {seed}')
+    data = data.cpu()
+    #select labeled samples
+    train_idx, test_idx = train_test_split(
+        np.arange(idx.shape[0]), train_size=n_labeled_samples,
+        stratify=data.y[idx], random_state=seed
     )
-
-    n_labeled_samples = round(settings_dict['data_ss']['labeled_size'] * data.y.shape[0])
-
-    accuracy = np.empty(30)
-    precision = np.empty(30)
-    recall = np.empty(30)
-    specificity = np.empty(30)
-    f1 = np.empty(30)
-
-    for seed in range(30):
-        print(f'Running seed {seed}')
-        data = data.cpu()
-        #select labeled samples
-        train_idx, test_idx = train_test_split(
-            np.arange(idx.shape[0]), train_size=n_labeled_samples,
-            stratify=data.y[idx], random_state=seed
-        )
-        
-        class_weights = compute_class_weight(
-            class_weight='balanced',
-            classes=np.unique(data.y.numpy()),
-            y=data.y.numpy()[train_idx]
-        )
-        class_weights = torch.Tensor(class_weights)
-        
-        data = data.to(device)
-
-        model = CNNGCN(
-            settings_dict['model']['hidden_units'],
-            num_classes,
-            settings_dict['model']['num_layers'],
-            settings_dict['model']['dropout_rate']
-        )
-        model = model.to(device)
-
-        optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
-
-        best_test_f1 = 0
-        for epoch in range(1, n_epochs+1):
-            train()
-            test_f1 = test(test_idx)[4]
-            if test_f1 > best_test_f1:
-                results = test(hold_idx)
-                accuracy[seed] = results[0]
-                precision[seed] = results[1]
-                recall[seed] = results[2]
-                specificity[seed] = results[3]
-                f1[seed] = results[4]
-        print(f'Done seed {seed}')
     
-    np.save('results/gcn_acc_ttest.npy', accuracy)
-    np.save('results/gcn_prec_ttest.npy', precision)
-    np.save('results/gcn_rec_ttest.npy', recall)
-    np.save('results/gcn_spec_ttest.npy', specificity)
-    np.save('results/gcn_f1_ttest.npy', f1)
+    class_weights = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(data.y.numpy()),
+        y=data.y.numpy()[train_idx]
+    )
+    class_weights = torch.Tensor(class_weights)
+    
+    data = data.to(device)
+
+    model = CNNGCN(
+        settings_dict['model']['hidden_units'],
+        num_classes,
+        settings_dict['model']['num_layers'],
+        settings_dict['model']['dropout_rate']
+    )
+    model = model.to(device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
+
+    best_test_f1 = 0
+    for epoch in range(1, n_epochs+1):
+        train()
+        test_f1 = test(test_idx)[4]
+        if test_f1 > best_test_f1:
+            results = test(hold_idx)
+            accuracy[seed] = results[0]
+            precision[seed] = results[1]
+            recall[seed] = results[2]
+            specificity[seed] = results[3]
+            f1[seed] = results[4]
+    print(f'Done seed {seed}')
+
+np.save('results/T-test GCN AE/gcn_acc_ttest.npy', accuracy)
+np.save('results/T-test GCN AE/gcn_prec_ttest.npy', precision)
+np.save('results/T-test GCN AE/gcn_rec_ttest.npy', recall)
+np.save('results/T-test GCN AE/gcn_spec_ttest.npy', specificity)
+np.save('results/T-test GCN AE/gcn_f1_ttest.npy', f1)

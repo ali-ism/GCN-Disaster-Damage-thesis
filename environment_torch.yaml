@@ -4,6 +4,7 @@ channels:
 dependencies:
   - matplotlib=3.3.4=py38h06a4308_0
   - numpy=1.20.2=py38h2d18471_0
+  - opencv=4.5.3=py38haa244fe_7
   - pandas=1.2.4=py38h2531618_0
   - pillow=8.2.0=py38he98fc37_0
   - pip=20.0.2=py38_1

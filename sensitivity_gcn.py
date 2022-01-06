@@ -48,73 +48,71 @@ def test(mask: Tensor) -> Tuple[float]:
     return accuracy, precision, recall, specificity, f1
 
 
-if __name__ == "__main__":
+if settings_dict['merge_classes']:
+    transform = Compose([merge_classes, GCNNorm(), ToSparseTensor()])
+else:
+    transform = Compose([GCNNorm(), ToSparseTensor()])
 
-    if settings_dict['merge_classes']:
-        transform = Compose([merge_classes, GCNNorm(), ToSparseTensor()])
-    else:
-        transform = Compose([GCNNorm(), ToSparseTensor()])
+dataset = xBDFullGraph(root, path, disaster, settings_dict['data_ss']['reduced_size'], transform=transform)
 
-    dataset = xBDFullGraph(root, path, disaster, settings_dict['data_ss']['reduced_size'], transform=transform)
-    
-    num_classes = 3 if settings_dict['merge_classes'] else dataset.num_classes
-    
-    data = dataset[0]
+num_classes = 3 if settings_dict['merge_classes'] else dataset.num_classes
 
-    #extract hold set
-    idx, hold_idx = train_test_split(
-        np.arange(data.y.shape[0]), test_size=0.5,
-        stratify=data.y, random_state=42
+data = dataset[0]
+
+#extract hold set
+idx, hold_idx = train_test_split(
+    np.arange(data.y.shape[0]), test_size=0.5,
+    stratify=data.y, random_state=42
+)
+
+labeled_sizes = [0.1, 0.2, 0.3, 0.4]
+
+accuracy = np.empty(len(labeled_sizes))
+precision = np.empty(len(labeled_sizes))
+recall = np.empty(len(labeled_sizes))
+specificity = np.empty(len(labeled_sizes))
+f1 = np.empty(len(labeled_sizes))
+
+for i, labeled_size in enumerate(labeled_sizes):
+    print(f'Running label size {labeled_size}')
+    data = data.cpu()
+    n_labeled_samples = round(labeled_size * data.y.shape[0])
+
+    #select labeled samples
+    train_idx, test_idx = train_test_split(
+        np.arange(idx.shape[0]), train_size=n_labeled_samples,
+        stratify=data.y[idx], random_state=49
     )
 
-    labeled_sizes = [0.1, 0.2, 0.3, 0.4]
+    class_weights = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(data.y.numpy()),
+        y=data.y.numpy()[train_idx]
+    )
+    class_weights = torch.Tensor(class_weights)
+    
+    data = data.to(device)
 
-    accuracy = np.empty(len(labeled_sizes))
-    precision = np.empty(len(labeled_sizes))
-    recall = np.empty(len(labeled_sizes))
-    specificity = np.empty(len(labeled_sizes))
-    f1 = np.empty(len(labeled_sizes))
+    model = CNNGCN(
+        settings_dict['model']['hidden_units'],
+        num_classes,
+        settings_dict['model']['num_layers'],
+        settings_dict['model']['dropout_rate']
+    )
+    model = model.to(device)
 
-    for i, labeled_size in enumerate(labeled_sizes):
-        print(f'Running label size {labeled_size}')
-        data = data.cpu()
-        n_labeled_samples = round(labeled_size * data.y.shape[0])
+    optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
 
-        #select labeled samples
-        train_idx, test_idx = train_test_split(
-            np.arange(idx.shape[0]), train_size=n_labeled_samples,
-            stratify=data.y[idx], random_state=49
-        )
-
-        class_weights = compute_class_weight(
-            class_weight='balanced',
-            classes=np.unique(data.y.numpy()),
-            y=data.y.numpy()[train_idx]
-        )
-        class_weights = torch.Tensor(class_weights)
-        
-        data = data.to(device)
-
-        model = CNNGCN(
-            settings_dict['model']['hidden_units'],
-            num_classes,
-            settings_dict['model']['num_layers'],
-            settings_dict['model']['dropout_rate']
-        )
-        model = model.to(device)
-
-        optimizer = torch.optim.Adam(model.parameters(), lr=settings_dict['model']['lr'])
-
-        best_test_f1 = 0
-        for epoch in range(1, n_epochs+1):
-            train()
-            test_f1 = test(test_idx)[4]
-            if test_f1 > best_test_f1:
-                accuracy[i], precision[i], recall[i], specificity[i], f1[i] = test(hold_idx)
-        print(f'Done label size {labeled_size}')
-                
-    np.save('results/gcn_acc_sens.npy', accuracy)
-    np.save('results/gcn_prec_sens.npy', precision)
-    np.save('results/gcn_rec_sens.npy', recall)
-    np.save('results/gcn_spec_sens.npy', specificity)
-    np.save('results/gcn_f1_sens.npy', f1)
+    best_test_f1 = 0
+    for epoch in range(1, n_epochs+1):
+        train()
+        test_f1 = test(test_idx)[4]
+        if test_f1 > best_test_f1:
+            accuracy[i], precision[i], recall[i], specificity[i], f1[i] = test(hold_idx)
+    print(f'Done label size {labeled_size}')
+            
+np.save('results/Sensitivity GCN AE/gcn_acc_sens.npy', accuracy)
+np.save('results/Sensitivity GCN AE/gcn_prec_sens.npy', precision)
+np.save('results/Sensitivity GCN AE/gcn_rec_sens.npy', recall)
+np.save('results/Sensitivity GCN AE/gcn_spec_sens.npy', specificity)
+np.save('results/Sensitivity GCN AE/gcn_f1_sens.npy', f1)
