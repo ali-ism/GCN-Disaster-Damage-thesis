@@ -24,13 +24,13 @@ ae_scores = [ae_acc, ae_prec, ae_rec, ae_spec, ae_f1]
 plt.figure(figsize=(10,7))
 bplot = plt.boxplot(gcn_scores, patch_artist=True, labels=metrics)
 for patch in bplot['boxes']:
-    patch.set_facecolor('orange')
+    patch.set_facecolor('blue')
     patch.set_alpha(0.7)
 bplot = plt.boxplot(ae_scores, patch_artist=True, labels=metrics)
 for patch in bplot['boxes']:
-    patch.set_facecolor('blue')
+    patch.set_facecolor('orange')
     patch.set_alpha(0.7)
-custom_lines = [Line2D([0],[0],color='orange',lw=4), Line2D([0],[0],color='blue',lw=4)]
+custom_lines = [Line2D([0],[0],color='blue',lw=4), Line2D([0],[0],color='orange',lw=4)]
 leg = plt.legend(custom_lines, ['BLDNet', 'AE'])
 for lh in leg.legendHandles: 
     lh.set_alpha(0.7)
